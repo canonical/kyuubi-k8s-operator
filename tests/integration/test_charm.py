@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-# Copyright 2024 Bikalpa Dhakal
-# See LICENSE file for licensing details.
-
 import asyncio
 import logging
 from pathlib import Path
@@ -33,3 +29,11 @@ async def test_build_and_deploy(ops_test: OpsTest):
             apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000
         ),
     )
+
+
+
+# 1. test build and deploy
+# 2. test integration with s3
+# 3. beeline / jdbc endpoint working (run the query and query should be successful)
+# 4. test remove integration with s3
+# 

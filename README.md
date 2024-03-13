@@ -13,7 +13,6 @@ Use links instead.
 Charmhub package name: kyuubi
 More information: https://charmhub.io/kyuubi
 
-Describe your charm in one or two sentences.
 
 ## Other resources
 

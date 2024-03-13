@@ -1,37 +1,53 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical Limited
-# See LICENSE file for licensing details.
 
 """Spark History Server configuration."""
 
 import re
 from typing import Optional
 from s3 import S3ConnectionInfo
+from lightkube import Client
 
 from utils import WithLogging
 
+KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
 
 class KyuubiServerConfig(WithLogging):
-    """Spark History Server Configuration."""
-
-    _base_conf: dict[str, str] = {
-        "spark.hadoop.fs.s3a.connection.ssl.enabled": "false",
-        "spark.hadoop.fs.s3a.path.style.access": "true",
-    }
+    """Spark History Server Configuration."""          
 
 
-    def __init__(self, s3_info: Optional[S3ConnectionInfo] = None):
+    def __init__(self, s3_info: Optional[S3ConnectionInfo], namespace: str, service_account: str):
         self.s3_info = s3_info
+        self.namespace = namespace
+        self.service_account = service_account
+
+    def _get_upload_path(self) -> str:
+        bucket_name = self.s3_info.bucket or "kyuubi"
+        return f"s3a://{bucket_name}/"
+
+    def _get_sql_warehouse_path(self) -> str:
+        bucket_name = self.s3_info.bucket or "kyuubi"
+        warehouse_dir = "warehouse"
+        return f"s3a://{bucket_name}/{warehouse_dir}"
+
+    def _get_spark_master(self) -> str:
+        cluster_address = Client().config.cluster.server
+        return f"k8s://{cluster_address}"
+
+    @property
+    def _base_conf(self) -> dict[str, str]:
+        return {
+            "spark.sql.warehouse.dir": self._get_sql_warehouse_path(),
+        }
 
     @property
     def _k8s_conf(self) -> dict[str, str]:
         return {
-            "spark.master": "k8s://https://192.168.1.72:16443",
-            "spark.kubernetes.container.image": "ghcr.io/canonical/charmed-spark:3.4-22.04_edge",
+            "spark.master": self._get_spark_master(),
+            "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
             "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
             "spark.kubernetes.namespace": "spark",
             "spark.submit.deployMode": "cluster",
-            "spark.kubernetes.file.upload.path": "s3a://kyuubi/",
+            "spark.kubernetes.file.upload.path": self._get_upload_path(),
         }
     
     @property

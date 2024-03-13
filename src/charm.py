@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
-# Copyright 2024 Bikalpa Dhakal
-# See LICENSE file for licensing details.
-#
+
 # Learn more at: https://juju.is/docs/sdk
 
-"""Charm the service.
-
-Refer to the following tutorial that will help you
-develop a new k8s charm using the Operator Framework:
-
-https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
-"""
+"""Charm the Kyuubi service."""
 
 import logging
 from typing import Optional
+from models import Status
 from s3 import S3ConnectionInfo
+import k8s_utils
 from workload import KyuubiServer
 from utils import IOMode
 from config import KyuubiServerConfig
@@ -48,39 +42,95 @@ class KyuubiCharm(ops.CharmBase):
         self.s3_requirer = S3Requirer(self, self.S3_INTEGRATOR_REL)
         self.register_observers()
         self.logger = logger
+        logger.info(self.config)
 
 
     def register_observers(self):
-        self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.install, self._update_event)
+        self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
-        self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
+        self.framework.observe(self.on.update_status, self._update_event)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(
             self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
+        self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
-    def _on_start(self, event: ops.StartEvent):
-        """Handle start event."""
-        self.unit.status = ops.ActiveStatus("Charm started successfully.")
 
-    def _update_spark_configs(self, s3_info: Optional[S3ConnectionInfo] = None):
+    def _on_install(self, event: ops.InstallEvent) -> None:
+        """Handle the `on_install` event."""
+        self.unit.status = Status.WAITING_PEBBLE.value
+
+    def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
+        """Handle the on_config_changed event"""
+
+        if not self.unit.is_leader():
+            return
+
+        self.update_service()
+
+
+    def _update_event(self, _):
+        """Handle the update event hook."""
+        self.unit.status = self.get_status()
+
+    def _update_spark_configs(self):
+        s3_info = self.s3_connection_info
+        namespace = self.config["namespace"]
+        service_account = self.config["service-account"]
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as fid:
-            spark_config = KyuubiServerConfig(s3_info=s3_info)
+            spark_config = KyuubiServerConfig(s3_info=s3_info, namespace=namespace, service_account=service_account)
             fid.write(spark_config.contents)
+
+    def get_status(
+        self,
+    ) -> ops.StatusBase:
+        """Compute and return the status of the charm."""
+        if not self.workload.ready():
+            return Status.WAITING_PEBBLE.value
+
+        s3_info = self.s3_connection_info
+        if not s3_info:
+            return Status.MISSING_S3_RELATION.value
+
+        if not s3_info.verify():
+            return Status.INVALID_CREDENTIALS.value
+
+        namespace = self.config["namespace"]
+        if not k8s_utils.is_valid_namespace(namespace=namespace):
+            return Status.INVALID_NAMESPACE.value
+
+        service_account = self.config["service-account"]
+        if not k8s_utils.is_valid_service_account(namespace=namespace, service_account=service_account):
+            return Status.INVALID_SERVICE_ACCOUNT.value
+
+        return Status.ACTIVE.value
 
     def update_service(
         self,
-        s3_info: Optional[S3ConnectionInfo] = None
     ) -> bool:
         """Update the Kyuubi server service if needed."""
-        self._update_spark_configs(s3_info=s3_info)
+        # Set the unit status
+        status = self.get_status()
+        self.unit.status = status
+
+        if status is not Status.ACTIVE.value:
+            self.logger.info(f"Cannot start service because of status {status}")
+            self.workload.stop()
+            return False
+        
+        # Dynamically update the Spark properties
+        self._update_spark_configs()
+
+        # Start the workload
         self.workload.start()
         return True
 
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
+        self.logger.info("Kyuubi pebble service is ready.")
         self.update_service()
-        self.unit.status = ops.ActiveStatus("Pebble ready event handled successfully.")
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
         result = {
@@ -92,7 +142,7 @@ class KyuubiCharm(ops.CharmBase):
     def s3_connection_info(self) -> Optional[S3ConnectionInfo]:
         """Parse a S3ConnectionInfo object from relation data."""
 
-        # If the relation is not yet available, do nothing.
+        # If the relation is not yet available, return None
         if not self.s3_requirer.relations:
             return None
 
@@ -108,47 +158,14 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
-        logger.info("S3 Credentials changed")
-        self.update_service(self.s3_connection_info)
+        self.logger.info("S3 credentials changed")
+        self.update_service()
 
-        # Checking if the credentials work
-        self.s3_connection_info.verify()
 
     def _on_s3_credential_gone(self, _: CredentialsGoneEvent):
         """Handle the `CredentialsGoneEvent` event for S3 integrator."""
-        logger.info("S3 Credentials gone")
+        logger.info("S3 credentials gone")
         self.update_service()
-
-    # def _on_config_changed(self, event: ops.ConfigChangedEvent):
-    #     """Handle changed configuration.
-
-    #     Change this example to suit your needs. If you don't need to handle config, you can remove
-    #     this method.
-
-    #     Learn more about config at https://juju.is/docs/sdk/config
-    #     """
-    #     # Fetch the new config value
-    #     log_level = self.model.config["log-level"].lower()
-
-    #     # Do some validation of the configuration option
-    #     if log_level in VALID_LOG_LEVELS:
-    #         # The config is good, so update the configuration of the workload
-    #         container = self.unit.get_container("httpbin")
-    #         # Verify that we can connect to the Pebble API in the workload container
-    #         if container.can_connect():
-    #             # Push an updated layer with the new config
-    #             container.add_layer("httpbin", self._pebble_layer, combine=True)
-    #             container.replan()
-
-    #             logger.debug("Log level for gunicorn changed to '%s'", log_level)
-    #             self.unit.status = ops.ActiveStatus()
-    #         else:
-    #             # We were unable to connect to the Pebble API, so we defer this event
-    #             event.defer()
-    #             self.unit.status = ops.WaitingStatus("waiting for Pebble API")
-    #     else:
-    #         # In this case, the config option is bad, so block the charm and notify the operator.
-    #         self.unit.status = ops.BlockedStatus("invalid log level: '{log_level}'")
 
 
 if __name__ == "__main__":  # pragma: nocover
