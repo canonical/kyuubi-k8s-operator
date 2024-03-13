@@ -1,9 +1,15 @@
-from ops.model import Container
-from utils import WithLogging, IOMode, ContainerFile
-from models import User
+"""This model contains classes and methods related to Kyuubi workload."""
+
 import socket
 
+from models import User
+from ops.model import Container
+from utils import ContainerFile, IOMode, WithLogging
+
+
 class KyuubiServer(WithLogging):
+    """The abstraction of Kyuubi workload container."""
+
     KYUUBI_WORKDIR = "/opt/kyuubi"
     KYUUBI_SERVICE = "kyuubi"
     CONTAINER_LAYER = "kyuubi"
@@ -18,12 +24,13 @@ class KyuubiServer(WithLogging):
         """Return the configuration file for Spark History server."""
         daemon_user = User(name="_daemon_", group="_daemon_")
         return ContainerFile(self.container, daemon_user, self.SPARK_PROPERTIES, mode)
-    
+
     def get_jdbc_endpoint(self) -> str:
+        """Return the JDBC endpoint to connect to Kyuubi server."""
         hostname = socket.getfqdn()
         ip_address = socket.gethostbyname(hostname)
         return f"jdbc:hive2://{ip_address}:{self.JDBC_PORT}/"
-    
+
     @property
     def _kyuubi_server_layer(self):
         """Return a dictionary representing a Pebble layer."""
@@ -49,9 +56,7 @@ class KyuubiServer(WithLogging):
 
         if services[self.KYUUBI_SERVICE].startup != "enabled":
             self.logger.info("Adding kyuubi pebble layer...")
-            self.container.add_layer(
-                self.CONTAINER_LAYER, self._kyuubi_server_layer
-            )
+            self.container.add_layer(self.CONTAINER_LAYER, self._kyuubi_server_layer)
 
         self.container.restart(self.KYUUBI_SERVICE)
 

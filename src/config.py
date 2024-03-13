@@ -2,18 +2,17 @@
 
 """Spark History Server configuration."""
 
-import re
 from typing import Optional
-from s3 import S3ConnectionInfo
-from lightkube import Client
 
+from lightkube import Client
+from s3 import S3ConnectionInfo
 from utils import WithLogging
 
 KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
 
-class KyuubiServerConfig(WithLogging):
-    """Spark History Server Configuration."""          
 
+class KyuubiServerConfig(WithLogging):
+    """Spark History Server Configuration."""
 
     def __init__(self, s3_info: Optional[S3ConnectionInfo], namespace: str, service_account: str):
         self.s3_info = s3_info
@@ -49,20 +48,22 @@ class KyuubiServerConfig(WithLogging):
             "spark.submit.deployMode": "cluster",
             "spark.kubernetes.file.upload.path": self._get_upload_path(),
         }
-    
+
     @property
     def _s3_conf(self) -> dict[str, str]:
         conf = {
             "spark.hadoop.fs.s3a.aws.credentials.provider": "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
             "spark.hadoop.fs.s3a.connection.ssl.enabled": "false",
             "spark.hadoop.fs.s3a.path.style.access": "true",
-        }        
+        }
         if self.s3_info:
-            conf.update({
-                "spark.hadoop.fs.s3a.endpoint": self.s3_info.endpoint,
-                "spark.hadoop.fs.s3a.access.key": self.s3_info.access_key,
-                "spark.hadoop.fs.s3a.secret.key": self.s3_info.secret_key,
-            })
+            conf.update(
+                {
+                    "spark.hadoop.fs.s3a.endpoint": self.s3_info.endpoint,
+                    "spark.hadoop.fs.s3a.access.key": self.s3_info.access_key,
+                    "spark.hadoop.fs.s3a.secret.key": self.s3_info.secret_key,
+                }
+            )
         return conf
 
     def to_dict(self) -> dict[str, str]:

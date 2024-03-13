@@ -6,22 +6,20 @@
 
 import logging
 from typing import Optional
-from models import Status
-from s3 import S3ConnectionInfo
+
 import k8s_utils
-from workload import KyuubiServer
-from utils import IOMode
-from config import KyuubiServerConfig
 import ops
-from ops.charm import (
-    ActionEvent
-)
-import json
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
     S3Requirer,
 )
+from config import KyuubiServerConfig
+from models import Status
+from ops.charm import ActionEvent
+from s3 import S3ConnectionInfo
+from utils import IOMode
+from workload import KyuubiServer
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -31,21 +29,20 @@ VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
 
 class KyuubiCharm(ops.CharmBase):
     """Charm the service."""
+
     CONTAINER = "kyuubi"
     S3_INTEGRATOR_REL = "s3-credentials"
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.workload = KyuubiServer(
-            self.unit.get_container(self.CONTAINER)
-        )
+        self.workload = KyuubiServer(self.unit.get_container(self.CONTAINER))
         self.s3_requirer = S3Requirer(self, self.S3_INTEGRATOR_REL)
-        self.register_observers()
+        self.register_event_handlers()
         self.logger = logger
         logger.info(self.config)
 
-
-    def register_observers(self):
+    def register_event_handlers(self):
+        """Register various event handlers to the charm."""
         self.framework.observe(self.on.install, self._update_event)
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
@@ -57,30 +54,30 @@ class KyuubiCharm(ops.CharmBase):
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
         self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
-
     def _on_install(self, event: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
         self.unit.status = Status.WAITING_PEBBLE.value
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
-        """Handle the on_config_changed event"""
-
+        """Handle the on_config_changed event."""
         if not self.unit.is_leader():
             return
 
         self.update_service()
-
 
     def _update_event(self, _):
         """Handle the update event hook."""
         self.unit.status = self.get_status()
 
     def _update_spark_configs(self):
+        """Update Spark properties in the spark-defaults file inside the charm container."""
         s3_info = self.s3_connection_info
         namespace = self.config["namespace"]
         service_account = self.config["service-account"]
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as fid:
-            spark_config = KyuubiServerConfig(s3_info=s3_info, namespace=namespace, service_account=service_account)
+            spark_config = KyuubiServerConfig(
+                s3_info=s3_info, namespace=namespace, service_account=service_account
+            )
             fid.write(spark_config.contents)
 
     def get_status(
@@ -102,7 +99,9 @@ class KyuubiCharm(ops.CharmBase):
             return Status.INVALID_NAMESPACE.value
 
         service_account = self.config["service-account"]
-        if not k8s_utils.is_valid_service_account(namespace=namespace, service_account=service_account):
+        if not k8s_utils.is_valid_service_account(
+            namespace=namespace, service_account=service_account
+        ):
             return Status.INVALID_SERVICE_ACCOUNT.value
 
         return Status.ACTIVE.value
@@ -119,7 +118,7 @@ class KyuubiCharm(ops.CharmBase):
             self.logger.info(f"Cannot start service because of status {status}")
             self.workload.stop()
             return False
-        
+
         # Dynamically update the Spark properties
         self._update_spark_configs()
 
@@ -133,15 +132,12 @@ class KyuubiCharm(ops.CharmBase):
         self.update_service()
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
-        result = {
-            "endpoint": self.workload.get_jdbc_endpoint()
-        }
+        result = {"endpoint": self.workload.get_jdbc_endpoint()}
         event.set_results(result)
 
     @property
     def s3_connection_info(self) -> Optional[S3ConnectionInfo]:
         """Parse a S3ConnectionInfo object from relation data."""
-
         # If the relation is not yet available, return None
         if not self.s3_requirer.relations:
             return None
@@ -160,7 +156,6 @@ class KyuubiCharm(ops.CharmBase):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
         self.logger.info("S3 credentials changed")
         self.update_service()
-
 
     def _on_s3_credential_gone(self, _: CredentialsGoneEvent):
         """Handle the `CredentialsGoneEvent` event for S3 integrator."""

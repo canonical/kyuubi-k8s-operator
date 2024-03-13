@@ -1,13 +1,13 @@
 """Utilities."""
 
-from ops.model import Container
-from io import StringIO, IOBase
-from enum import Enum
-
 import os
+from enum import Enum
+from io import StringIO
 from logging import Logger, getLogger
 from typing import Any, Callable, Literal, TypedDict, Union
+
 from models import User
+from ops.model import Container
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -72,12 +72,12 @@ class WithLogging:
         return wrap
 
 
-
 class IOMode(str, Enum):
     """Class representing the modes to open file resources."""
 
     READ = "r"
     WRITE = "w"
+
 
 class ContainerFile(StringIO):
     """Class representing a file in the workload container to be read/written.
@@ -122,4 +122,3 @@ class ContainerFile(StringIO):
                 make_dirs=True,
                 permissions=0o640,
             )
-

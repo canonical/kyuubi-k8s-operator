@@ -1,5 +1,8 @@
+"""Definition of various model classes."""
+
 from dataclasses import dataclass
 from enum import Enum
+
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 
@@ -9,7 +12,6 @@ class User:
 
     name: str = "spark"
     group: str = "spark"
-
 
 
 class Status(Enum):
