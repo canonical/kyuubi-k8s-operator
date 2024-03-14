@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# Learn more at: https://juju.is/docs/sdk
-
 """Charm the Kyuubi service."""
 
 import logging
