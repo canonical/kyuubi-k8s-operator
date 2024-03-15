@@ -41,10 +41,14 @@ config:
       description: The service account to be used by driver to create executor pods.
       default: 'kyuubi'
 
+actions:
+  get-jdbc-endpoint:
+    description: |
+      Returns the JDBC endpoint to connect to Kyuubi server.
+
 containers:
   kyuubi:
     resource: kyuubi-image
-
 
 resources:
   kyuubi-image:
