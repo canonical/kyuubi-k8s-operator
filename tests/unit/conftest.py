@@ -21,6 +21,7 @@ def kyuubi_context(kyuubi_charm):
     """Provide fixture for scenario context based on the Kyuubi charm."""
     return Context(charm_type=kyuubi_charm)
 
+
 @pytest.fixture
 def model():
     """Provide fixture for the testing Juju model."""

@@ -55,8 +55,7 @@ class KyuubiCharm(ops.CharmBase):
             self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
-        self.framework.observe(
-            self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
+        self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""

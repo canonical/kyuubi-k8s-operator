@@ -3,18 +3,15 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-import unittest
-
-import ops
-import ops.testing
-
-from scenario import Container, State
-from ops import MaintenanceStatus
 import logging
+
+from ops import MaintenanceStatus
+from scenario import Container, State
 
 from constants import KYUUBI_CONTAINER_NAME
 
 logger = logging.getLogger(__name__)
+
 
 def test_start_kyuubi(kyuubi_context):
     state = State(
