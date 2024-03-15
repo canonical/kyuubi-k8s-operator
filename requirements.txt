@@ -2,3 +2,4 @@ ops ~= 2.5
 boto3==1.34.53
 lightkube==0.15.2
 ops-scenario==6.0.2
+pydantic==2.6.4
