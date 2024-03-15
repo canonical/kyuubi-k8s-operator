@@ -18,7 +18,12 @@ from ops.charm import ActionEvent
 
 import k8s_utils
 from config import KyuubiServerConfig
-from constants import NAMESPACE_CONFIG_NAME, SERVICE_ACCOUNT_CONFIG_NAME
+from constants import (
+    KYUUBI_CONTAINER_NAME,
+    NAMESPACE_CONFIG_NAME,
+    S3_INTEGRATOR_REL,
+    SERVICE_ACCOUNT_CONFIG_NAME,
+)
 from models import Status
 from s3 import S3ConnectionInfo
 from utils import IOMode
@@ -33,13 +38,10 @@ VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
 class KyuubiCharm(ops.CharmBase):
     """Charm the service."""
 
-    CONTAINER = "kyuubi"
-    S3_INTEGRATOR_REL = "s3-credentials"
-
     def __init__(self, *args):
         super().__init__(*args)
-        self.workload = KyuubiServer(self.unit.get_container(self.CONTAINER))
-        self.s3_requirer = S3Requirer(self, self.S3_INTEGRATOR_REL)
+        self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
+        self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
         self.register_event_handlers()
         self.logger = logger
         logger.info(self.config)

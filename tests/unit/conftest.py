@@ -47,13 +47,14 @@ def kyuubi_container(tmp_path):
     )
 
     opt = Mount("/opt/", tmp_path)
+    etc = Mount("/etc", tmp_path)
 
     return Container(
         name=KYUUBI_CONTAINER_NAME,
         can_connect=True,
         layers={"base": layer},
         service_status={"kyuubi": pebble.ServiceStatus.ACTIVE},
-        mounts={"opt": opt},
+        mounts={"opt": opt, "etc": etc},
     )
 
 

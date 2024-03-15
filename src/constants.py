@@ -10,3 +10,7 @@ S3_INTEGRATOR_REL = "s3-credentials"
 
 NAMESPACE_CONFIG_NAME = "namespace"
 SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
+
+SPARK_PROPERTIES_FILE = "/etc/spark8t/conf/spark-defaults.conf"
+
+JDBC_PORT = 10009
