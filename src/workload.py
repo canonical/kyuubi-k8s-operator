@@ -1,9 +1,15 @@
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 """This model contains classes and methods related to Kyuubi workload."""
 
 import socket
 
-from models import User
 from ops.model import Container
+
+from models import User
 from utils import ContainerFile, IOMode, WithLogging
 
 

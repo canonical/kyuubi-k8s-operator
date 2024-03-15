@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 import unittest
 
 import ops
 import ops.testing
+
 from charm import KyuubiCharm
 
 

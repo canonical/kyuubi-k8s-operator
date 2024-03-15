@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
-"""Spark History Server configuration."""
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+"""Kyuubi workload configurations."""
 
 from typing import Optional
 
 from lightkube import Client
+
 from s3 import S3ConnectionInfo
 from utils import WithLogging
 

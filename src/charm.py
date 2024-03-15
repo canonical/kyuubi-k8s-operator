@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Charm the Kyuubi service."""
 
 import logging
 from typing import Optional
 
-import k8s_utils
 import ops
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
     S3Requirer,
 )
-from config import KyuubiServerConfig
-from models import Status
 from ops.charm import ActionEvent
+
+import k8s_utils
+from config import KyuubiServerConfig
+from constants import NAMESPACE_CONFIG_NAME, SERVICE_ACCOUNT_CONFIG_NAME
+from models import Status
 from s3 import S3ConnectionInfo
 from utils import IOMode
 from workload import KyuubiServer
@@ -70,8 +75,8 @@ class KyuubiCharm(ops.CharmBase):
     def _update_spark_configs(self):
         """Update Spark properties in the spark-defaults file inside the charm container."""
         s3_info = self.s3_connection_info
-        namespace = self.config["namespace"]
-        service_account = self.config["service-account"]
+        namespace = self.config[NAMESPACE_CONFIG_NAME]
+        service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as fid:
             spark_config = KyuubiServerConfig(
                 s3_info=s3_info, namespace=namespace, service_account=service_account
@@ -92,11 +97,11 @@ class KyuubiCharm(ops.CharmBase):
         if not s3_info.verify():
             return Status.INVALID_CREDENTIALS.value
 
-        namespace = self.config["namespace"]
+        namespace = self.config[NAMESPACE_CONFIG_NAME]
         if not k8s_utils.is_valid_namespace(namespace=namespace):
             return Status.INVALID_NAMESPACE.value
 
-        service_account = self.config["service-account"]
+        service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
         if not k8s_utils.is_valid_service_account(
             namespace=namespace, service_account=service_account
         ):

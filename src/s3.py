@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 """S3 connection utility classes and methods."""
 
 from dataclasses import dataclass
@@ -5,6 +10,7 @@ from functools import cached_property
 
 import boto3
 from botocore.exceptions import ClientError
+
 from utils import WithLogging
 
 

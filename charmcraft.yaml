@@ -1,4 +1,7 @@
-name: kyuubi
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+name: kyuubi-k8s
 
 type: charm
 
@@ -6,8 +9,6 @@ title: Kubernetes based charm for Apache Kyuubi
 
 summary: Kubernetes based charm for Apache Kyuubi
 
-
-# (Required)
 description: |
   "This is a charm for Apache Kyuubi.
 
@@ -44,7 +45,7 @@ resources:
   kyuubi-image:
     type: oci-image
     description: OCI image for kyuubi
-    upstream-source: charmed-spark:3.4.2
+    upstream-source: ghcr.io/canonical/charmed-spark:3.4-22.04_edge
 
 requires:
   s3-credentials:

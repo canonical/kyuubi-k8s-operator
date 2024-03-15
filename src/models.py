@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Definition of various model classes."""
 
 from dataclasses import dataclass
@@ -20,7 +25,6 @@ class Status(Enum):
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
     MISSING_S3_RELATION = BlockedStatus("Missing S3 relation")
     INVALID_CREDENTIALS = BlockedStatus("Invalid S3 credentials")
-    MISSING_INGRESS_RELATION = BlockedStatus("Missing INGRESS relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
 

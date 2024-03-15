@@ -1,3 +1,6 @@
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 get-jdbc-endpoint:
   description: |
     Returns the JDBC endpoint to connect to Kyuubi server.

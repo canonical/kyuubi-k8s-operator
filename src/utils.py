@@ -1,4 +1,9 @@
-"""Utilities."""
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+"""Miscellaneous utilities."""
 
 import os
 from enum import Enum
@@ -6,8 +11,9 @@ from io import StringIO
 from logging import Logger, getLogger
 from typing import Any, Callable, Literal, TypedDict, Union
 
-from models import User
 from ops.model import Container
+
+from models import User
 
 PathLike = Union[str, "os.PathLike[str]"]
 
