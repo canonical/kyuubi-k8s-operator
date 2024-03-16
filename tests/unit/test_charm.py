@@ -47,10 +47,12 @@ def test_pebble_ready(kyuubi_context, kyuubi_container):
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
+@patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_connection_ok(
-    mock_s3_verify,
-    mock_valid_ns,
+    mock_get_spark_master,
     mock_valid_sa,
+    mock_valid_ns,
+    mock_s3_verify,
     tmp_path,
     kyuubi_context,
     kyuubi_container,
@@ -79,7 +81,12 @@ def test_s3_relation_connection_ok(
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
 def test_s3_relation_connection_not_ok(
-    mock_s3_verify, mock_valid_ns, mock_valid_sa, kyuubi_context, kyuubi_container, s3_relation
+    mock_valid_sa, 
+    mock_valid_ns, 
+    mock_s3_verify, 
+    kyuubi_context, 
+    kyuubi_container, 
+    s3_relation
 ):
     state = State(
         relations=[s3_relation],
@@ -92,8 +99,15 @@ def test_s3_relation_connection_not_ok(
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
+@patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_broken(
-    mock_s3_verify, mock_valid_ns, mock_valid_sa, kyuubi_context, kyuubi_container, s3_relation
+    mock_get_spark_master,
+    mock_valid_sa, 
+    mock_valid_ns, 
+    mock_s3_verify, 
+    kyuubi_context, 
+    kyuubi_container, 
+    s3_relation
 ):
     initial_state = State(
         relations=[s3_relation],
