@@ -49,6 +49,8 @@ class KyuubiServer(WithLogging):
     def start(self):
         """Execute business-logic for starting the workload."""
         services = self.container.get_plan().services
+        self.logger.info(f"Pebble plan: {self.container.get_plan()}")
+        self.logger.info(f"Pebble services: {services}")
 
         spark_configuration_file = self.get_spark_configuration_file(IOMode.READ)
         if not spark_configuration_file.exists():

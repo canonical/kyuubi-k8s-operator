@@ -99,15 +99,15 @@ class KyuubiCharm(ops.CharmBase):
         if not s3_info.verify():
             return Status.INVALID_CREDENTIALS.value
 
-        namespace = self.config[NAMESPACE_CONFIG_NAME]
-        if not k8s_utils.is_valid_namespace(namespace=namespace):
-            return Status.INVALID_NAMESPACE.value
+        # namespace = self.config[NAMESPACE_CONFIG_NAME]
+        # if not k8s_utils.is_valid_namespace(namespace=namespace):
+        #     return Status.INVALID_NAMESPACE.value
 
-        service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
-        if not k8s_utils.is_valid_service_account(
-            namespace=namespace, service_account=service_account
-        ):
-            return Status.INVALID_SERVICE_ACCOUNT.value
+        # service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
+        # if not k8s_utils.is_valid_service_account(
+        #     namespace=namespace, service_account=service_account
+        # ):
+        #     return Status.INVALID_SERVICE_ACCOUNT.value
 
         return Status.ACTIVE.value
 
