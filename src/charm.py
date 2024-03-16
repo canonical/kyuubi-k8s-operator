@@ -16,6 +16,7 @@ from charms.data_platform_libs.v0.s3 import (
 )
 from ops.charm import ActionEvent
 
+import k8s_utils
 from config import KyuubiServerConfig
 from constants import (
     KYUUBI_CONTAINER_NAME,
@@ -24,7 +25,6 @@ from constants import (
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
 from models import Status
-import k8s_utils
 from s3 import S3ConnectionInfo
 from utils import IOMode
 from workload import KyuubiServer
