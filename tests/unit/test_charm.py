@@ -81,12 +81,7 @@ def test_s3_relation_connection_ok(
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
 def test_s3_relation_connection_not_ok(
-    mock_valid_sa, 
-    mock_valid_ns, 
-    mock_s3_verify, 
-    kyuubi_context, 
-    kyuubi_container, 
-    s3_relation
+    mock_valid_sa, mock_valid_ns, mock_s3_verify, kyuubi_context, kyuubi_container, s3_relation
 ):
     state = State(
         relations=[s3_relation],
@@ -102,12 +97,12 @@ def test_s3_relation_connection_not_ok(
 @patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_broken(
     mock_get_spark_master,
-    mock_valid_sa, 
-    mock_valid_ns, 
-    mock_s3_verify, 
-    kyuubi_context, 
-    kyuubi_container, 
-    s3_relation
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_s3_verify,
+    kyuubi_context,
+    kyuubi_container,
+    s3_relation,
 ):
     initial_state = State(
         relations=[s3_relation],
