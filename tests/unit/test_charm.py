@@ -76,7 +76,11 @@ def test_s3_relation_connection_ok(
 
 
 @patch("s3.S3ConnectionInfo.verify", return_value=False)
-def test_s3_relation_connection_not_ok(_, tmp_path, kyuubi_context, kyuubi_container, s3_relation):
+@patch("k8s_utils.is_valid_namespace", return_value=True)
+@patch("k8s_utils.is_valid_service_account", return_value=True)
+def test_s3_relation_connection_not_ok(
+    mock_s3_verify, mock_valid_ns, mock_valid_sa, kyuubi_context, kyuubi_container, s3_relation
+):
     state = State(
         relations=[s3_relation],
         containers=[kyuubi_container],
@@ -86,7 +90,11 @@ def test_s3_relation_connection_not_ok(_, tmp_path, kyuubi_context, kyuubi_conta
 
 
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
-def test_s3_relation_broken(_, kyuubi_context, kyuubi_container, s3_relation):
+@patch("k8s_utils.is_valid_namespace", return_value=True)
+@patch("k8s_utils.is_valid_service_account", return_value=True)
+def test_s3_relation_broken(
+    mock_s3_verify, mock_valid_ns, mock_valid_sa, kyuubi_context, kyuubi_container, s3_relation
+):
     initial_state = State(
         relations=[s3_relation],
         containers=[kyuubi_container],
