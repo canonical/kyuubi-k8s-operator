@@ -7,12 +7,7 @@ from scenario import Container, Context, Model, Mount, Relation
 from scenario.state import next_relation_id
 
 from charm import KyuubiCharm
-
-from constants import (
-    KYUUBI_CONTAINER_NAME,
-    KYUUBI_SERVICE_NAME,
-    S3_INTEGRATOR_REL
-)
+from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL
 
 
 @pytest.fixture
@@ -24,7 +19,7 @@ def kyuubi_charm():
 @pytest.fixture
 def kyuubi_context(kyuubi_charm):
     """Provide fixture for scenario context based on the Kyuubi charm."""
-    return Context(charm_type=kyuubi_charm, actions={"get_jdbc_endpoint": {"description": "get jdbc endpoint"}})
+    return Context(charm_type=kyuubi_charm)
 
 
 @pytest.fixture
@@ -52,13 +47,14 @@ def kyuubi_container(tmp_path):
     )
 
     opt = Mount("/opt/", tmp_path)
+    etc = Mount("/etc", tmp_path)
 
     return Container(
         name=KYUUBI_CONTAINER_NAME,
         can_connect=True,
         layers={"base": layer},
-        service_status={KYUUBI_SERVICE_NAME: pebble.ServiceStatus.ACTIVE},
-        mounts={"opt": opt},
+        service_status={"kyuubi": pebble.ServiceStatus.ACTIVE},
+        mounts={"opt": opt, "etc": etc},
     )
 
 
@@ -82,5 +78,3 @@ def s3_relation():
             "secret-key": "secret-key",
         },
     )
-
-

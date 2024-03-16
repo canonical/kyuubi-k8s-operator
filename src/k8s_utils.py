@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Utility methods related to Kubernetes resources."""
 
 from lightkube import Client

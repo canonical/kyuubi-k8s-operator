@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
-"""Spark History Server configuration."""
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+"""Kyuubi workload configurations."""
 
 from typing import Optional
 
 from lightkube import Client
+
 from s3 import S3ConnectionInfo
 from utils import WithLogging
 
@@ -43,8 +47,8 @@ class KyuubiServerConfig(WithLogging):
         return {
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
-            "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
-            "spark.kubernetes.namespace": "spark",
+            "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account,
+            "spark.kubernetes.namespace": self.namespace,
             "spark.submit.deployMode": "cluster",
             "spark.kubernetes.file.upload.path": self._get_upload_path(),
         }

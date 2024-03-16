@@ -1,63 +1,117 @@
-import unittest
+#!/usr/bin/env python3
 
-import ops
-import ops.testing
-from charm import KyuubiCharm
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+import logging
+from pathlib import Path
+from unittest.mock import patch
+
+from ops import ActiveStatus, BlockedStatus, MaintenanceStatus
+from scenario import Container, State
+
+from constants import KYUUBI_CONTAINER_NAME, SPARK_PROPERTIES_FILE
+
+logger = logging.getLogger(__name__)
 
 
-class TestCharm(unittest.TestCase):
-    def setUp(self):
-        self.harness = ops.testing.Harness(KyuubiCharm)
-        self.addCleanup(self.harness.cleanup)
-        self.harness.begin()
+def parse_spark_properties(tmp_path: Path) -> dict[str, str]:
+    """Parse and return spark properties from the conf file in the container."""
+    file_path = tmp_path / Path(SPARK_PROPERTIES_FILE).relative_to("/etc")
+    logger.error(file_path)
+    # assert file_path.exists()
 
-    # def test_httpbin_pebble_ready(self):
-    #     # Expected plan after Pebble ready with default config
-    #     expected_plan = {
-    #         "services": {
-    #             "httpbin": {
-    #                 "override": "replace",
-    #                 "summary": "httpbin",
-    #                 "command": "gunicorn -b 0.0.0.0:80 httpbin:app -k gevent",
-    #                 "startup": "enabled",
-    #                 "environment": {"GUNICORN_CMD_ARGS": "--log-level info"},
-    #             }
-    #         },
-    #     }
-    #     # Simulate the container coming up and emission of pebble-ready event
-    #     self.harness.container_pebble_ready("httpbin")
-    #     # Get the plan now we've run PebbleReady
-    #     updated_plan = self.harness.get_container_pebble_plan("httpbin").to_dict()
-    #     # Check we've got the plan we expected
-    #     self.assertEqual(expected_plan, updated_plan)
-    #     # Check the service was started
-    #     service = self.harness.model.unit.get_container("httpbin").get_service("httpbin")
-    #     self.assertTrue(service.is_running())
-    #     # Ensure we set an ActiveStatus with no message
-    #     self.assertEqual(self.harness.model.unit.status, ops.ActiveStatus())
+    with file_path.open("r") as fid:
+        return dict(
+            row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
+        )
 
-    # def test_config_changed_valid_can_connect(self):
-    #     # Ensure the simulated Pebble API is reachable
-    #     self.harness.set_can_connect("httpbin", True)
-    #     # Trigger a config-changed event with an updated value
-    #     self.harness.update_config({"log-level": "debug"})
-    #     # Get the plan now we've run PebbleReady
-    #     updated_plan = self.harness.get_container_pebble_plan("httpbin").to_dict()
-    #     updated_env = updated_plan["services"]["httpbin"]["environment"]
-    #     # Check the config change was effective
-    #     self.assertEqual(updated_env, {"GUNICORN_CMD_ARGS": "--log-level debug"})
-    #     self.assertEqual(self.harness.model.unit.status, ops.ActiveStatus())
 
-    # def test_config_changed_valid_cannot_connect(self):
-    #     # Trigger a config-changed event with an updated value
-    #     self.harness.update_config({"log-level": "debug"})
-    #     # Check the charm is in WaitingStatus
-    #     self.assertIsInstance(self.harness.model.unit.status, ops.WaitingStatus)
+def test_start_kyuubi(kyuubi_context):
+    state = State(
+        config={},
+        containers=[Container(name=KYUUBI_CONTAINER_NAME, can_connect=False)],
+    )
+    out = kyuubi_context.run("install", state)
+    assert out.unit_status == MaintenanceStatus("Waiting for Pebble")
 
-    # def test_config_changed_invalid(self):
-    #     # Ensure the simulated Pebble API is reachable
-    #     self.harness.set_can_connect("httpbin", True)
-    #     # Trigger a config-changed event with an updated value
-    #     self.harness.update_config({"log-level": "foobar"})
-    #     # Check the charm is in BlockedStatus
-    #     self.assertIsInstance(self.harness.model.unit.status, ops.BlockedStatus)
+
+def test_pebble_ready(kyuubi_context, kyuubi_container):
+    state = State(
+        containers=[kyuubi_container],
+    )
+    out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
+    assert out.unit_status == BlockedStatus("Missing S3 relation")
+
+
+@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("k8s_utils.is_valid_namespace", return_value=True)
+@patch("k8s_utils.is_valid_service_account", return_value=True)
+@patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
+def test_s3_relation_connection_ok(
+    mock_get_spark_master,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_s3_verify,
+    tmp_path,
+    kyuubi_context,
+    kyuubi_container,
+    s3_relation,
+):
+    state = State(
+        relations=[s3_relation],
+        containers=[kyuubi_container],
+    )
+    out = kyuubi_context.run(s3_relation.changed_event, state)
+    assert out.unit_status == ActiveStatus("")
+
+    # Check containers modifications
+    assert len(out.get_container(KYUUBI_CONTAINER_NAME).layers) == 1
+
+    spark_properties = parse_spark_properties(tmp_path)
+
+    # Assert one of the keys
+    assert "spark.hadoop.fs.s3a.endpoint" in spark_properties
+    assert (
+        spark_properties["spark.hadoop.fs.s3a.endpoint"] == s3_relation.remote_app_data["endpoint"]
+    )
+
+
+@patch("s3.S3ConnectionInfo.verify", return_value=False)
+@patch("k8s_utils.is_valid_namespace", return_value=True)
+@patch("k8s_utils.is_valid_service_account", return_value=True)
+def test_s3_relation_connection_not_ok(
+    mock_valid_sa, mock_valid_ns, mock_s3_verify, kyuubi_context, kyuubi_container, s3_relation
+):
+    state = State(
+        relations=[s3_relation],
+        containers=[kyuubi_container],
+    )
+    out = kyuubi_context.run(s3_relation.changed_event, state)
+    assert out.unit_status == BlockedStatus("Invalid S3 credentials")
+
+
+@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("k8s_utils.is_valid_namespace", return_value=True)
+@patch("k8s_utils.is_valid_service_account", return_value=True)
+@patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
+def test_s3_relation_broken(
+    mock_get_spark_master,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_s3_verify,
+    kyuubi_context,
+    kyuubi_container,
+    s3_relation,
+):
+    initial_state = State(
+        relations=[s3_relation],
+        containers=[kyuubi_container],
+    )
+
+    state_after_relation_changed = kyuubi_context.run(s3_relation.changed_event, initial_state)
+    state_after_relation_broken = kyuubi_context.run(
+        s3_relation.broken_event, state_after_relation_changed
+    )
+
+    assert state_after_relation_broken.unit_status == BlockedStatus("Missing S3 relation")

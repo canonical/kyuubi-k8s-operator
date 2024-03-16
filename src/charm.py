@@ -1,20 +1,30 @@
 #!/usr/bin/env python3
 
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Charm the Kyuubi service."""
 
 import logging
 from typing import Optional
 
-import k8s_utils
 import ops
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
     S3Requirer,
 )
-from config import KyuubiServerConfig
-from models import Status
 from ops.charm import ActionEvent
+
+import k8s_utils
+from config import KyuubiServerConfig
+from constants import (
+    KYUUBI_CONTAINER_NAME,
+    NAMESPACE_CONFIG_NAME,
+    S3_INTEGRATOR_REL,
+    SERVICE_ACCOUNT_CONFIG_NAME,
+)
+from models import Status
 from s3 import S3ConnectionInfo
 from utils import IOMode
 from workload import KyuubiServer
@@ -22,22 +32,15 @@ from workload import KyuubiServer
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
 
-VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
-
 
 class KyuubiCharm(ops.CharmBase):
     """Charm the service."""
 
-    CONTAINER = "kyuubi"
-    S3_INTEGRATOR_REL = "s3-credentials"
-
     def __init__(self, *args):
         super().__init__(*args)
-        self.workload = KyuubiServer(self.unit.get_container(self.CONTAINER))
-        self.s3_requirer = S3Requirer(self, self.S3_INTEGRATOR_REL)
+        self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
+        self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
         self.register_event_handlers()
-        self.logger = logger
-        logger.info(self.config)
 
     def register_event_handlers(self):
         """Register various event handlers to the charm."""
@@ -70,8 +73,8 @@ class KyuubiCharm(ops.CharmBase):
     def _update_spark_configs(self):
         """Update Spark properties in the spark-defaults file inside the charm container."""
         s3_info = self.s3_connection_info
-        namespace = self.config["namespace"]
-        service_account = self.config["service-account"]
+        namespace = self.config[NAMESPACE_CONFIG_NAME]
+        service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as fid:
             spark_config = KyuubiServerConfig(
                 s3_info=s3_info, namespace=namespace, service_account=service_account
@@ -92,11 +95,11 @@ class KyuubiCharm(ops.CharmBase):
         if not s3_info.verify():
             return Status.INVALID_CREDENTIALS.value
 
-        namespace = self.config["namespace"]
+        namespace = self.config[NAMESPACE_CONFIG_NAME]
         if not k8s_utils.is_valid_namespace(namespace=namespace):
             return Status.INVALID_NAMESPACE.value
 
-        service_account = self.config["service-account"]
+        service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
         if not k8s_utils.is_valid_service_account(
             namespace=namespace, service_account=service_account
         ):
@@ -113,7 +116,7 @@ class KyuubiCharm(ops.CharmBase):
         self.unit.status = status
 
         if status is not Status.ACTIVE.value:
-            self.logger.info(f"Cannot start service because of status {status}")
+            logger.info(f"Cannot start service because of status {status}")
             self.workload.stop()
             return False
 
@@ -126,7 +129,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
-        self.logger.info("Kyuubi pebble service is ready.")
+        logger.info("Kyuubi pebble service is ready.")
         self.update_service()
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
@@ -152,7 +155,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
-        self.logger.info("S3 credentials changed")
+        logger.info("S3 credentials changed")
         self.update_service()
 
     def _on_s3_credential_gone(self, _: CredentialsGoneEvent):
