@@ -3,33 +3,30 @@
 # See LICENSE file for licensing details.
 
 import asyncio
-import json
 import logging
-import subprocess
-import urllib.request
 from pathlib import Path
-from time import sleep
 
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
+
 # from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
 
 # from .test_helpers import fetch_action_sync_s3_credentials, setup_s3_bucket_for_history_server
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "kyuubi"
+APP_NAME = "kyuubi-k8s"
 BUCKET_NAME = "kyuubi"
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 
+
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, s3_bucket_and_creds):
+async def test_build_and_deploy(ops_test: OpsTest, s3_bucket_and_creds, charm_versions, service_account):
     """Build the charm-under-test and deploy it together with related charms.
 
     Assert on the unit status before any relations/configurations take place.
     """
-
     # Receive S3 params from fixture
     endpoint_url = s3_bucket_and_creds["endpoint"]
     access_key = s3_bucket_and_creds["access_key"]
@@ -37,65 +34,74 @@ async def test_build_and_deploy(ops_test: OpsTest, s3_bucket_and_creds):
     bucket_name = s3_bucket_and_creds["bucket"]
 
     # Build and deploy charm from local source folder
-    logger.info("Building charm")
+    logger.info("Building charm...")
     charm = await ops_test.build_charm(".")
 
-    image_version = METADATA["resources"]["spark-history-server-image"]["upstream-source"]
+    image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+    resources = {"kyuubi-image": image_version}
+    logger.info(f"Image version: {image_version}")
 
-#     logger.info(f"Image version: {image_version}")
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying charms...")
+    await asyncio.gather(
+        ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
+        ops_test.model.deploy(
+            charm, resources=resources, application_name=APP_NAME, num_units=1, series="jammy", trust=True
+        ),
+    )
 
-#     resources = {"spark-history-server-image": image_version}
+    logger.info("Waiting for s3-integrator app to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
+    )
 
-#     logger.info("Deploying charm")
+    logger.info("Setting up s3 credentials in s3-integrator charm")
+    s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
+    action = await s3_integrator_unit.run_action(
+        action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
+    )
+    await action.wait()
 
-#     # Deploy the charm and wait for waiting status
-#     await asyncio.gather(
-#         ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
-#         ops_test.model.deploy(
-#             charm, resources=resources, application_name=APP_NAME, num_units=1, series="jammy"
-#         ),
-#     )
+    logger.info("Waiting for s3-integrator app to be idle and active...")
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[charm_versions.s3.application_name], status="active"
+        )
 
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
-#     )
+    logger.info("Setting configuration for s3-integrator charm...")
+    await ops_test.model.applications[charm_versions.s3.application_name].set_config(
+        {
+            "bucket": bucket_name,
+            "path": "testpath",
+            "endpoint": endpoint_url,
+        }
+    )
 
-#     s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
+    logger.info("Integrating kyuubi charm with s3-integrator charm...")
+    await ops_test.model.integrate(charm_versions.s3.application_name, APP_NAME)
 
-#     logger.info("Setting up s3 credentials in s3-integrator charm")
+    logger.info("Waiting for s3-integrator and kyuubi charms to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
+    )
 
-#     await fetch_action_sync_s3_credentials(
-#         s3_integrator_unit, access_key=access_key, secret_key=secret_key
-#     )
-#     async with ops_test.fast_forward():
-#         await ops_test.model.wait_for_idle(
-#             apps=[charm_versions.s3.application_name], status="active"
-#         )
+    logger.info(f"Setting configuration for {APP_NAME} charm...")
+    namespace, username = service_account
+    await ops_test.model.applications[APP_NAME].set_config(
+        {
+            "namespace": namespace,
+            "service-account": username
+        }
+    )
 
-#     configuration_parameters = {
-#         "bucket": "history-server",
-#         "path": "spark-events",
-#         "endpoint": endpoint_url,
-#     }
-#     # apply new configuration options
-#     await ops_test.model.applications[charm_versions.s3.application_name].set_config(
-#         configuration_parameters
-#     )
+    logger.info("Waiting for kyuubi app to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME],
+        status="active",
+        timeout=1000,
+    )
 
-#     logger.info("Relating history server charm with s3-integrator charm")
 
-#     await ops_test.model.add_relation(charm_versions.s3.application_name, APP_NAME)
-
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
-#     )
-
-#     # wait for active status
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME],
-#         status="active",
-#         timeout=1000,
-#     )
 
 #     logger.info("Verifying history server has no app entries")
 

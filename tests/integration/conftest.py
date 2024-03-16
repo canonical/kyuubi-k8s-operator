@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import Optional
-
-import pytest
-from pydantic import BaseModel
-import boto3
 import logging
 import subprocess
-from botocore.client import Config
+from typing import Optional
+
+import boto3
 import boto3.session
+import pytest
+from botocore.client import Config
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 TEST_BUCKET_NAME = "kyuubi-test"
+TEST_NAMESPACE = "kyuubi-test"
+TEST_SERVICE_ACCOUNT = "kyuubi-test"
 
 class MockCharm(BaseModel):
     """An mock abstraction of a charm to be deployed.
-    
 
     Attrs:
         name: str, representing the charm to be deployed
@@ -27,6 +28,7 @@ class MockCharm(BaseModel):
         num_units: int, number of units for the deployment
         alias: str (Optional), alias to be used for the charm
     """
+
     name: str
     channel: str
     series: str
@@ -50,6 +52,7 @@ class MockCharm(BaseModel):
 class IntegrationTestsCharms(BaseModel):
     s3: MockCharm
 
+
 @pytest.fixture
 def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
@@ -65,7 +68,9 @@ def s3_bucket_and_creds():
 
     fetch_s3_output = (
         subprocess.check_output(
-            "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3", shell=True, stderr=None
+            "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
+            shell=True,
+            stderr=None,
         )
         .decode("utf-8")
         .strip()
@@ -74,19 +79,13 @@ def s3_bucket_and_creds():
     logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
 
     endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
-   
-    session = boto3.session.Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key
-    )
+
+    session = boto3.session.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     s3 = session.resource(
         service_name="s3",
         endpoint_url=endpoint_url,
         verify=False,
-        config=Config(
-                connect_timeout=60,
-                retries={"max_attempts": 0}
-            )
+        config=Config(connect_timeout=60, retries={"max_attempts": 0}),
     )
     test_bucket = s3.Bucket(TEST_BUCKET_NAME)
 
@@ -104,5 +103,19 @@ def s3_bucket_and_creds():
         "endpoint": endpoint_url,
         "access_key": access_key,
         "secret_key": secret_key,
-        "bucket": TEST_BUCKET_NAME
+        "bucket": TEST_BUCKET_NAME,
     }
+
+
+@pytest.fixture
+def service_account():
+    logger.info("Preparing service account fixture...")
+    assert subprocess.run(
+        [
+            "./tests/integration/setup/setup_service_account.sh",
+            TEST_NAMESPACE,
+            TEST_SERVICE_ACCOUNT
+        ],
+        check=True,
+    ).returncode == 0
+    return TEST_NAMESPACE, TEST_SERVICE_ACCOUNT
