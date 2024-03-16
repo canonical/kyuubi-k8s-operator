@@ -32,8 +32,6 @@ from workload import KyuubiServer
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
 
-VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
-
 
 class KyuubiCharm(ops.CharmBase):
     """Charm the service."""
@@ -43,8 +41,6 @@ class KyuubiCharm(ops.CharmBase):
         self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
         self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
         self.register_event_handlers()
-        self.logger = logger
-        logger.info(self.config)
 
     def register_event_handlers(self):
         """Register various event handlers to the charm."""
@@ -120,7 +116,7 @@ class KyuubiCharm(ops.CharmBase):
         self.unit.status = status
 
         if status is not Status.ACTIVE.value:
-            self.logger.info(f"Cannot start service because of status {status}")
+            logger.info(f"Cannot start service because of status {status}")
             self.workload.stop()
             return False
 
@@ -133,7 +129,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
-        self.logger.info("Kyuubi pebble service is ready.")
+        logger.info("Kyuubi pebble service is ready.")
         self.update_service()
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
@@ -159,7 +155,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
-        self.logger.info("S3 credentials changed")
+        logger.info("S3 credentials changed")
         self.update_service()
 
     def _on_s3_credential_gone(self, _: CredentialsGoneEvent):
