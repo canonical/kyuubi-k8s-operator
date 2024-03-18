@@ -19,12 +19,11 @@ class KyuubiServer(WithLogging):
 
     def __init__(self, container: Container, user: User = User()):
         self.container = container
-        self.user = User
+        self.user = user
 
     def get_spark_configuration_file(self, mode: IOMode) -> ContainerFile:
         """Return the configuration file for Spark History server."""
-        daemon_user = User(name="_daemon_", group="_daemon_")
-        return ContainerFile(self.container, daemon_user, SPARK_PROPERTIES_FILE, mode)
+        return ContainerFile(self.container, self.user, SPARK_PROPERTIES_FILE, mode)
 
     def get_jdbc_endpoint(self) -> str:
         """Return the JDBC endpoint to connect to Kyuubi server."""
