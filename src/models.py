@@ -15,8 +15,8 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 class User:
     """Class representing the user running the Pebble workload services."""
 
-    name: str = "spark"
-    group: str = "spark"
+    name: str = "_daemon_"
+    group: str = "_daemon_"
 
 
 class Status(Enum):
