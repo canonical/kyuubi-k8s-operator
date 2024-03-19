@@ -19,6 +19,7 @@ METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy_without_any_relations(ops_test: OpsTest, service_account):
+    """Test building and deploying the charm without relation with any other charm."""
     # Build and deploy charm from local source folder
     logger.info("Building charm...")
     charm = await ops_test.build_charm(".")
@@ -64,6 +65,7 @@ async def test_build_and_deploy_without_any_relations(ops_test: OpsTest, service
 async def test_integration_with_s3_integrator(
     ops_test: OpsTest, charm_versions, s3_bucket_and_creds
 ):
+    """Test the charm by integrating it with s3-integrator."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying s3-integrator charm...")
     await ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
@@ -116,6 +118,7 @@ async def test_integration_with_s3_integrator(
 
 @pytest.mark.abort_on_fail
 async def test_jdbc_endpoint(ops_test: OpsTest, test_pod):
+    """Test the JDBC endpoint exposed by the charm."""
     logger.info("Running action 'get_jdbc_endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
@@ -151,7 +154,7 @@ async def test_jdbc_endpoint(ops_test: OpsTest, test_pod):
 async def test_invalid_config(
     ops_test: OpsTest,
 ):
-
+    """Test the behavior of charm when the  config provided to it are invalid."""
     logger.info("Setting invalid configuration for kyuubi-k8s charm...")
     await ops_test.model.applications[APP_NAME].set_config(
         {"namespace": "invalid", "service-account": "invalid"}
