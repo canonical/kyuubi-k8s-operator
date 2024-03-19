@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testpod
+spec:
+  containers:
+  - image: ghcr.io/canonical/charmed-spark:3.4.2-22.04_edge
+    name: kyuubi

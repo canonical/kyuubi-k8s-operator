@@ -3,11 +3,13 @@
 # See LICENSE file for licensing details.
 import logging
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 import boto3
 import boto3.session
 import pytest
+import yaml
 from botocore.client import Config
 from pydantic import BaseModel
 
@@ -16,6 +18,8 @@ logger = logging.getLogger(__name__)
 TEST_BUCKET_NAME = "kyuubi-test"
 TEST_NAMESPACE = "kyuubi-test"
 TEST_SERVICE_ACCOUNT = "kyuubi-test"
+TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml"
+
 
 class MockCharm(BaseModel):
     """An mock abstraction of a charm to be deployed.
@@ -53,7 +57,7 @@ class IntegrationTestsCharms(BaseModel):
     s3: MockCharm
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=MockCharm(
@@ -62,7 +66,7 @@ def charm_versions() -> IntegrationTestsCharms:
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def s3_bucket_and_creds():
     logger.info("Fetching S3 credentials from minio.....")
 
@@ -99,23 +103,63 @@ def s3_bucket_and_creds():
     s3.create_bucket(Bucket=TEST_BUCKET_NAME)
     logger.info(f"Created bucket: {TEST_BUCKET_NAME}")
 
-    return {
+    yield {
         "endpoint": endpoint_url,
         "access_key": access_key,
         "secret_key": secret_key,
         "bucket": TEST_BUCKET_NAME,
     }
 
+    logger.info("Tearing down test bucket...")
+    test_bucket.objects.all().delete()
+    test_bucket.delete()
 
-@pytest.fixture
+
+@pytest.fixture(scope="module")
 def service_account():
     logger.info("Preparing service account fixture...")
-    assert subprocess.run(
-        [
-            "./tests/integration/setup/setup_service_account.sh",
-            TEST_NAMESPACE,
-            TEST_SERVICE_ACCOUNT
-        ],
-        check=True,
-    ).returncode == 0
-    return TEST_NAMESPACE, TEST_SERVICE_ACCOUNT
+    assert (
+        subprocess.run(
+            [
+                "./tests/integration/setup/setup_service_account.sh",
+                TEST_NAMESPACE,
+                TEST_SERVICE_ACCOUNT,
+            ],
+            check=True,
+        ).returncode
+        == 0
+    )
+    yield TEST_NAMESPACE, TEST_SERVICE_ACCOUNT
+
+    logger.info(f"Clean up {TEST_NAMESPACE} namespace...")
+    assert (
+        subprocess.run(
+            [
+                "kubectl",
+                "delete",
+                "namespace",
+                TEST_NAMESPACE,
+            ],
+            check=True,
+        ).returncode
+        == 0
+    )
+
+
+@pytest.fixture(scope="module")
+def test_pod():
+    logger.info("Preparing test pod fixture...")
+
+    # Create test pod by applying pod spec
+    result = subprocess.run(["kubectl", "apply", "-f", TEST_POD_SPEC_FILE], check=True)
+    assert result.returncode == 0
+    spec = yaml.safe_load(Path(TEST_POD_SPEC_FILE).read_text())
+    pod_name = spec["metadata"]["name"]
+
+    # Yield the name of created pod
+    yield pod_name
+
+    # Cleanup by deleting the pod that was creatd
+    logger.info("Deleting test pod fixture...")
+    result = subprocess.run(["kubectl", "delete", "pod", pod_name], check=True)
+    assert result.returncode == 0

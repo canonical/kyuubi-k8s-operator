@@ -9,7 +9,6 @@ sudo microk8s config | tee ~/.kube/config >> /dev/null
 NAMESPACE=$1
 SERVICE_ACCOUNT=$2
 
-kubectl delete namespace $NAMESPACE
 echo "Creating namespace $NAMESPACE..."
 kubectl create namespace $NAMESPACE
 
