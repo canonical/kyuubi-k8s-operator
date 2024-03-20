@@ -65,7 +65,8 @@ class KyuubiServer(WithLogging):
     def stop(self):
         """Execute business-logic for stopping the workload."""
         self.logger.info("Stopping kyuubi pebble service...")
-        self.container.stop(KYUUBI_SERVICE_NAME)
+        if self.container.can_connect():
+            self.container.stop(KYUUBI_SERVICE_NAME)
 
     def ready(self) -> bool:
         """Check whether the service is ready to be used."""
