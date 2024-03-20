@@ -104,6 +104,8 @@ jobs:
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Select tests
         id: select-tests
         run: |
