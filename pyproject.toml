@@ -1,0 +1,101 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+# Testing tools configuration
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+asyncio_mode = "auto"
+markers = ["unstable"]
+
+# Formatting tools configuration
+[tool.black]
+line-length = 99
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+
+[tool.poetry]
+name = "kyuubi-k8s-operator"
+version = "1.0"
+description = "kyuubi-k8s-operator"
+authors = []
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+ops = ">=2.4.1"
+pydantic ="^1.10.7"
+pyyaml = "^6.0.1"
+boto3 = "^1.26.75"
+jsonschema = "^4.19.1"
+lightkube = "^0.15.2"
+
+[tool.poetry.group.format]
+optional = true
+
+[tool.poetry.group.format.dependencies]
+black = "^22.3.0"
+ruff = ">=0.0.157"
+
+[tool.poetry.group.lint]
+optional = true
+
+[tool.poetry.group.lint.dependencies]
+black = "^22.3.0"
+ruff = ">=0.0.157"
+codespell = ">=2.2.2"
+
+[tool.poetry.group.unit]
+optional = true
+
+[tool.poetry.group.unit.dependencies]
+pytest = ">=7.2"
+pytest-asyncio = ">0.20.0"
+coverage = {extras = ["toml"], version = ">7.0"}
+ops-scenario = "^6.0.2"
+
+[tool.poetry.group.integration]
+optional = true
+
+[tool.poetry.group.integration.dependencies]
+pytest = ">=7.2"
+juju = "^3.1.6"
+coverage = {extras = ["toml"], version = ">7.0"}
+pytest-operator = ">0.20"
+boto3 = ">=1.28.0"
+tenacity = "^8.2.2"
+pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v6.1.1", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
+
+
+[tool.ruff]
+line-length = 99
+select = ["E", "W", "F", "C", "N", "D", "I001"]
+extend-ignore = [
+    "D203",
+    "D204",
+    "D213",
+    "D215",
+    "D400",
+    "D401",
+    "D404",
+    "D406",
+    "D407",
+    "D408",
+    "D409",
+    "D413",
+]
+ignore = ["E501", "D107"]
+extend-exclude = ["__pycache__", "*.egg_info"]
+per-file-ignores = {"tests/*" = ["D100","D101","D102","D103","D104", "E999"]}
+target-version="py310"
+src = ["src", "tests"]
+
+[tool.ruff.mccabe]
+max-complexity = 10
