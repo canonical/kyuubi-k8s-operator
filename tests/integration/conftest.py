@@ -22,8 +22,8 @@ TEST_SERVICE_ACCOUNT = "kyuubi-test"
 TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml"
 
 
-class MockCharm(BaseModel):
-    """An mock abstraction of a charm to be deployed.
+class TestCharm(BaseModel):
+    """An abstraction of metadata of a charm to be deployed.
 
     Attrs:
         name: str, representing the charm to be deployed
@@ -55,13 +55,13 @@ class MockCharm(BaseModel):
 
 
 class IntegrationTestsCharms(BaseModel):
-    s3: MockCharm
+    s3: TestCharm
 
 
 @pytest.fixture(scope="module")
 def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
-        s3=MockCharm(
+        s3=TestCharm(
             **{"name": "s3-integrator", "channel": "edge", "series": "jammy", "alias": "s3"}
         ),
     )
