@@ -55,17 +55,9 @@ async def test_build_and_deploy_without_any_relations(ops_test: OpsTest, service
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
+        status="blocked",
         timeout=1000,
     )
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
-    import time
-
-    time.sleep(2)
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
-    time.sleep(2)
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
-    time.sleep(2)
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
 
     # Assert that the charm is in blocked state, waiting for S3 relation
     assert ops_test.model.applications[APP_NAME].status == "blocked"
