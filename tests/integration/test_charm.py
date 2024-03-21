@@ -58,7 +58,8 @@ async def test_build_and_deploy_without_any_relations(ops_test: OpsTest, service
         timeout=1000,
     )
     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
-    import time 
+    import time
+
     time.sleep(2)
     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
     time.sleep(2)
