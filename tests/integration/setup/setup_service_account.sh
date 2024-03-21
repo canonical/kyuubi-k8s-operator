@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 echo "Installing spark-client snap..."
 sudo snap install spark-client --channel edge
 

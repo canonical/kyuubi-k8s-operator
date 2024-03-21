@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
 
 POD_NAME=$1
 JDBC_ENDPOINT=$2
