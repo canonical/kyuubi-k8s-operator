@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S LD_LIBRARY_PATH=lib python3 
+# The LD_LIBRARY_PATH variable needs to be set here because without that
+# psycopg2 can't be imported due to missing libpq.so file (which is inside lib/)
 
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
@@ -14,18 +16,27 @@ from charms.data_platform_libs.v0.s3 import (
     CredentialsGoneEvent,
     S3Requirer,
 )
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseCreatedEvent,
+    DatabaseRequires,
+)
+
 from ops.charm import ActionEvent
 
 import k8s_utils
-from config import KyuubiServerConfig
+from config.kyuubi import KyuubiServerConfig
+from config.hive import HiveConfig
 from constants import (
     KYUUBI_CONTAINER_NAME,
     NAMESPACE_CONFIG_NAME,
+    METASTORE_DATABASE_NAME,
     S3_INTEGRATOR_REL,
+    POSTGRESQL_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
 from models import Status
 from s3 import S3ConnectionInfo
+from database import DatabaseConnectionInfo
 from utils import IOMode
 from workload import KyuubiServer
 
@@ -40,10 +51,12 @@ class KyuubiCharm(ops.CharmBase):
         super().__init__(*args)
         self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
         self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
+        self.database = DatabaseRequires(self, relation_name=POSTGRESQL_REL, database_name=METASTORE_DATABASE_NAME)
+        self.db_connection_info = None
         self.register_event_handlers()
 
     def register_event_handlers(self):
-        """Register various event handlers to the charm."""
+        """Register various event handleKyuubiServerConfigrs to the charm."""
         self.framework.observe(self.on.install, self._update_event)
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
@@ -53,11 +66,26 @@ class KyuubiCharm(ops.CharmBase):
             self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
+        self.framework.observe(self.database.on.database_created, self._on_database_created)
+        self.framework.observe(self.database.on.endpoints_changed, self._on_database_created)
+        self.framework.observe(self.on.database_relation_broken, self._on_database_relation_removed)
         self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
         self.unit.status = Status.WAITING_PEBBLE.value
+
+    def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
+        self.db_connection_info = DatabaseConnectionInfo(
+            endpoint=event.endpoints,
+            username=event.username,
+            password=event.password
+        )
+        self.update_service()
+
+    def _on_database_relation_removed(self, event) -> None:
+        self.db_connection_info = None
+        self.update_service()
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
@@ -73,13 +101,20 @@ class KyuubiCharm(ops.CharmBase):
     def _update_spark_configs(self):
         """Update Spark properties in the spark-defaults file inside the charm container."""
         s3_info = self.s3_connection_info
+        db_info = self.db_connection_info
         namespace = self.config[NAMESPACE_CONFIG_NAME]
         service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
-        with self.workload.get_spark_configuration_file(IOMode.WRITE) as fid:
-            spark_config = KyuubiServerConfig(
+        with self.workload.get_spark_configuration_file(IOMode.WRITE) as spark_fid:
+            config = KyuubiServerConfig(
                 s3_info=s3_info, namespace=namespace, service_account=service_account
             )
-            fid.write(spark_config.contents)
+            spark_fid.write(config.contents)
+        with self.workload.get_hive_configuration_file(IOMode.WRITE) as hive_fid:
+            config = HiveConfig(
+                db_info=db_info
+            )
+            hive_fid.write(config.contents)
+
 
     def get_status(
         self,
@@ -104,6 +139,9 @@ class KyuubiCharm(ops.CharmBase):
             namespace=namespace, service_account=service_account
         ):
             return Status.INVALID_SERVICE_ACCOUNT.value
+
+        db_info = self.db_connection_info
+
 
         return Status.ACTIVE.value
 

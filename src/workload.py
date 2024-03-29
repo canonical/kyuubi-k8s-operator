@@ -9,7 +9,7 @@ import socket
 
 from ops.model import Container
 
-from constants import JDBC_PORT, KYUUBI_CONTAINER_NAME, KYUUBI_SERVICE_NAME, SPARK_PROPERTIES_FILE
+from constants import JDBC_PORT, KYUUBI_CONTAINER_NAME, KYUUBI_SERVICE_NAME, SPARK_PROPERTIES_FILE, HIVE_CONFIGURATION_FILE
 from models import User
 from utils import ContainerFile, IOMode, WithLogging
 
@@ -22,8 +22,12 @@ class KyuubiServer(WithLogging):
         self.user = user
 
     def get_spark_configuration_file(self, mode: IOMode) -> ContainerFile:
-        """Return the configuration file for Spark History server."""
+        """Return the configuration file for Spark."""
         return ContainerFile(self.container, self.user, SPARK_PROPERTIES_FILE, mode)
+    
+    def get_hive_configuration_file(self, mode: IOMode) -> ContainerFile:
+        """Return the configuration file for Hive."""
+        return ContainerFile(self.container, self.user, HIVE_CONFIGURATION_FILE, mode)
 
     def get_jdbc_endpoint(self) -> str:
         """Return the JDBC endpoint to connect to Kyuubi server."""
@@ -48,7 +52,6 @@ class KyuubiServer(WithLogging):
     def start(self):
         """Execute business-logic for starting the workload."""
         services = self.container.get_plan().services
-        self.logger.info(f"Pebble plan: {self.container.get_plan()}")
         self.logger.info(f"Pebble services: {services}")
 
         spark_configuration_file = self.get_spark_configuration_file(IOMode.READ)

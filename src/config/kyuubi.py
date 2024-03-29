@@ -12,7 +12,7 @@ from lightkube import Client
 from s3 import S3ConnectionInfo
 from utils import WithLogging
 
-KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
+KYUUBI_OCI_IMAGE = "docker.io/bikalpadhakalcanonical/charmed-spark:3.4.2"
 
 
 class KyuubiServerConfig(WithLogging):
@@ -73,6 +73,7 @@ class KyuubiServerConfig(WithLogging):
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
         return self._base_conf | self._k8s_conf | self._s3_conf
+
 
     @property
     def contents(self) -> str:
