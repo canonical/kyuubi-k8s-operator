@@ -237,7 +237,7 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
     connection = psycopg2.connect(
         host=postgresql_host_address,
         database=METASTORE_DATABASE_NAME,
-        username="operator",
+        user="operator",
         password=password,
     )
 

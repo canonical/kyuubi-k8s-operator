@@ -6,6 +6,7 @@
 """Hive configurations."""
 
 from typing import Optional
+from xml.etree import ElementTree
 
 from constants import (
     METASTORE_DATABASE_NAME,
@@ -20,6 +21,13 @@ class HiveConfig(WithLogging):
     def __init__(self, db_info: Optional[DatabaseConnectionInfo]):
         self.db_info = db_info
 
+
+    def _get_db_connection_url(self) -> str:
+        endpoint = self.db_info.endpoint
+        return (
+            f"jdbc:postgresql://{endpoint}/{METASTORE_DATABASE_NAME}?createDatabaseIfNotExist=true"
+        )
+    
     @property
     def _db_conf(self) -> dict[str, str]:
         """Return a dictionary representation of hive configuration."""
@@ -37,25 +45,21 @@ class HiveConfig(WithLogging):
             "hive.metastore.schema.verification": "false",
         }
 
-    def _get_db_connection_url(self) -> str:
-        endpoint = self.db_info.endpoint
-        return (
-            f"jdbc:postgresql://{endpoint}/{METASTORE_DATABASE_NAME}?createDatabaseIfNotExist=true"
-        )
-
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
         return self._db_conf
 
     @property
     def contents(self) -> str:
-        """Return configuration contents formatted to be consumed by pebble layer."""
-        properties = ""
+        """Return configuration contents formatted to be saved in hive-site.xml."""
+        header = '<?xml version="1.0"?>'
+        root = ElementTree.Element("configuration")
         for name, value in self.to_dict().items():
-            properties += (
-                "<property>\n"
-                f"    <name>{name}</name>\n"
-                f"    <value>{value}</value>\n"
-                "</property>\n"
-            )
-        return '<?xml version="1.0"?>\n' "<configuration>\n" f"{properties}" "</configuration>"
+            prop = ElementTree.SubElement(root, "property")
+            name_element = ElementTree.SubElement(prop, "name")
+            name_element.text = name
+            value_element = ElementTree.SubElement(prop, "value")
+            value_element.text = value
+        body = ElementTree.tostring(root, encoding="unicode")
+        
+        return f"{header}\n{body}\n"

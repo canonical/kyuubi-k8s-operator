@@ -19,7 +19,6 @@ def parse_spark_properties(tmp_path: Path) -> dict[str, str]:
     """Parse and return spark properties from the conf file in the container."""
     file_path = tmp_path / Path(SPARK_PROPERTIES_FILE).relative_to("/etc")
     logger.error(file_path)
-    # assert file_path.exists()
 
     with file_path.open("r") as fid:
         return dict(
@@ -47,7 +46,7 @@ def test_pebble_ready(kyuubi_context, kyuubi_container):
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
-@patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("config.kyuubi.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_connection_ok(
     mock_get_spark_master,
     mock_valid_sa,
@@ -94,7 +93,7 @@ def test_s3_relation_connection_not_ok(
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
-@patch("config.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("config.kyuubi.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_broken(
     mock_get_spark_master,
     mock_valid_sa,

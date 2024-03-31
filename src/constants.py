@@ -5,7 +5,7 @@
 
 KYUUBI_CONTAINER_NAME = "kyuubi"
 KYUUBI_SERVICE_NAME = "kyuubi"
-METASTORE_DATABASE_NAME = "bikalpa"
+METASTORE_DATABASE_NAME = "hivemetastore"
 POSTGRESQL_DEFAULT_DATABASE = "postgres"
 
 S3_INTEGRATOR_REL = "s3-credentials"
