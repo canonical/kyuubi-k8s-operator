@@ -168,7 +168,7 @@ async def test_integration_with_postgresql(ops_test: OpsTest, charm_versions):
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    await ops_test.model.integrate(charm_versions.postgresql.application_name, APP_NAME)
+    await ops_test.model.integrate(charm_versions.postgres.application_name, APP_NAME)
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     await ops_test.model.wait_for_idle(
@@ -178,7 +178,7 @@ async def test_integration_with_postgresql(ops_test: OpsTest, charm_versions):
     # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
     assert ops_test.model.applications[APP_NAME].status == "active"
     assert (
-        ops_test.model.applications[charm_versions.postgresql.application_name].status == "active"
+        ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
     )
 
 
