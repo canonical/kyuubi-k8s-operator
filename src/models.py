@@ -27,6 +27,5 @@ class Status(Enum):
     INVALID_CREDENTIALS = BlockedStatus("Invalid S3 credentials")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
-    WAITING_FOR_METASTORE_SCHEMA_CREATION = MaintenanceStatus("Waiting for Hive metastore schema to be created...")
 
     ACTIVE = ActiveStatus("")

@@ -9,7 +9,13 @@ import socket
 
 from ops.model import Container
 
-from constants import JDBC_PORT, KYUUBI_CONTAINER_NAME, KYUUBI_SERVICE_NAME, SPARK_PROPERTIES_FILE, HIVE_CONFIGURATION_FILE
+from constants import (
+    HIVE_CONFIGURATION_FILE,
+    JDBC_PORT,
+    KYUUBI_CONTAINER_NAME,
+    KYUUBI_SERVICE_NAME,
+    SPARK_PROPERTIES_FILE,
+)
 from models import User
 from utils import ContainerFile, IOMode, WithLogging
 
@@ -24,7 +30,7 @@ class KyuubiServer(WithLogging):
     def get_spark_configuration_file(self, mode: IOMode) -> ContainerFile:
         """Return the configuration file for Spark."""
         return ContainerFile(self.container, self.user, SPARK_PROPERTIES_FILE, mode)
-    
+
     def get_hive_configuration_file(self, mode: IOMode) -> ContainerFile:
         """Return the configuration file for Hive."""
         return ContainerFile(self.container, self.user, HIVE_CONFIGURATION_FILE, mode)

@@ -8,7 +8,7 @@ COMMANDS=$(cat ./tests/integration/setup/test.sql)
 
 echo -e "$(kubectl exec $POD_NAME -- \
         env CMDS="$COMMANDS" ENDPOINT="$JDBC_ENDPOINT" \
-        /bin/bash -c 'echo "$CMDS" | /opt/kyuubi/bin/beeline -u $ENDPOINT -n apache'
+        /bin/bash -c 'echo "$CMDS" | /opt/kyuubi/bin/beeline -u $ENDPOINT'
     )" > /tmp/test_beeline.out
 
 num_rows_inserted=$(cat /tmp/test_beeline.out | grep "Inserted Rows:" | sed 's/|/ /g' | tail -n 1 | xargs | rev | cut -d' ' -f1 | rev )

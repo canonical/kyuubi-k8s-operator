@@ -74,7 +74,6 @@ class KyuubiServerConfig(WithLogging):
         """Return the dict representation of the configuration file."""
         return self._base_conf | self._k8s_conf | self._s3_conf
 
-
     @property
     def contents(self) -> str:
         """Return configuration contents formatted to be consumed by pebble layer."""

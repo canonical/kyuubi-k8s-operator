@@ -56,6 +56,7 @@ class TestCharm(BaseModel):
 
 class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
+    postgres: TestCharm
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +64,15 @@ def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=TestCharm(
             **{"name": "s3-integrator", "channel": "edge", "series": "jammy", "alias": "s3"}
+        ),
+        postgres=TestCharm(
+            **{
+                "name": "postgresql-k8s",
+                "channel": "14/stable",
+                "series": "jammy",
+                "alias": "postgresql",
+                "trust": True,
+            }
         ),
     )
 

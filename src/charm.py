@@ -1,4 +1,4 @@
-#!/usr/bin/env -S LD_LIBRARY_PATH=lib python3 
+#!/usr/bin/env -S LD_LIBRARY_PATH=lib python3
 # The LD_LIBRARY_PATH variable needs to be set here because without that
 # psycopg2 can't be imported due to missing libpq.so file (which is inside lib/)
 
@@ -11,32 +11,31 @@ import logging
 from typing import Optional
 
 import ops
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseCreatedEvent,
+    DatabaseRequires,
+)
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
     S3Requirer,
 )
-from charms.data_platform_libs.v0.data_interfaces import (
-    DatabaseCreatedEvent,
-    DatabaseRequires,
-)
-
 from ops.charm import ActionEvent
 
 import k8s_utils
-from config.kyuubi import KyuubiServerConfig
 from config.hive import HiveConfig
+from config.kyuubi import KyuubiServerConfig
 from constants import (
     KYUUBI_CONTAINER_NAME,
-    NAMESPACE_CONFIG_NAME,
     METASTORE_DATABASE_NAME,
-    S3_INTEGRATOR_REL,
+    NAMESPACE_CONFIG_NAME,
     POSTGRESQL_REL,
+    S3_INTEGRATOR_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
+from database import DatabaseConnectionInfo
 from models import Status
 from s3 import S3ConnectionInfo
-from database import DatabaseConnectionInfo
 from utils import IOMode
 from workload import KyuubiServer
 
@@ -51,7 +50,9 @@ class KyuubiCharm(ops.CharmBase):
         super().__init__(*args)
         self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
         self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
-        self.database = DatabaseRequires(self, relation_name=POSTGRESQL_REL, database_name=METASTORE_DATABASE_NAME)
+        self.database = DatabaseRequires(
+            self, relation_name=POSTGRESQL_REL, database_name=METASTORE_DATABASE_NAME
+        )
         self.db_connection_info = None
         self.register_event_handlers()
 
@@ -68,7 +69,9 @@ class KyuubiCharm(ops.CharmBase):
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
         self.framework.observe(self.database.on.database_created, self._on_database_created)
         self.framework.observe(self.database.on.endpoints_changed, self._on_database_created)
-        self.framework.observe(self.on.database_relation_broken, self._on_database_relation_removed)
+        self.framework.observe(
+            self.on.database_relation_broken, self._on_database_relation_removed
+        )
         self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
     def _on_install(self, event: ops.InstallEvent) -> None:
@@ -77,9 +80,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
         self.db_connection_info = DatabaseConnectionInfo(
-            endpoint=event.endpoints,
-            username=event.username,
-            password=event.password
+            endpoint=event.endpoints, username=event.username, password=event.password
         )
         self.update_service()
 
@@ -110,11 +111,8 @@ class KyuubiCharm(ops.CharmBase):
             )
             spark_fid.write(config.contents)
         with self.workload.get_hive_configuration_file(IOMode.WRITE) as hive_fid:
-            config = HiveConfig(
-                db_info=db_info
-            )
+            config = HiveConfig(db_info=db_info)
             hive_fid.write(config.contents)
-
 
     def get_status(
         self,
@@ -139,9 +137,6 @@ class KyuubiCharm(ops.CharmBase):
             namespace=namespace, service_account=service_account
         ):
             return Status.INVALID_SERVICE_ACCOUNT.value
-
-        db_info = self.db_connection_info
-
 
         return Status.ACTIVE.value
 
