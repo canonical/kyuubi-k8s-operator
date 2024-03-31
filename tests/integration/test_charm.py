@@ -145,7 +145,7 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
             pod_name,
             jdbc_endpoint,
             "db_default_metastore",
-            "table_default_metastore"
+            "table_default_metastore",
         ],
         capture_output=True,
     )
@@ -179,9 +179,7 @@ async def test_integration_with_postgresql(ops_test: OpsTest, charm_versions):
 
     # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
     assert ops_test.model.applications[APP_NAME].status == "active"
-    assert (
-        ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
-    )
+    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
@@ -208,7 +206,7 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
             pod_name,
             jdbc_endpoint,
             "db_postgres_metastore",
-            "table_postgres_metastore"
+            "table_postgres_metastore",
         ],
         capture_output=True,
     )

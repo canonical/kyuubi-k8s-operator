@@ -21,13 +21,12 @@ class HiveConfig(WithLogging):
     def __init__(self, db_info: Optional[DatabaseConnectionInfo]):
         self.db_info = db_info
 
-
     def _get_db_connection_url(self) -> str:
         endpoint = self.db_info.endpoint
         return (
             f"jdbc:postgresql://{endpoint}/{METASTORE_DATABASE_NAME}?createDatabaseIfNotExist=true"
         )
-    
+
     @property
     def _db_conf(self) -> dict[str, str]:
         """Return a dictionary representation of hive configuration."""
@@ -61,5 +60,5 @@ class HiveConfig(WithLogging):
             value_element = ElementTree.SubElement(prop, "value")
             value_element.text = value
         body = ElementTree.tostring(root, encoding="unicode")
-        
+
         return f"{header}\n{body}\n"

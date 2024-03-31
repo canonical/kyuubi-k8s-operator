@@ -7,7 +7,7 @@ from scenario import Container, Context, Model, Mount, Relation
 from scenario.state import next_relation_id
 
 from charm import KyuubiCharm
-from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL, POSTGRESQL_REL
+from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL
 
 
 @pytest.fixture

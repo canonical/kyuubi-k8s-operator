@@ -46,7 +46,9 @@ def test_pebble_ready(kyuubi_context, kyuubi_container):
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
-@patch("config.kyuubi.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch(
+    "config.kyuubi.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master"
+)
 def test_s3_relation_connection_ok(
     mock_get_spark_master,
     mock_valid_sa,
@@ -93,7 +95,9 @@ def test_s3_relation_connection_not_ok(
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("k8s_utils.is_valid_namespace", return_value=True)
 @patch("k8s_utils.is_valid_service_account", return_value=True)
-@patch("config.kyuubi.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch(
+    "config.kyuubi.KyuubiServerConfig._get_spark_master", return_value="k8s://https://spark.master"
+)
 def test_s3_relation_broken(
     mock_get_spark_master,
     mock_valid_sa,

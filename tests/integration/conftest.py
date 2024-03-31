@@ -52,7 +52,7 @@ class TestCharm(BaseModel):
             "series": self.series,
             "num_units": self.num_units,
             "application_name": self.application_name,
-            "trust": self.trust
+            "trust": self.trust,
         }
 
 
