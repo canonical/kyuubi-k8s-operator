@@ -39,6 +39,7 @@ class TestCharm(BaseModel):
     series: str
     num_units: int = 1
     alias: Optional[str] = None
+    trust: Optional[bool] = False
 
     @property
     def application_name(self) -> str:
@@ -51,6 +52,7 @@ class TestCharm(BaseModel):
             "series": self.series,
             "num_units": self.num_units,
             "application_name": self.application_name,
+            "trust": self.trust
         }
 
 
