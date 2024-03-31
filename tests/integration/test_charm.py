@@ -236,7 +236,7 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
     # Connect to PostgreSQL metastore database
     connection = psycopg2.connect(
         host=postgresql_host_address,
-        db=METASTORE_DATABASE_NAME,
+        database=METASTORE_DATABASE_NAME,
         username="operator",
         password=password,
     )
