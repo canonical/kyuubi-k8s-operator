@@ -4,7 +4,9 @@
 
 POD_NAME=$1
 JDBC_ENDPOINT=$2
-COMMANDS=$(cat ./tests/integration/setup/test.sql)
+DB_NAME=${3:-testdb}
+TABLE_NAME=${4:-testtable}
+COMMANDS=$(cat ./tests/integration/setup/test.sql | sed "s/db_name/$DB_NAME/g" | sed "s/table_name/$TABLE_NAME/g")
 
 echo -e "$(kubectl exec $POD_NAME -- \
         env CMDS="$COMMANDS" ENDPOINT="$JDBC_ENDPOINT" \

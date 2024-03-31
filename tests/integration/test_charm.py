@@ -144,6 +144,8 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
             "./tests/integration/test_jdbc_endpoint.sh",
             pod_name,
             jdbc_endpoint,
+            "db_default_metastore",
+            "table_default_metastore"
         ],
         capture_output=True,
     )
@@ -205,6 +207,8 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
             "./tests/integration/test_jdbc_endpoint.sh",
             pod_name,
             jdbc_endpoint,
+            "db_postgres_metastore",
+            "table_postgres_metastore"
         ],
         capture_output=True,
     )
