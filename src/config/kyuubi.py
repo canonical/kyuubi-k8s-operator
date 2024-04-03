@@ -12,7 +12,7 @@ from lightkube import Client
 from s3 import S3ConnectionInfo
 from utils import WithLogging
 
-KYUUBI_OCI_IMAGE = "docker.io/bikalpadhakalcanonical/charmed-spark:3.4.2"
+KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
 
 
 class KyuubiServerConfig(WithLogging):

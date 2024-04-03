@@ -7,5 +7,5 @@ metadata:
   name: testpod
 spec:
   containers:
-  - image: docker.io/bikalpadhakalcanonical/charmed-spark:3.4.2
+  - image: ghcr.io/canonical/charmed-spark:3.4.2-22.04_edge
     name: kyuubi

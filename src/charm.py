@@ -53,7 +53,6 @@ class KyuubiCharm(ops.CharmBase):
         self.database = DatabaseRequires(
             self, relation_name=POSTGRESQL_REL, database_name=METASTORE_DATABASE_NAME
         )
-        self.db_connection_info = None
         self.register_event_handlers()
 
     def register_event_handlers(self):
@@ -79,13 +78,11 @@ class KyuubiCharm(ops.CharmBase):
         self.unit.status = Status.WAITING_PEBBLE.value
 
     def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
-        self.db_connection_info = DatabaseConnectionInfo(
-            endpoint=event.endpoints, username=event.username, password=event.password
-        )
+        logger.info("Database created...")
         self.update_service()
 
     def _on_database_relation_removed(self, event) -> None:
-        self.db_connection_info = None
+        logger.info("Database relation removed")
         self.update_service()
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
@@ -185,6 +182,22 @@ class KyuubiCharm(ops.CharmBase):
             path=raw_info.get("path"),
             bucket=raw_info.get("bucket"),
         )
+
+    @property
+    def db_connection_info(self) -> Optional[DatabaseConnectionInfo]:
+        """Parse a DatabaseConnectionInfo object from relation data."""
+        # If the relation is not yet available, return None
+        if not self.database.relations:
+            return None
+
+        raw_info = self.database.fetch_relation_data()
+        for data in raw_info.values():
+            if not data:
+                continue
+            return DatabaseConnectionInfo(
+                endpoint=data["endpoints"], username=data["username"], password=data["password"]
+            )
+        return None
 
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
