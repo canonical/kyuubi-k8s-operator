@@ -56,7 +56,7 @@ class KyuubiCharm(ops.CharmBase):
         self.register_event_handlers()
 
     def register_event_handlers(self):
-        """Register various event handleKyuubiServerConfigrs to the charm."""
+        """Register various event handles to the charm."""
         self.framework.observe(self.on.install, self._update_event)
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
