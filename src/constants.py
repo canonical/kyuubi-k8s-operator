@@ -9,7 +9,7 @@ METASTORE_DATABASE_NAME = "hivemetastore"
 POSTGRESQL_DEFAULT_DATABASE = "postgres"
 
 S3_INTEGRATOR_REL = "s3-credentials"
-POSTGRESQL_METASTORE_DB_REL = "database"
+POSTGRESQL_METASTORE_DB_REL = "metastore-db"
 
 NAMESPACE_CONFIG_NAME = "namespace"
 SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
