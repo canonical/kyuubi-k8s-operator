@@ -32,7 +32,7 @@ class KyuubiServer(WithLogging):
         return ContainerFile(self.container, self.user, SPARK_PROPERTIES_FILE, mode)
 
     def get_hive_configuration_file(self, mode: IOMode) -> ContainerFile:
-        """Return the configuration file for Hive."""
+        """Return the configuration file for Hive parameters."""
         return ContainerFile(self.container, self.user, HIVE_CONFIGURATION_FILE, mode)
 
     def get_jdbc_endpoint(self) -> str:
