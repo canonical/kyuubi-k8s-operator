@@ -5,9 +5,8 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import patch
 
-from ops import ActiveStatus, BlockedStatus, MaintenanceStatus
+from ops import MaintenanceStatus
 from scenario import Container, State
 
 from constants import KYUUBI_CONTAINER_NAME, SPARK_PROPERTIES_FILE
