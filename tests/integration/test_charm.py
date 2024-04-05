@@ -15,9 +15,8 @@ from constants import METASTORE_DATABASE_NAME
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "kyuubi-k8s"
-BUCKET_NAME = "kyuubi"
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
+APP_NAME = METADATA["name"]
 
 
 @pytest.mark.abort_on_fail
@@ -134,15 +133,13 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-    pod_name = test_pod
-
     logger.info(
         "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
     )
     process = subprocess.run(
         [
             "./tests/integration/test_jdbc_endpoint.sh",
-            pod_name,
+            test_pod,
             jdbc_endpoint,
             "db_default_metastore",
             "table_default_metastore",
@@ -195,15 +192,13 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-    pod_name = test_pod
-
     logger.info(
         "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
     )
     process = subprocess.run(
         [
             "./tests/integration/test_jdbc_endpoint.sh",
-            pod_name,
+            test_pod,
             jdbc_endpoint,
             "db_postgres_metastore",
             "table_postgres_metastore",

@@ -29,7 +29,7 @@ from constants import (
     KYUUBI_CONTAINER_NAME,
     METASTORE_DATABASE_NAME,
     NAMESPACE_CONFIG_NAME,
-    POSTGRESQL_REL,
+    POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
@@ -50,8 +50,8 @@ class KyuubiCharm(ops.CharmBase):
         super().__init__(*args)
         self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
         self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
-        self.database = DatabaseRequires(
-            self, relation_name=POSTGRESQL_REL, database_name=METASTORE_DATABASE_NAME
+        self.metastore_db = DatabaseRequires(
+            self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
         self.register_event_handlers()
 
@@ -66,10 +66,10 @@ class KyuubiCharm(ops.CharmBase):
             self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
-        self.framework.observe(self.database.on.database_created, self._on_database_created)
-        self.framework.observe(self.database.on.endpoints_changed, self._on_database_created)
+        self.framework.observe(self.metastore_db.on.database_created, self._on_metastore_db_created)
+        self.framework.observe(self.metastore_db.on.endpoints_changed, self._on_metastore_db_created)
         self.framework.observe(
-            self.on.database_relation_broken, self._on_database_relation_removed
+            self.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
         )
         self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
@@ -77,12 +77,12 @@ class KyuubiCharm(ops.CharmBase):
         """Handle the `on_install` event."""
         self.unit.status = Status.WAITING_PEBBLE.value
 
-    def _on_database_created(self, event: DatabaseCreatedEvent) -> None:
-        logger.info("Database created...")
+    def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
+        logger.info("Metastore database created...")
         self.update_service()
 
-    def _on_database_relation_removed(self, event) -> None:
-        logger.info("Database relation removed")
+    def _on_metastore_db_relation_removed(self, event) -> None:
+        logger.info("Mestastore database relation removed")
         self.update_service()
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
@@ -184,13 +184,13 @@ class KyuubiCharm(ops.CharmBase):
         )
 
     @property
-    def db_connection_info(self) -> Optional[DatabaseConnectionInfo]:
-        """Parse a DatabaseConnectionInfo object from relation data."""
+    def metastore_db_connection_info(self) -> Optional[DatabaseConnectionInfo]:
+        """Parse a DatabaseConnectionInfo object from metastore_db relation data."""
         # If the relation is not yet available, return None
-        if not self.database.relations:
+        if not self.metastore_db.relations:
             return None
 
-        raw_info = self.database.fetch_relation_data()
+        raw_info = self.metastore_db.fetch_relation_data()
         for data in raw_info.values():
             if not data:
                 continue

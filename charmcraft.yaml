@@ -72,5 +72,6 @@ resources:
 requires:
   s3-credentials:
     interface: s3
-  database:
+  metastore-db:
     interface: postgresql_client
+    limit: 1
