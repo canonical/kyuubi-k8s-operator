@@ -66,8 +66,12 @@ class KyuubiCharm(ops.CharmBase):
             self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
-        self.framework.observe(self.metastore_db.on.database_created, self._on_metastore_db_created)
-        self.framework.observe(self.metastore_db.on.endpoints_changed, self._on_metastore_db_created)
+        self.framework.observe(
+            self.metastore_db.on.database_created, self._on_metastore_db_created
+        )
+        self.framework.observe(
+            self.metastore_db.on.endpoints_changed, self._on_metastore_db_created
+        )
         self.framework.observe(
             self.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
         )
