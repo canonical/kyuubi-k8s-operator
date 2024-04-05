@@ -103,7 +103,7 @@ class KyuubiCharm(ops.CharmBase):
     def _update_spark_configs(self):
         """Update Spark properties in the spark-defaults file inside the charm container."""
         s3_info = self.s3_connection_info
-        db_info = self.db_connection_info
+        db_info = self.metastore_db_connection_info
         namespace = self.config[NAMESPACE_CONFIG_NAME]
         service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as spark_fid:
