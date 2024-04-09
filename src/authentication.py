@@ -11,15 +11,14 @@ import psycopg2
 
 from constants import AUTHENTICATION_DATABASE_NAME
 from utils import WithLogging
+from database import DatabaseConnectionInfo
 
 
 @dataclass
-class DatabaseConnectionInfo(WithLogging):
+class AuthUtil(WithLogging):
     """Class representing credentials and endpoints to connect to Postgres database."""
+    db_info: DatabaseConnectionInfo
 
-    endpoint: str
-    username: str
-    password: str
 
     def execute_query(self, query: str) -> bool:
         connection = None
@@ -42,6 +41,7 @@ class DatabaseConnectionInfo(WithLogging):
                 cursor.close()
             if connection:
                 connection.close()
+  
 
     def prepare_authentication_database(self) -> bool:
         """Create the authentication table in PostgreSQL database"""

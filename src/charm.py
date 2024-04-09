@@ -24,7 +24,8 @@ from ops.charm import ActionEvent
 
 import k8s_utils
 from config.hive import HiveConfig
-from config.kyuubi import KyuubiServerConfig
+from config.spark import SparkConfig
+from config.kyuubi import KyuubiConfig
 from constants import (
     KYUUBI_CONTAINER_NAME,
     METASTORE_DATABASE_NAME,
@@ -32,6 +33,8 @@ from constants import (
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
+    POSTGRESQL_AUTH_DB_REL,
+    AUTHENTICATION_DATABASE_NAME
 )
 from database import DatabaseConnectionInfo
 from models import Status
@@ -51,6 +54,9 @@ class KyuubiCharm(ops.CharmBase):
         self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
         self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
         self.metastore_db = DatabaseRequires(
+            self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
+        )
+        self.auth_db = DatabaseRequires(
             self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
         self.register_event_handlers()
@@ -75,6 +81,15 @@ class KyuubiCharm(ops.CharmBase):
         self.framework.observe(
             self.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
         )
+        self.framework.observe(
+            self.auth_db.on.database_created, self._on_auth_db_created
+        )
+        self.framework.observe(
+            self.auth_db.on.endpoints_changed, self._on_auth_db_endpoint_changed
+        )
+        self.framework.observe(
+            self.on.auth_db_relation_broken, self._on_auth_db_relation_broken
+        )
         self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
     def _on_install(self, event: ops.InstallEvent) -> None:
@@ -87,6 +102,24 @@ class KyuubiCharm(ops.CharmBase):
 
     def _on_metastore_db_relation_removed(self, event) -> None:
         logger.info("Mestastore database relation removed")
+        self.update_service()
+
+    def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
+        logger.info("Authentication database created...")
+        db_connection_info = DatabaseConnectionInfo(
+            endpoint=event.endpoints,
+            username=event.username,
+            password=event.password
+        )
+        db_connection_info.prepare_authentication_database()
+        self.update_service()
+
+    def _on_auth_db_endpoints_changed(self, event) -> None:
+        logger.info("Authentication database endpoints changed...")
+        self.update_service()
+
+    def _on_auth_db_relation_removed(self, event) -> None:
+        logger.info("Authentication database relation removed")
         self.update_service()
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
@@ -107,13 +140,16 @@ class KyuubiCharm(ops.CharmBase):
         namespace = self.config[NAMESPACE_CONFIG_NAME]
         service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as spark_fid:
-            config = KyuubiServerConfig(
+            config = SparkConfig(
                 s3_info=s3_info, namespace=namespace, service_account=service_account
             )
             spark_fid.write(config.contents)
         with self.workload.get_hive_configuration_file(IOMode.WRITE) as hive_fid:
             config = HiveConfig(db_info=db_info)
             hive_fid.write(config.contents)
+        with self.workload.get_kyuubi_configuration_file(IOMode.WRITE) as kyuubi_fid:
+            config = KyuubiConfig(db_info=db_info)
+            kyuubi_fid.write(config.contents)
 
     def get_status(
         self,

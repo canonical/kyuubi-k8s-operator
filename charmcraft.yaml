@@ -75,3 +75,6 @@ requires:
   metastore-db:
     interface: postgresql_client
     limit: 1
+  auth-db:
+    interface: postgresql-client
+    limit: 1

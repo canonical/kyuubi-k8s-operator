@@ -7,72 +7,46 @@
 
 from typing import Optional
 
-from lightkube import Client
-
-from s3 import S3ConnectionInfo
+from constants import AUTHENTICATION_DATABASE_NAME, AUTHENTICATION_TABLE_NAME
+from database import DatabaseConnectionInfo
 from utils import WithLogging
 
-KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
 
+class KyuubiConfig(WithLogging):
+    """Kyuubi Configurations."""
 
-class KyuubiServerConfig(WithLogging):
-    """Spark History Server Configuration."""
+    def __init__(self, db_info: Optional[DatabaseConnectionInfo]):
+        self.db_info = db_info
 
-    def __init__(self, s3_info: Optional[S3ConnectionInfo], namespace: str, service_account: str):
-        self.s3_info = s3_info
-        self.namespace = namespace
-        self.service_account = service_account
-
-    def _get_upload_path(self) -> str:
-        bucket_name = self.s3_info.bucket or "kyuubi"
-        return f"s3a://{bucket_name}/"
-
-    def _get_sql_warehouse_path(self) -> str:
-        bucket_name = self.s3_info.bucket or "kyuubi"
-        warehouse_dir = "warehouse"
-        return f"s3a://{bucket_name}/{warehouse_dir}"
-
-    def _get_spark_master(self) -> str:
-        cluster_address = Client().config.cluster.server
-        return f"k8s://{cluster_address}"
-
+    def _get_db_connection_url(self) -> str:
+        endpoint = self.db_info.endpoint
+        return (
+            f"jdbc:postgresql://{endpoint}/{AUTHENTICATION_DATABASE_NAME}"
+        )
+    
+    def _get_authentication_query(self) -> str:
+        return (
+            f"SELECT 1 FROM {AUTHENTICATION_TABLE_NAME} "
+            "WHERE user=${user} AND passwd=MD5(CONCAT(salt,${password}))"
+        )
+    
     @property
-    def _base_conf(self) -> dict[str, str]:
+    def _auth_conf(self) -> dict[str, str]:
+        if not self.db_info:
+            return {}
         return {
-            "spark.sql.warehouse.dir": self._get_sql_warehouse_path(),
+            "kyuubi.authentication": "JDBC",
+            "kyuubi.authentication.jdbc.driver.class": "org.postgresql.Driver",
+            "kyuubi.authentication.jdbc.url": self._get_db_connection_url(),
+            "kyuubi.authentication.jdbc.user": self.db_info.username,
+            "kyuubi.authentication.jdbc.password": self.db_info.password,
+            "kyuubi.authentication.jdbc.query": self._get_authentication_query()
         }
 
-    @property
-    def _k8s_conf(self) -> dict[str, str]:
-        return {
-            "spark.master": self._get_spark_master(),
-            "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
-            "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account,
-            "spark.kubernetes.namespace": self.namespace,
-            "spark.submit.deployMode": "cluster",
-            "spark.kubernetes.file.upload.path": self._get_upload_path(),
-        }
-
-    @property
-    def _s3_conf(self) -> dict[str, str]:
-        conf = {
-            "spark.hadoop.fs.s3a.aws.credentials.provider": "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
-            "spark.hadoop.fs.s3a.connection.ssl.enabled": "false",
-            "spark.hadoop.fs.s3a.path.style.access": "true",
-        }
-        if self.s3_info:
-            conf.update(
-                {
-                    "spark.hadoop.fs.s3a.endpoint": self.s3_info.endpoint,
-                    "spark.hadoop.fs.s3a.access.key": self.s3_info.access_key,
-                    "spark.hadoop.fs.s3a.secret.key": self.s3_info.secret_key,
-                }
-            )
-        return conf
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
-        return self._base_conf | self._k8s_conf | self._s3_conf
+        return self._auth_conf 
 
     @property
     def contents(self) -> str:
