@@ -57,7 +57,7 @@ class KyuubiCharm(ops.CharmBase):
             self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
         self.auth_db = DatabaseRequires(
-            self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
+            self, relation_name=POSTGRESQL_AUTH_DB_REL, database_name=AUTHENTICATION_DATABASE_NAME
         )
         self.register_event_handlers()
 
