@@ -42,14 +42,14 @@ psycopg2 = "^2.9.9"
 optional = true
 
 [tool.poetry.group.format.dependencies]
-black = "^22.3.0"
+black = "^24.3.0"
 ruff = ">=0.0.157"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-black = "^22.3.0"
+black = "^24.3.0"
 ruff = ">=0.0.157"
 codespell = ">=2.2.2"
 
