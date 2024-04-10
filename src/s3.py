@@ -38,7 +38,6 @@ class S3ConnectionInfo(WithLogging):
 
         try:
             s3.list_buckets()
-            self.logger.info(f"s3 buckets: {s3.list_buckets()}")
         except ClientError:
             self.logger.error("Invalid S3 credentials...")
             return False

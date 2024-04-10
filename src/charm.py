@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S LD_LIBRARY_PATH=lib python3
+# The LD_LIBRARY_PATH variable needs to be set here because without that
+# psycopg2 can't be imported due to missing libpq.so file (which is inside lib/)
 
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
@@ -9,6 +11,10 @@ import logging
 from typing import Optional
 
 import ops
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseCreatedEvent,
+    DatabaseRequires,
+)
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
@@ -17,13 +23,17 @@ from charms.data_platform_libs.v0.s3 import (
 from ops.charm import ActionEvent
 
 import k8s_utils
-from config import KyuubiServerConfig
+from config.hive import HiveConfig
+from config.kyuubi import KyuubiServerConfig
 from constants import (
     KYUUBI_CONTAINER_NAME,
+    METASTORE_DATABASE_NAME,
     NAMESPACE_CONFIG_NAME,
+    POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
+from database import DatabaseConnectionInfo
 from models import Status
 from s3 import S3ConnectionInfo
 from utils import IOMode
@@ -40,6 +50,9 @@ class KyuubiCharm(ops.CharmBase):
         super().__init__(*args)
         self.workload = KyuubiServer(self.unit.get_container(KYUUBI_CONTAINER_NAME))
         self.s3_requirer = S3Requirer(self, S3_INTEGRATOR_REL)
+        self.metastore_db = DatabaseRequires(
+            self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
+        )
         self.register_event_handlers()
 
     def register_event_handlers(self):
@@ -53,11 +66,28 @@ class KyuubiCharm(ops.CharmBase):
             self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
         )
         self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
+        self.framework.observe(
+            self.metastore_db.on.database_created, self._on_metastore_db_created
+        )
+        self.framework.observe(
+            self.metastore_db.on.endpoints_changed, self._on_metastore_db_created
+        )
+        self.framework.observe(
+            self.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
+        )
         self.framework.observe(self.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
         self.unit.status = Status.WAITING_PEBBLE.value
+
+    def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
+        logger.info("Metastore database created...")
+        self.update_service()
+
+    def _on_metastore_db_relation_removed(self, event) -> None:
+        logger.info("Mestastore database relation removed")
+        self.update_service()
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
@@ -73,13 +103,17 @@ class KyuubiCharm(ops.CharmBase):
     def _update_spark_configs(self):
         """Update Spark properties in the spark-defaults file inside the charm container."""
         s3_info = self.s3_connection_info
+        db_info = self.metastore_db_connection_info
         namespace = self.config[NAMESPACE_CONFIG_NAME]
         service_account = self.config[SERVICE_ACCOUNT_CONFIG_NAME]
-        with self.workload.get_spark_configuration_file(IOMode.WRITE) as fid:
-            spark_config = KyuubiServerConfig(
+        with self.workload.get_spark_configuration_file(IOMode.WRITE) as spark_fid:
+            config = KyuubiServerConfig(
                 s3_info=s3_info, namespace=namespace, service_account=service_account
             )
-            fid.write(spark_config.contents)
+            spark_fid.write(config.contents)
+        with self.workload.get_hive_configuration_file(IOMode.WRITE) as hive_fid:
+            config = HiveConfig(db_info=db_info)
+            hive_fid.write(config.contents)
 
     def get_status(
         self,
@@ -152,6 +186,22 @@ class KyuubiCharm(ops.CharmBase):
             path=raw_info.get("path"),
             bucket=raw_info.get("bucket"),
         )
+
+    @property
+    def metastore_db_connection_info(self) -> Optional[DatabaseConnectionInfo]:
+        """Parse a DatabaseConnectionInfo object from metastore_db relation data."""
+        # If the relation is not yet available, return None
+        if not self.metastore_db.relations:
+            return None
+
+        raw_info = self.metastore_db.fetch_relation_data()
+        for data in raw_info.values():
+            if not data:
+                continue
+            return DatabaseConnectionInfo(
+                endpoint=data["endpoints"], username=data["username"], password=data["password"]
+            )
+        return None
 
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""

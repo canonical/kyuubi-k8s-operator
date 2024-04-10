@@ -29,6 +29,18 @@ parts:
     build-packages:
       - rustc
       - cargo
+      - libpq-dev
+    charm-strict-dependencies: true
+  libpq:
+    build-packages:
+      - libpq-dev
+    plugin: dump
+    source: /usr/lib/
+    source-type: local
+    prime:
+      - lib/
+    organize:
+      "*-linux-gnu/libpq.so*": lib/
 
 config:
   options:
@@ -56,6 +68,10 @@ resources:
     description: OCI image for kyuubi
     upstream-source: ghcr.io/canonical/charmed-spark:3.4-22.04_edge
 
+
 requires:
   s3-credentials:
     interface: s3
+  metastore-db:
+    interface: postgresql_client
+    limit: 1

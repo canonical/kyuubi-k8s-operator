@@ -39,6 +39,7 @@ class TestCharm(BaseModel):
     series: str
     num_units: int = 1
     alias: Optional[str] = None
+    trust: Optional[bool] = False
 
     @property
     def application_name(self) -> str:
@@ -51,11 +52,13 @@ class TestCharm(BaseModel):
             "series": self.series,
             "num_units": self.num_units,
             "application_name": self.application_name,
+            "trust": self.trust,
         }
 
 
 class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
+    postgres: TestCharm
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +66,15 @@ def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=TestCharm(
             **{"name": "s3-integrator", "channel": "edge", "series": "jammy", "alias": "s3"}
+        ),
+        postgres=TestCharm(
+            **{
+                "name": "postgresql-k8s",
+                "channel": "14/stable",
+                "series": "jammy",
+                "alias": "postgresql",
+                "trust": True,
+            }
         ),
     )
 
