@@ -9,7 +9,7 @@ from typing import Optional
 
 from constants import AUTHENTICATION_DATABASE_NAME, AUTHENTICATION_TABLE_NAME
 from database import DatabaseConnectionInfo
-from utils import WithLogging
+from utils.logging import WithLogging
 
 
 class KyuubiConfig(WithLogging):
@@ -20,16 +20,15 @@ class KyuubiConfig(WithLogging):
 
     def _get_db_connection_url(self) -> str:
         endpoint = self.db_info.endpoint
-        return (
-            f"jdbc:postgresql://{endpoint}/{AUTHENTICATION_DATABASE_NAME}"
-        )
-    
+        return f"jdbc:postgresql://{endpoint}/{AUTHENTICATION_DATABASE_NAME}"
+
     def _get_authentication_query(self) -> str:
         return (
             f"SELECT 1 FROM {AUTHENTICATION_TABLE_NAME} "
-            "WHERE user=${user} AND passwd=MD5(CONCAT(salt,${password}))"
+            "WHERE username=${user} AND passwd=${password}"
+            # "WHERE user=${user} AND passwd=MD5(CONCAT(salt,${password}))"
         )
-    
+
     @property
     def _auth_conf(self) -> dict[str, str]:
         if not self.db_info:
@@ -40,13 +39,12 @@ class KyuubiConfig(WithLogging):
             "kyuubi.authentication.jdbc.url": self._get_db_connection_url(),
             "kyuubi.authentication.jdbc.user": self.db_info.username,
             "kyuubi.authentication.jdbc.password": self.db_info.password,
-            "kyuubi.authentication.jdbc.query": self._get_authentication_query()
+            "kyuubi.authentication.jdbc.query": self._get_authentication_query(),
         }
-
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
-        return self._auth_conf 
+        return self._auth_conf
 
     @property
     def contents(self) -> str:

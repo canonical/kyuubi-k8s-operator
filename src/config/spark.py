@@ -11,7 +11,7 @@ from lightkube import Client
 
 from constants import KYUUBI_OCI_IMAGE
 from s3 import S3ConnectionInfo
-from utils import WithLogging
+from utils.logging import WithLogging
 
 
 class SparkConfig(WithLogging):
@@ -85,4 +85,3 @@ class SparkConfig(WithLogging):
                 if (value := dict_content[key])
             ]
         )
- 

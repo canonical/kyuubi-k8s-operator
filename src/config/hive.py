@@ -12,7 +12,7 @@ from constants import (
     METASTORE_DATABASE_NAME,
 )
 from database import DatabaseConnectionInfo
-from utils import WithLogging
+from utils.logging import WithLogging
 
 
 class HiveConfig(WithLogging):

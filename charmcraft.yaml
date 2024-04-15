@@ -57,6 +57,16 @@ actions:
   get-jdbc-endpoint:
     description: |
       Returns the JDBC endpoint to connect to Kyuubi server.
+  get-password:
+    description: |
+      Returns the password for the admin user.
+  set-password:
+    description: |
+      Set the password for the admin user.
+    params:
+      password:
+        type: string
+        description: The password will be auto-generated if this option is not specified.
 
 containers:
   kyuubi:
@@ -76,5 +86,5 @@ requires:
     interface: postgresql_client
     limit: 1
   auth-db:
-    interface: postgresql-client
+    interface: postgresql_client
     limit: 1
