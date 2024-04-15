@@ -4,8 +4,8 @@
 
 import logging
 import subprocess
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 import psycopg2
 import pytest
@@ -168,7 +168,9 @@ async def test_integration_with_postgresql(ops_test: OpsTest, charm_versions):
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    await ops_test.model.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db")
+    await ops_test.model.integrate(
+        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
+    )
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     await ops_test.model.wait_for_idle(
@@ -336,7 +338,6 @@ async def test_remove_postgresql_metastore_relation(ops_test: OpsTest, test_pod,
 @pytest.mark.abort_on_fail
 async def test_enable_authentication(ops_test: OpsTest, charm_versions):
     """Test the the behavior of charm when authentication is enabled."""
-
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
@@ -357,7 +358,7 @@ async def test_enable_authentication(ops_test: OpsTest, charm_versions):
 
 @pytest.mark.abort_on_fail
 async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest, test_pod):
-    """Test the JDBC connection when invalid credentials are provided"""
+    """Test the JDBC connection when invalid credentials are provided."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
@@ -368,9 +369,7 @@ async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest, test_pod):
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-    logger.info(
-        f"Testing JDBC endpoint by connecting with beeline with no credentials ..."
-    )
+    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
     process = subprocess.run(
         [
             "./tests/integration/test_jdbc_endpoint.sh",
@@ -388,11 +387,11 @@ async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest, test_pod):
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
     assert process.returncode == 1
     assert "Error validating the login" in process.stderr.decode()
-   
+
 
 @pytest.mark.abort_on_fail
 async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest, test_pod):
-    """Test the JDBC connection when invalid credentials are provided"""
+    """Test the JDBC connection when invalid credentials are provided."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
@@ -416,7 +415,7 @@ async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest, test_pod):
             "db_222",
             "table_222",
             username,
-            password
+            password,
         ],
         capture_output=True,
     )
@@ -427,11 +426,11 @@ async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest, test_pod):
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
     assert process.returncode == 1
     assert "Error validating the login" in process.stderr.decode()
-   
+
 
 @pytest.mark.abort_on_fail
 async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest, test_pod):
-    """Test the JDBC connection when invalid credentials are provided"""
+    """Test the JDBC connection when invalid credentials are provided."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
@@ -464,7 +463,7 @@ async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest, test_pod):
             "db_333",
             "table_333",
             username,
-            password
+            password,
         ],
         capture_output=True,
     )
@@ -478,7 +477,7 @@ async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest, test_pod):
 
 @pytest.mark.abort_on_fail
 async def test_set_password_action(ops_test: OpsTest):
-    """Test set-password action"""
+    """Test set-password action."""
     logger.info("Running action 'get-password' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
@@ -489,10 +488,7 @@ async def test_set_password_action(ops_test: OpsTest):
 
     logger.info("Running action 'set-password' on kyuubi-k8s unit...")
     password_to_set = str(uuid.uuid4())
-    action = await kyuubi_unit.run_action(
-        action_name="set-password",
-        password=password_to_set
-    )
+    action = await kyuubi_unit.run_action(action_name="set-password", password=password_to_set)
     result = await action.wait()
     assert result.results.get("password") == password_to_set
 
@@ -509,7 +505,7 @@ async def test_set_password_action(ops_test: OpsTest):
 
 @pytest.mark.abort_on_fail
 async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions):
-    """Test the JDBC connection when authentication is disabled"""
+    """Test the JDBC connection when authentication is disabled."""
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s over auth-db endpoint...")
     await ops_test.model.applications[APP_NAME].remove_relation(
         f"{APP_NAME}:auth-db", f"{charm_versions.postgres.application_name}:database"
@@ -529,9 +525,7 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-    logger.info(
-        f"Testing JDBC endpoint by connecting with beeline with no credentials ..."
-    )
+    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
     process = subprocess.run(
         [
             "./tests/integration/test_jdbc_endpoint.sh",
