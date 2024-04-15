@@ -21,7 +21,7 @@ APP_NAME = METADATA["name"]
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_without_any_relations(ops_test: OpsTest, service_account):
+async def test_build_and_deploy(ops_test: OpsTest, service_account):
     """Test building and deploying the charm without relation with any other charm."""
     # Build and deploy charm from local source folder
     logger.info("Building charm...")
@@ -156,7 +156,7 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
 
 
 @pytest.mark.abort_on_fail
-async def test_integration_with_postgresql(ops_test: OpsTest, charm_versions):
+async def test_integration_with_postgresql_over_metastore_db(ops_test: OpsTest, charm_versions):
     """Test the charm by integrating it with postgresql-k8s charm."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying postgresql-k8s charm...")
@@ -253,7 +253,9 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
 
 
 @pytest.mark.abort_on_fail
-async def test_remove_postgresql_metastore_relation(ops_test: OpsTest, test_pod, charm_versions):
+async def test_jdbc_endpoint_after_removing_postgresql_metastore(
+    ops_test: OpsTest, test_pod, charm_versions
+):
     """Test the JDBC endpoint exposed by the charm."""
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(

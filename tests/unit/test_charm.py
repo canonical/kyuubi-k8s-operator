@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 def parse_spark_properties(tmp_path: Path) -> dict[str, str]:
     """Parse and return spark properties from the conf file in the container."""
     file_path = tmp_path / Path(SPARK_PROPERTIES_FILE).relative_to("/etc")
-    logger.error(file_path)
-
     with file_path.open("r") as fid:
         return dict(
             row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
@@ -46,7 +44,9 @@ def test_pebble_ready(kyuubi_context, kyuubi_container):
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_connection_ok(
+    mock_get_master,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -66,7 +66,7 @@ def test_s3_relation_connection_ok(
     assert len(out.get_container(KYUUBI_CONTAINER_NAME).layers) == 1
 
     spark_properties = parse_spark_properties(tmp_path)
-
+    logger.info(spark_properties)
     # Assert one of the keys
     assert "spark.hadoop.fs.s3a.endpoint" in spark_properties
     assert (
@@ -91,7 +91,9 @@ def test_s3_relation_connection_not_ok(
 @patch("s3.S3ConnectionInfo.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 def test_s3_relation_broken(
+    mock_get_master,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
