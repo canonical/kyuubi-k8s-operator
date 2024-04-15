@@ -9,8 +9,10 @@ from dataclasses import dataclass
 
 import psycopg2
 
-from constants import AUTHENTICATION_DATABASE_NAME
-from utils import WithLogging
+from constants import (
+    POSTGRESQL_DEFAULT_DATABASE,
+)
+from utils.utils import WithLogging
 
 
 @dataclass
@@ -21,7 +23,19 @@ class DatabaseConnectionInfo(WithLogging):
     username: str
     password: str
 
-    def execute_query(self, query: str) -> bool:
+    def execute(self, dbname: str, query: str, vars=None) -> tuple[bool, list]:
+        """Execute a SQL query by connecting to a given database.
+
+        Args:
+            dbname (str): The name of the database to connect to while executing the query
+            query (str): The query to be executed
+            vars (_type_, optional): The variables to be substituted to placeholders in `query`. Defaults to None.
+
+        Returns:
+            tuple[bool, list]: A boolean that signifies whether the query was executed successfully
+                and a list of the rows that were returned by the query. The list is empty if no
+                rows were returned when executing the query.
+        """
         connection = None
         cursor = None
         try:
@@ -29,41 +43,29 @@ class DatabaseConnectionInfo(WithLogging):
                 host=self.endpoint,
                 user=self.username,
                 password=self.password,
-                dbname=AUTHENTICATION_DATABASE_NAME,
+                dbname=dbname,
             )
+            connection.autocommit = True
             cursor = connection.cursor()
-            cursor.execute(query=query)
-            return True
+            cursor.execute(query=query, vars=vars)
+            connection.commit()
+            try:
+                result = cursor.fetchall()
+            except psycopg2.ProgrammingError:
+                result = []
+            return True, result
         except Exception as e:
             self.logger.warning(f"PostgreSQL connection not successful. Reason: {e}")
-            return False
+            return False, []
         finally:
             if cursor:
                 cursor.close()
             if connection:
                 connection.close()
 
-    def prepare_authentication_database(self) -> bool:
-        """Create the authentication table in PostgreSQL database"""
-        return self.execute_query("""
-                CREATE TABLE kyuubi_users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(100) UNIQUE NOT NULL,
-                    salt VARCHAR(100) NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL
-                );
-
-                DO $$
-                DECLARE
-                    salt TEXT := gen_salt('bf');
-                BEGIN
-                    INSERT INTO kyuubi_users (username, salt, password_hash) VALUES ('admin', salt, crypt('admin', salt));
-                END $$;
-            """)
-
-    def remove_auth_db(self) -> bool:
-        return self.execute_query(f"""
-            DROP DATBASE {AUTHENTICATION_DATABASE_NAME} WITH (FORCE);
-        """)
-
-    
+    def verify(
+        self,
+    ) -> bool:
+        """Verify whether the database connection is valid or not."""
+        status, _ = self.execute(POSTGRESQL_DEFAULT_DATABASE, "SELECT 1;")
+        return status

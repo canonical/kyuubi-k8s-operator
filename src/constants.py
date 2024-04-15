@@ -24,3 +24,5 @@ KYUUBI_CONFIGURATION_FILE = "/opt/kyuubi/conf/kyuubi-defaults.conf"
 JDBC_PORT = 10009
 
 KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
+
+DEFAULT_ADMIN_USERNAME = "admin"

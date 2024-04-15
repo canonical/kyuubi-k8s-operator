@@ -12,12 +12,14 @@ from ops.model import Container
 from constants import (
     HIVE_CONFIGURATION_FILE,
     JDBC_PORT,
+    KYUUBI_CONFIGURATION_FILE,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
     SPARK_PROPERTIES_FILE,
 )
 from models import User
-from utils import ContainerFile, IOMode, WithLogging
+from utils.io import ContainerFile, IOMode
+from utils.logging import WithLogging
 
 
 class KyuubiServer(WithLogging):
@@ -34,6 +36,10 @@ class KyuubiServer(WithLogging):
     def get_hive_configuration_file(self, mode: IOMode) -> ContainerFile:
         """Return the configuration file for Hive parameters."""
         return ContainerFile(self.container, self.user, HIVE_CONFIGURATION_FILE, mode)
+
+    def get_kyuubi_configuration_file(self, mode: IOMode) -> ContainerFile:
+        """Return the configuration file for Hive parameters."""
+        return ContainerFile(self.container, self.user, KYUUBI_CONFIGURATION_FILE, mode)
 
     def get_jdbc_endpoint(self) -> str:
         """Return the JDBC endpoint to connect to Kyuubi server."""
