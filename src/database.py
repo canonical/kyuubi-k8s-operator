@@ -9,8 +9,10 @@ from dataclasses import dataclass
 
 import psycopg2
 
-from constants import POSTGRESQL_DEFAULT_DATABASE
-from utils import WithLogging
+from constants import (
+    POSTGRESQL_DEFAULT_DATABASE,
+)
+from utils.utils import WithLogging
 
 
 @dataclass
@@ -21,17 +23,49 @@ class DatabaseConnectionInfo(WithLogging):
     username: str
     password: str
 
-    def verify(self) -> bool:
-        """Verify the PostgreSQL connection."""
+    def execute(self, dbname: str, query: str, vars=None) -> tuple[bool, list]:
+        """Execute a SQL query by connecting to a given database.
+
+        Args:
+            dbname (str): The name of the database to connect to while executing the query
+            query (str): The query to be executed
+            vars (_type_, optional): The variables to be substituted to placeholders in `query`. Defaults to None.
+
+        Returns:
+            tuple[bool, list]: A boolean that signifies whether the query was executed successfully
+                and a list of the rows that were returned by the query. The list is empty if no
+                rows were returned when executing the query.
+        """
+        connection = None
+        cursor = None
         try:
             connection = psycopg2.connect(
                 host=self.endpoint,
                 user=self.username,
                 password=self.password,
-                dbname=POSTGRESQL_DEFAULT_DATABASE,
+                dbname=dbname,
             )
-            connection.close()
-            return True
+            connection.autocommit = True
+            cursor = connection.cursor()
+            cursor.execute(query=query, vars=vars)
+            connection.commit()
+            try:
+                result = cursor.fetchall()
+            except psycopg2.ProgrammingError:
+                result = []
+            return True, result
         except Exception as e:
             self.logger.warning(f"PostgreSQL connection not successful. Reason: {e}")
-            return False
+            return False, []
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def verify(
+        self,
+    ) -> bool:
+        """Verify whether the database connection is valid or not."""
+        status, _ = self.execute(POSTGRESQL_DEFAULT_DATABASE, "SELECT 1;")
+        return status

@@ -3,7 +3,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""Hive configurations."""
+"""Hive related configurations."""
 
 from typing import Optional
 from xml.etree import ElementTree
@@ -12,11 +12,11 @@ from constants import (
     METASTORE_DATABASE_NAME,
 )
 from database import DatabaseConnectionInfo
-from utils import WithLogging
+from utils.logging import WithLogging
 
 
 class HiveConfig(WithLogging):
-    """Spark History Server Configuration."""
+    """Hive Configuration."""
 
     def __init__(self, db_info: Optional[DatabaseConnectionInfo]):
         self.db_info = db_info
