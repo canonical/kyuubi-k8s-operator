@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     AUTHENTICATION_TABLE_NAME,
+    DEFAULT_ADMIN_USERNAME,
     POSTGRESQL_DEFAULT_DATABASE,
-    DEFAULT_ADMIN_USERNAME
 )
 from database import DatabaseConnectionInfo
 from utils.utils import WithLogging
@@ -104,6 +104,6 @@ class Authentication(WithLogging):
         self.logger.info("Removing auth_db...")
         query = f"DROP DATABASE {AUTHENTICATION_DATABASE_NAME} WITH (FORCE);"
 
-        # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped 
+        # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped
         # while being connected to itself.
         self.database.execute(dbname=POSTGRESQL_DEFAULT_DATABASE, query=query)
