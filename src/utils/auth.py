@@ -13,6 +13,7 @@ from constants import (
     AUTHENTICATION_DATABASE_NAME,
     AUTHENTICATION_TABLE_NAME,
     POSTGRESQL_DEFAULT_DATABASE,
+    DEFAULT_ADMIN_USERNAME
 )
 from database import DatabaseConnectionInfo
 from utils.utils import WithLogging
@@ -88,7 +89,7 @@ class Authentication(WithLogging):
 
     def create_admin_user(self) -> bool:
         """Create a default admin user in the authentication database."""
-        username = "admin"
+        username = DEFAULT_ADMIN_USERNAME
         password = self.generate_password()
         return self.create_user(username, password)
 
@@ -100,6 +101,9 @@ class Authentication(WithLogging):
 
     def remove_auth_db(self) -> None:
         """Remove authentication database from PostgreSQL."""
-        self.logger.info("remove auth_db...")
+        self.logger.info("Removing auth_db...")
         query = f"DROP DATABASE {AUTHENTICATION_DATABASE_NAME} WITH (FORCE);"
+
+        # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped 
+        # while being connected to itself.
         self.database.execute(dbname=POSTGRESQL_DEFAULT_DATABASE, query=query)

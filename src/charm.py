@@ -140,8 +140,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def _update_event(self, _):
         """Handle the update event hook."""
-        # self.unit.status = self.get_status()
-        self.update_service()
+        self.unit.status = self.get_status()
 
     def _update_spark_configs(self):
         """Update Spark properties in the spark-defaults file inside the charm container."""

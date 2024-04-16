@@ -26,7 +26,6 @@ class KyuubiConfig(WithLogging):
         return (
             f"SELECT 1 FROM {AUTHENTICATION_TABLE_NAME} "
             "WHERE username=${user} AND passwd=${password}"
-            # "WHERE user=${user} AND passwd=MD5(CONCAT(salt,${password}))"
         )
 
     @property
