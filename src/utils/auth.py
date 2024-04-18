@@ -10,7 +10,6 @@ import string
 from dataclasses import dataclass
 
 from constants import (
-    AUTHENTICATION_DATABASE_NAME,
     AUTHENTICATION_TABLE_NAME,
     DEFAULT_ADMIN_USERNAME,
     POSTGRESQL_DEFAULT_DATABASE,
@@ -35,7 +34,7 @@ class Authentication(WithLogging):
                 passwd VARCHAR(255) NOT NULL
             );
         """
-        status, _ = self.database.execute(AUTHENTICATION_DATABASE_NAME, query)
+        status, _ = self.database.execute(query)
         return status
 
     def generate_password(self) -> str:
@@ -58,7 +57,7 @@ class Authentication(WithLogging):
         query = "INSERT INTO kyuubi_users (username, passwd) VALUES (%s, %s);"
         vars = (username, password)
         status, _ = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
+            query=query, vars=vars
         )
         return status
 
@@ -67,7 +66,7 @@ class Authentication(WithLogging):
         query = f"SELECT passwd FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s"
         vars = (username,)
         status, results = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
+            query=query, vars=vars
         )
         if not status or len(results) == 0:
             raise Exception("Could not fetch password from authentication database.")
@@ -82,27 +81,21 @@ class Authentication(WithLogging):
             username,
         )
         status, _ = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
+            query=query, vars=vars
         )
         if not status:
             raise Exception(f"Could not update password of {username}.")
-
-    def create_admin_user(self) -> bool:
-        """Create a default admin user in the authentication database."""
-        username = DEFAULT_ADMIN_USERNAME
-        password = self.generate_password()
-        return self.create_user(username, password)
 
     def prepare_auth_db(self) -> None:
         """Prepare the authentication database in PostgreSQL."""
         self.logger.info("Preparing auth db...")
         self.create_authentication_table()
-        self.create_admin_user()
+        self.create_user(DEFAULT_ADMIN_USERNAME, self.generate_password())
 
     def remove_auth_db(self) -> None:
         """Remove authentication database from PostgreSQL."""
         self.logger.info("Removing auth_db...")
-        query = f"DROP DATABASE {AUTHENTICATION_DATABASE_NAME} WITH (FORCE);"
+        query = f"DROP DATABASE {self.database.dbname} WITH (FORCE);"
 
         # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped
         # while being connected to itself.

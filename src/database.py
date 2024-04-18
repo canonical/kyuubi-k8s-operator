@@ -22,8 +22,9 @@ class DatabaseConnectionInfo(WithLogging):
     endpoint: str
     username: str
     password: str
+    dbname: str
 
-    def execute(self, dbname: str, query: str, vars=None) -> tuple[bool, list]:
+    def execute(self, query: str, vars=None, dbname: str = None) -> tuple[bool, list]:
         """Execute a SQL query by connecting to a given database.
 
         Args:
@@ -36,6 +37,8 @@ class DatabaseConnectionInfo(WithLogging):
                 and a list of the rows that were returned by the query. The list is empty if no
                 rows were returned when executing the query.
         """
+        if not dbname:
+            dbname = self.dbname
         connection = None
         cursor = None
         try:

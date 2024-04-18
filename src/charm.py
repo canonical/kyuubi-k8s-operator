@@ -114,7 +114,7 @@ class KyuubiCharm(ops.CharmBase):
         logger.info("Authentication database created...")
         hostname, port = event.endpoints.split(":")
         db_connection_info = DatabaseConnectionInfo(
-            endpoint=hostname, username=event.username, password=event.password
+            endpoint=hostname, username=event.username, password=event.password, dbname=AUTHENTICATION_DATABASE_NAME
         )
         Authentication(db_connection_info).prepare_auth_db()
         self.update_service()
@@ -301,7 +301,7 @@ class KyuubiCharm(ops.CharmBase):
                 continue
             hostname, port = data["endpoints"].split(":")
             return DatabaseConnectionInfo(
-                endpoint=hostname, username=data["username"], password=data["password"]
+                endpoint=hostname, username=data["username"], password=data["password"], dbname=AUTHENTICATION_DATABASE_NAME
             )
         return None
 
