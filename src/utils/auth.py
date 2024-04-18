@@ -15,7 +15,7 @@ from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
 from database import DatabaseConnectionInfo
-from utils.utils import WithLogging
+from utils.logging import WithLogging
 
 
 @dataclass

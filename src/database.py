@@ -12,7 +12,7 @@ import psycopg2
 from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
-from utils.utils import WithLogging
+from utils.logging import WithLogging
 
 
 @dataclass
