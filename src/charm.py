@@ -222,7 +222,7 @@ class KyuubiCharm(ops.CharmBase):
         if not self.is_authentication_enabled():
             event.fail(
                 "The action can only be run when authentication is enabled. "
-                "Please relate kyuubi-k8s:auth-db with postgresql-k8s"
+                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
             )
             return
         password = Authentication(self.auth_db_connection_info).get_password(
@@ -235,7 +235,7 @@ class KyuubiCharm(ops.CharmBase):
         if not self.is_authentication_enabled():
             event.fail(
                 "The action can only be run when authentication is enabled. "
-                "Please relate kyuubi-k8s:auth-db with postgresql-k8s"
+                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
             )
             return
         # Only leader can write the new password
