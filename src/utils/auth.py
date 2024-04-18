@@ -56,18 +56,14 @@ class Authentication(WithLogging):
         self.logger.info(f"Creating user {username}...")
         query = "INSERT INTO kyuubi_users (username, passwd) VALUES (%s, %s);"
         vars = (username, password)
-        status, _ = self.database.execute(
-            query=query, vars=vars
-        )
+        status, _ = self.database.execute(query=query, vars=vars)
         return status
 
     def get_password(self, username: str) -> str:
         """Returns the password for the given username."""
         query = f"SELECT passwd FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s"
         vars = (username,)
-        status, results = self.database.execute(
-            query=query, vars=vars
-        )
+        status, results = self.database.execute(query=query, vars=vars)
         if not status or len(results) == 0:
             raise Exception("Could not fetch password from authentication database.")
         password = results[0][0]
@@ -80,9 +76,7 @@ class Authentication(WithLogging):
             password,
             username,
         )
-        status, _ = self.database.execute(
-            query=query, vars=vars
-        )
+        status, _ = self.database.execute(query=query, vars=vars)
         if not status:
             raise Exception(f"Could not update password of {username}.")
 
