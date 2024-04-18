@@ -5,6 +5,7 @@
 
 """This model contains classes and methods related to Kyuubi workload."""
 
+import re
 import socket
 
 from ops.model import Container
@@ -16,6 +17,7 @@ from constants import (
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
     SPARK_PROPERTIES_FILE,
+    KYUUBI_VERSION_FILE
 )
 from models import User
 from utils.io import ContainerFile, IOMode
@@ -90,3 +92,14 @@ class KyuubiServer(WithLogging):
     def health(self) -> bool:
         """Return the health of the service."""
         return self.container.get_service(KYUUBI_SERVICE_NAME).is_running()
+
+    @property
+    def kyuubi_version(self):
+        VERSION_PATTERN = "Kyuubi (?P<version>[\d\.]+)"
+        with ContainerFile(self.container, self.user, KYUUBI_VERSION_FILE, IOMode.READ) as version_file:
+            contents = version_file.read()
+            version = re.search(VERSION_PATTERN, contents)
+            if version:
+                return version.group("version")
+        return ""
+

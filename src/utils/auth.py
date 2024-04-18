@@ -55,8 +55,25 @@ class Authentication(WithLogging):
             bool: signifies whether the user has been created successfully
         """
         self.logger.info(f"Creating user {username}...")
-        query = "INSERT INTO kyuubi_users (username, passwd) VALUES (%s, %s);"
+        query = f"INSERT INTO {AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, %s);"
         vars = (username, password)
+        status, _ = self.database.execute(
+            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
+        )
+        return status
+
+    def delete_user(self, username: str) -> bool:
+        """Delete a user with given username.
+
+        Args:
+            username (str): Username of the user to be deleted.
+
+        Returns:
+            bool: signifies whether the user has been deleted successfully
+        """
+        self.logger.info(f"Deleting user {username}...")
+        query = f"DELETE FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        vars = (username, )
         status, _ = self.database.execute(
             dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
         )

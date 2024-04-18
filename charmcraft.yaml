@@ -88,3 +88,7 @@ requires:
   auth-db:
     interface: postgresql_client
     limit: 1
+
+provides:
+  jdbc:
+    interface: kyuubi_client
