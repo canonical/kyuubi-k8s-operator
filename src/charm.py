@@ -287,7 +287,10 @@ class KyuubiCharm(ops.CharmBase):
             if not data:
                 continue
             return DatabaseConnectionInfo(
-                endpoint=data["endpoints"], username=data["username"], password=data["password"]
+                endpoint=data["endpoints"],
+                username=data["username"],
+                password=data["password"],
+                dbname=METASTORE_DATABASE_NAME,
             )
         return None
 
