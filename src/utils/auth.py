@@ -3,7 +3,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""S3 connection utility classes and methods."""
+"""Authentication utility class and methods."""
 
 import secrets
 import string
