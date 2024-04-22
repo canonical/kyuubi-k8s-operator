@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-
 type: charm
 
 parts:
