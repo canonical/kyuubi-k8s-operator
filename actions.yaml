@@ -1,0 +1,16 @@
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+get-jdbc-endpoint:
+  description: |
+    Returns the JDBC endpoint to connect to Kyuubi server.
+get-password:
+  description: |
+    Returns the password for the admin user.
+set-password:
+  description: |
+    Set the password for the admin user.
+  params:
+    password:
+      type: string
+      description: The password will be auto-generated if this option is not specified.
