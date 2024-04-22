@@ -4,27 +4,27 @@
 
 name: kyuubi-k8s
 type: charm
-display-name: Kyuubi K8s
+title: Kyuubi K8s
 summary: Kubernetes based charm for the Apache Kyuubi
 description: | 
   "This is a charm for Apache Kyuubi.
 
   It provides users with a JDBC endpoint so that users can use 
   JDBC compliant tools to execute queries against Apache Spark cluster."
-
-source: https://github.com/canonical/kyuubi-k8s-operator
-issues: https://github.com/canonical/kyuubi-k8s-operator/issues
-
-website:
-  - https://ubuntu.com/data/spark
-  - https://canonical.com/data/docs/spark/k8s
-  - https://charmhub.io/kyuubi-k8s
-  - https://github.com/canonical/kyuubi-k8s-operator
-  - https://matrix.to/#/%23charmhub-data-platform%3Aubuntu.com
-maintainers:
-  - Canonical Data Platform <data-platform@lists.launchpad.net>
 assumes:
   - k8s-api
+
+links:
+  source: https://github.com/canonical/kyuubi-k8s-operator
+  issues: https://github.com/canonical/kyuubi-k8s-operator/issues
+  contact:
+    - Canonical Data Platform <data-platform@lists.launchpad.net>
+  website:
+    - https://ubuntu.com/data/spark
+    - https://canonical.com/data/docs/spark/k8s
+    - https://charmhub.io/kyuubi-k8s
+    - https://github.com/canonical/kyuubi-k8s-operator
+    - https://matrix.to/#/%23charmhub-data-platform%3Aubuntu.com
 
 bases:
   - build-on:
