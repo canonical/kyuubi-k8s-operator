@@ -11,7 +11,7 @@ from functools import cached_property
 import boto3
 from botocore.exceptions import ClientError
 
-from utils import WithLogging
+from utils.logging import WithLogging
 
 
 @dataclass

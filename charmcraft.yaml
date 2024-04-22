@@ -1,20 +1,30 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+
 name: kyuubi-k8s
-
 type: charm
-
-title: Kubernetes based charm for Apache Kyuubi
-
-summary: Kubernetes based charm for Apache Kyuubi
-
-description: |
+title: Kyuubi K8s
+summary: Kubernetes based charm for the Apache Kyuubi
+description: | 
   "This is a charm for Apache Kyuubi.
 
   It provides users with a JDBC endpoint so that users can use 
   JDBC compliant tools to execute queries against Apache Spark cluster."
+assumes:
+  - k8s-api
 
+links:
+  source: https://github.com/canonical/kyuubi-k8s-operator
+  issues: https://github.com/canonical/kyuubi-k8s-operator/issues
+  contact:
+    - Canonical Data Platform <data-platform@lists.launchpad.net>
+  website:
+    - https://ubuntu.com/data/spark
+    - https://canonical.com/data/docs/spark/k8s
+    - https://charmhub.io/kyuubi-k8s
+    - https://github.com/canonical/kyuubi-k8s-operator
+    - https://matrix.to/#/%23charmhub-data-platform%3Aubuntu.com
 
 bases:
   - build-on:
@@ -57,6 +67,16 @@ actions:
   get-jdbc-endpoint:
     description: |
       Returns the JDBC endpoint to connect to Kyuubi server.
+  get-password:
+    description: |
+      Returns the password for the admin user.
+  set-password:
+    description: |
+      Set the password for the admin user.
+    params:
+      password:
+        type: string
+        description: The password will be auto-generated if this option is not specified.
 
 containers:
   kyuubi:
@@ -73,5 +93,8 @@ requires:
   s3-credentials:
     interface: s3
   metastore-db:
+    interface: postgresql_client
+    limit: 1
+  auth-db:
     interface: postgresql_client
     limit: 1
