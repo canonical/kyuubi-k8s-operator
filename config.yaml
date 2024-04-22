@@ -1,0 +1,12 @@
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+options:
+  namespace:
+    type: string
+    description: The namespace to be used by driver to create executor pods.
+    default: 'kyuubi'
+  service-account:
+    type: string
+    description: The service account to be used by driver to create executor pods.
+    default: 'kyuubi'
