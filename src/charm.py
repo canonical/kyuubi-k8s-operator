@@ -35,6 +35,7 @@ from constants import (
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
+    KYUUBI_CLIENT_RELATION_NAME
 )
 from database import DatabaseConnectionInfo
 from models import Status
@@ -43,6 +44,7 @@ from utils import k8s
 from utils.auth import Authentication
 from utils.io import IOMode
 from workload import KyuubiServer
+from relation import KyuubiClientProvider
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -64,6 +66,7 @@ class KyuubiCharm(ops.CharmBase):
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
         )
+        self.kyuubi_client_provider = KyuubiClientProvider(self, KYUUBI_CLIENT_RELATION_NAME)
         self.register_event_handlers()
 
     def register_event_handlers(self):
@@ -300,6 +303,7 @@ class KyuubiCharm(ops.CharmBase):
             if not data:
                 continue
             hostname, port = data["endpoints"].split(":")
+            logger.info(data)
             return DatabaseConnectionInfo(
                 endpoint=hostname, username=data["username"], password=data["password"]
             )
@@ -317,7 +321,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
-        return self.auth_db_connection_info is not None
+        return self.auth_db.relations is not None
 
 
 if __name__ == "__main__":  # pragma: nocover
