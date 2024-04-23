@@ -28,6 +28,7 @@ from config.spark import SparkConfig
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     DEFAULT_ADMIN_USERNAME,
+    KYUUBI_CLIENT_RELATION_NAME,
     KYUUBI_CONTAINER_NAME,
     METASTORE_DATABASE_NAME,
     NAMESPACE_CONFIG_NAME,
@@ -35,16 +36,15 @@ from constants import (
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
-    KYUUBI_CLIENT_RELATION_NAME
 )
 from database import DatabaseConnectionInfo
 from models import Status
+from relation import KyuubiClientProvider
 from s3 import S3ConnectionInfo
 from utils import k8s
 from utils.auth import Authentication
 from utils.io import IOMode
 from workload import KyuubiServer
-from relation import KyuubiClientProvider
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -314,24 +314,6 @@ class KyuubiCharm(ops.CharmBase):
                 username=data["username"],
                 password=data["password"],
                 dbname=AUTHENTICATION_DATABASE_NAME,
-            )
-        return None
-
-    @property
-    def auth_db_connection_info(self) -> Optional[DatabaseConnectionInfo]:
-        """Parse a DatabaseConnectionInfo object from metastore_db relation data."""
-        # If the relation is not yet available, return None
-        if not self.auth_db.relations:
-            return None
-
-        raw_info = self.auth_db.fetch_relation_data()
-        for data in raw_info.values():
-            if not data:
-                continue
-            hostname, port = data["endpoints"].split(":")
-            logger.info(data)
-            return DatabaseConnectionInfo(
-                endpoint=hostname, username=data["username"], password=data["password"]
             )
         return None
 

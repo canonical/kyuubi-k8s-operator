@@ -70,11 +70,9 @@ class Authentication(WithLogging):
             bool: signifies whether the user has been deleted successfully
         """
         self.logger.info(f"Deleting user {username}...")
-        query = f"DELETE FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
-        vars = (username, )
-        status, _ = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
-        )
+        query = f"DELETE FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        vars = (username,)
+        status, _ = self.database.execute(query=query, vars=vars)
         return status
 
     def get_password(self, username: str) -> str:
