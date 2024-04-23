@@ -36,7 +36,7 @@ pyyaml = "^6.0.1"
 boto3 = "^1.26.75"
 jsonschema = "^4.19.1"
 lightkube = "^0.15.2"
-psycopg2 = "^2.9.9"
+psycopg2-binary= "^2.9.9"
 
 [tool.poetry.group.format]
 optional = true

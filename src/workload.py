@@ -16,8 +16,8 @@ from constants import (
     KYUUBI_CONFIGURATION_FILE,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
+    KYUUBI_VERSION_FILE,
     SPARK_PROPERTIES_FILE,
-    KYUUBI_VERSION_FILE
 )
 from models import User
 from utils.io import ContainerFile, IOMode
@@ -95,11 +95,13 @@ class KyuubiServer(WithLogging):
 
     @property
     def kyuubi_version(self):
-        VERSION_PATTERN = "Kyuubi (?P<version>[\d\.]+)"
-        with ContainerFile(self.container, self.user, KYUUBI_VERSION_FILE, IOMode.READ) as version_file:
+        """Return kyuubi version."""
+        version_pattern = r"Kyuubi (?P<version>[\d\.]+)"
+        with ContainerFile(
+            self.container, self.user, KYUUBI_VERSION_FILE, IOMode.READ
+        ) as version_file:
             contents = version_file.read()
-            version = re.search(VERSION_PATTERN, contents)
+            version = re.search(version_pattern, contents)
             if version:
                 return version.group("version")
         return ""
-

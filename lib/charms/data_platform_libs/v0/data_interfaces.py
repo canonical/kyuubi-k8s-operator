@@ -2530,6 +2530,9 @@ class DatabaseProviderEventHandlers(EventHandlers):
         if not self.relation_data.local_unit.is_leader():
             return
         # Check which data has changed to emit customs events.
+        
+        logger.info(f"EVENT DATA: {event.relation.data[event.app]}")
+        
         diff = self._diff(event)
 
         # Emit a database requested event if the setup key (database name and optional

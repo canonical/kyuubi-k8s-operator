@@ -46,7 +46,6 @@ class KyuubiClientProvider(Object):
             self.database_provides.on.database_requested, self._on_database_requested
         )
 
-
     def _on_database_requested(self, event: DatabaseRequestedEvent) -> None:
         """Handle the kyuubi-client relation changed event.
 
@@ -64,11 +63,11 @@ class KyuubiClientProvider(Object):
             )
         auth = Authentication(self.charm.auth_db_connection_info)
         try:
-            
+
             username = f"relation_id_{event.relation.id}"
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
-            
+
             endpoint = self.charm.workload.get_jdbc_endpoint()
 
             # Set the read/write endpoint.
@@ -81,14 +80,9 @@ class KyuubiClientProvider(Object):
             self.database_provides.set_version(
                 event.relation.id, self.charm.workload.kyuubi_version
             )
-        except (
-            Exception
-        ) as e:
+        except (Exception) as e:
             logger.exception(e)
-            self.charm.unit.status = BlockedStatus(
-                str(e)
-            )
-
+            self.charm.unit.status = BlockedStatus(str(e))
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Remove the user created for this relation."""

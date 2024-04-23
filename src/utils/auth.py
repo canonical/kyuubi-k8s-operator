@@ -73,7 +73,7 @@ class Authentication(WithLogging):
         """
         self.logger.info(f"Deleting user {username}...")
         query = f"DELETE FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
-        vars = (username, )
+        vars = (username,)
         status, _ = self.database.execute(
             dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
         )
