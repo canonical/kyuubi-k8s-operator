@@ -329,7 +329,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
-        return self.auth_db.relations is not None
+        return bool(self.auth_db.relations)
 
 
 if __name__ == "__main__":  # pragma: nocover

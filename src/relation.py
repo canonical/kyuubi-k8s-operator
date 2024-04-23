@@ -33,25 +33,26 @@ class KyuubiClientProvider(Object):
             charm: the charm for which this relation is provided
             relation_name: the name of the relation
         """
+        super().__init__(charm, relation_name)
+
         self.relation_name = relation_name
-        super().__init__(charm, self.relation_name)
+        self.charm = charm
+        self.database_provides = DatabaseProvides(charm, relation_name)
+
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
-
-        self.charm = charm
-        # Charm events defined in the database provides charm library.
-        self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_database_requested
         )
 
     def _on_database_requested(self, event: DatabaseRequestedEvent) -> None:
-        """Handle the kyuubi-client relation changed event.
+        """Handle the database-requested event.
 
         Generate a user and password for the related application.
         """
-        logger.info("On Database Requested...")
+        logger.info("KyuubiClientProvider: Database requested...")
+
         if not self.charm.unit.is_leader():
             return
 
@@ -63,7 +64,6 @@ class KyuubiClientProvider(Object):
             )
         auth = Authentication(self.charm.auth_db_connection_info)
         try:
-
             username = f"relation_id_{event.relation.id}"
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
@@ -86,7 +86,8 @@ class KyuubiClientProvider(Object):
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Remove the user created for this relation."""
-        logger.info("On relation broken...")
+        logger.info("KyuubiClientProvider: Relation broken...")
+
         if not self.charm.unit.is_leader():
             return
 
