@@ -16,7 +16,7 @@ from constants import METASTORE_DATABASE_NAME
 
 logger = logging.getLogger(__name__)
 
-METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
+METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
@@ -350,7 +350,7 @@ async def test_enable_authentication(ops_test: OpsTest, charm_versions):
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
     )
 
     # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
@@ -478,7 +478,7 @@ async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest, test_pod):
 
 
 @pytest.mark.abort_on_fail
-async def test_set_password_action(ops_test: OpsTest):
+async def test_set_password_action(ops_test: OpsTest, test_pod):
     """Test set-password action."""
     logger.info("Running action 'get-password' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
@@ -503,6 +503,39 @@ async def test_set_password_action(ops_test: OpsTest):
 
     assert new_password != old_password
     assert new_password == password_to_set
+
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
+
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+
+    username = "admin"
+
+    logger.info(
+        f"Testing JDBC endpoint by connecting with beeline with username={username} and password={new_password} ..."
+    )
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            jdbc_endpoint,
+            "db_444",
+            "table_444",
+            username,
+            new_password,
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
 
 
 @pytest.mark.abort_on_fail
@@ -533,8 +566,8 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
             jdbc_endpoint,
-            "db_444",
-            "table_444",
+            "db_555",
+            "table_555",
         ],
         capture_output=True,
     )

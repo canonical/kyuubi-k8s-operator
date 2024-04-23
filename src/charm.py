@@ -117,7 +117,10 @@ class KyuubiCharm(ops.CharmBase):
         logger.info("Authentication database created...")
         hostname, port = event.endpoints.split(":")
         db_connection_info = DatabaseConnectionInfo(
-            endpoint=hostname, username=event.username, password=event.password
+            endpoint=hostname,
+            username=event.username,
+            password=event.password,
+            dbname=AUTHENTICATION_DATABASE_NAME,
         )
         Authentication(db_connection_info).prepare_auth_db()
         self.update_service()
@@ -222,7 +225,7 @@ class KyuubiCharm(ops.CharmBase):
         if not self.is_authentication_enabled():
             event.fail(
                 "The action can only be run when authentication is enabled. "
-                "Please relate kyuubi-k8s:auth-db with postgresql-k8s"
+                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
             )
             return
         password = Authentication(self.auth_db_connection_info).get_password(
@@ -235,7 +238,7 @@ class KyuubiCharm(ops.CharmBase):
         if not self.is_authentication_enabled():
             event.fail(
                 "The action can only be run when authentication is enabled. "
-                "Please relate kyuubi-k8s:auth-db with postgresql-k8s"
+                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
             )
             return
         # Only leader can write the new password
@@ -287,7 +290,30 @@ class KyuubiCharm(ops.CharmBase):
             if not data:
                 continue
             return DatabaseConnectionInfo(
-                endpoint=data["endpoints"], username=data["username"], password=data["password"]
+                endpoint=data["endpoints"],
+                username=data["username"],
+                password=data["password"],
+                dbname=METASTORE_DATABASE_NAME,
+            )
+        return None
+
+    @property
+    def auth_db_connection_info(self) -> Optional[DatabaseConnectionInfo]:
+        """Parse a DatabaseConnectionInfo object from metastore_db relation data."""
+        # If the relation is not yet available, return None
+        if not self.auth_db.relations:
+            return None
+
+        raw_info = self.auth_db.fetch_relation_data()
+        for data in raw_info.values():
+            if not data:
+                continue
+            hostname, port = data["endpoints"].split(":")
+            return DatabaseConnectionInfo(
+                endpoint=hostname,
+                username=data["username"],
+                password=data["password"],
+                dbname=AUTHENTICATION_DATABASE_NAME,
             )
         return None
 

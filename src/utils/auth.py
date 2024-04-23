@@ -3,39 +3,39 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""S3 connection utility classes and methods."""
+"""Authentication utility class and methods."""
 
 import secrets
 import string
-from dataclasses import dataclass
 
 from constants import (
-    AUTHENTICATION_DATABASE_NAME,
-    AUTHENTICATION_TABLE_NAME,
-    DEFAULT_ADMIN_USERNAME,
     POSTGRESQL_DEFAULT_DATABASE,
 )
 from database import DatabaseConnectionInfo
-from utils.utils import WithLogging
+from utils.logging import WithLogging
 
 
-@dataclass
 class Authentication(WithLogging):
     """Class representing authentication."""
 
-    database: DatabaseConnectionInfo
+    DEFAULT_ADMIN_USERNAME = "admin"
+    AUTHENTICATION_TABLE_NAME = "kyuubi_users"
+
+    def __init__(self, db_info: DatabaseConnectionInfo = None) -> None:
+        super().__init__()
+        self.database = db_info
 
     def create_authentication_table(self) -> bool:
         """Create authentication table in the authentication database."""
         self.logger.info("Creating authentication table...")
         query = f"""
-            CREATE TABLE {AUTHENTICATION_TABLE_NAME} (
+            CREATE TABLE {self.AUTHENTICATION_TABLE_NAME} (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
                 passwd VARCHAR(255) NOT NULL
             );
         """
-        status, _ = self.database.execute(AUTHENTICATION_DATABASE_NAME, query)
+        status, _ = self.database.execute(query)
         return status
 
     def generate_password(self) -> str:
@@ -55,11 +55,9 @@ class Authentication(WithLogging):
             bool: signifies whether the user has been created successfully
         """
         self.logger.info(f"Creating user {username}...")
-        query = f"INSERT INTO {AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, %s);"
+        query = f"INSERT INTO {self.AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, %s);"
         vars = (username, password)
-        status, _ = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
-        )
+        status, _ = self.database.execute(query=query, vars=vars)
         return status
 
     def delete_user(self, username: str) -> bool:
@@ -81,11 +79,9 @@ class Authentication(WithLogging):
 
     def get_password(self, username: str) -> str:
         """Returns the password for the given username."""
-        query = f"SELECT passwd FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s"
+        query = f"SELECT passwd FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s"
         vars = (username,)
-        status, results = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
-        )
+        status, results = self.database.execute(query=query, vars=vars)
         if not status or len(results) == 0:
             raise Exception("Could not fetch password from authentication database.")
         password = results[0][0]
@@ -93,22 +89,19 @@ class Authentication(WithLogging):
 
     def set_password(self, username: str, password: str) -> str:
         """Set a new password for the given username."""
-        query = f"UPDATE {AUTHENTICATION_TABLE_NAME} SET passwd = %s WHERE username = %s"
+        query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = %s WHERE username = %s"
         vars = (
             password,
             username,
         )
-        status, _ = self.database.execute(
-            dbname=AUTHENTICATION_DATABASE_NAME, query=query, vars=vars
-        )
+        status, _ = self.database.execute(query=query, vars=vars)
         if not status:
             raise Exception(f"Could not update password of {username}.")
 
     def create_admin_user(self) -> bool:
         """Create a default admin user in the authentication database."""
-        username = DEFAULT_ADMIN_USERNAME
         password = self.generate_password()
-        return self.create_user(username, password)
+        return self.create_user(self.DEFAULT_ADMIN_USERNAME, password)
 
     def prepare_auth_db(self) -> None:
         """Prepare the authentication database in PostgreSQL."""
@@ -119,7 +112,7 @@ class Authentication(WithLogging):
     def remove_auth_db(self) -> None:
         """Remove authentication database from PostgreSQL."""
         self.logger.info("Removing auth_db...")
-        query = f"DROP DATABASE {AUTHENTICATION_DATABASE_NAME} WITH (FORCE);"
+        query = f"DROP DATABASE {self.database.dbname} WITH (FORCE);"
 
         # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped
         # while being connected to itself.
