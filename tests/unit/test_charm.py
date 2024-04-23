@@ -5,8 +5,12 @@
 
 import logging
 from pathlib import Path
+from unittest.mock import patch
 
-from constants import SPARK_PROPERTIES_FILE
+from scenario import Container, State
+
+from constants import KYUUBI_CONTAINER_NAME, SPARK_PROPERTIES_FILE
+from models import Status
 
 logger = logging.getLogger(__name__)
 
