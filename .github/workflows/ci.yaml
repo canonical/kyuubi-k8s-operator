@@ -56,11 +56,17 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           use-labels: false
           fail-build: ${{ github.event_name == 'pull_request' }}
-
+  
   build:
     name: Build charms
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v12.4.1
+    strategy:
+      matrix:
+        path:
+          - .
+          - tests/integration/app-charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.2
     with:
+      path-to-charm-directory: ${{ matrix.path }}
       cache: true
 
   integration-test:
