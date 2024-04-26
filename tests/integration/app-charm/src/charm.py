@@ -23,7 +23,7 @@ from ops.model import ActiveStatus
 logger = logging.getLogger(__name__)
 
 RELATION_NAME_KYUUBI = "jdbc"
-DATABASE_NAME = "random"
+DATABASE_NAME = "foobar"
 
 
 class ApplicationCharm(ops.CharmBase):
