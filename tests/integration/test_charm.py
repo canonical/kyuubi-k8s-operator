@@ -12,7 +12,10 @@ import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
 
-from constants import METASTORE_DATABASE_NAME, AUTHENTICATION_DATABASE_NAME, KYUUBI_CLIENT_RELATION_NAME
+from constants import (
+    AUTHENTICATION_DATABASE_NAME,
+    KYUUBI_CLIENT_RELATION_NAME,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
+
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, service_account):
@@ -555,9 +559,7 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
 
     logger.info("Waiting for test charm to be idle...")
     await ops_test.model.wait_for_idle(
-        apps=[TEST_CHARM_NAME, APP_NAME],
-        timeout=1000,
-        status="active"
+        apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
     )
 
     # Check number of users before integration
@@ -571,7 +573,8 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
 
     # Fetch host address of postgresql-k8s
     status = await ops_test.model.get_status()
-    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][       "units"
+    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
+        "units"
     ][f"{charm_versions.postgres.application_name}/0"]["address"]
 
     # Connect to PostgreSQL metastore database
@@ -636,7 +639,7 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
             "db_666",
             "tbl_666",
             kyuubi_username,
-            kyuubi_password
+            kyuubi_password,
         ],
         capture_output=True,
     )
@@ -653,9 +656,7 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
 
     logger.info("Waiting for charms to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[TEST_CHARM_NAME, APP_NAME],
-        timeout=1000,
-        status="active"
+        apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
     )
 
     # Fetch password for operator user from postgresql-k8s
@@ -668,7 +669,8 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
 
     # Fetch host address of postgresql-k8s
     status = await ops_test.model.get_status()
-    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][       "units"
+    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
+        "units"
     ][f"{charm_versions.postgres.application_name}/0"]["address"]
 
     # Connect to PostgreSQL metastore database
@@ -689,7 +691,8 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
 
     logger.info("Removing relation between test charm and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:{KYUUBI_CLIENT_RELATION_NAME}", f"{TEST_CHARM_NAME}:{KYUUBI_CLIENT_RELATION_NAME}"
+        f"{APP_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
+        f"{TEST_CHARM_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
     )
 
     logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
@@ -729,7 +732,7 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
             "db_777",
             "tbl_777",
             kyuubi_username,
-            kyuubi_password
+            kyuubi_password,
         ],
         capture_output=True,
     )
