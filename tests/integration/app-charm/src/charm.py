@@ -42,7 +42,9 @@ class ApplicationCharm(ops.CharmBase):
         self.unit.status = ActiveStatus("")
 
     def _on_database_created(self, event):
-        logger.info("Database created...")
+        logger.info(
+            f"Database created with username={event.username} and password={event.password}..."
+        )
 
     def _on_jdbc_relation_broken(self, event):
         logger.info("JDBC relation removed...")
