@@ -30,7 +30,7 @@ resources:
   kyuubi-image:
     type: oci-image
     description: OCI image for kyuubi
-    upstream-source: ghcr.io/canonical/charmed-spark:3.4-22.04_edge
+    upstream-source: ghcr.io/canonical/charmed-spark@sha256:90a1f26a33d7524b00b5b0692f03ed96919ea89ded571943d2b5aa7802389f87
 
 requires:
   s3-credentials:
