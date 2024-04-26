@@ -267,6 +267,12 @@ class KyuubiCharm(ops.CharmBase):
 
         raw_info = self.s3_requirer.get_s3_connection_info()
 
+        if any([
+            key not in raw_info
+            for key in ["endpoint", "access-key", "secret-key"]
+        ]):
+            return None
+
         return S3ConnectionInfo(
             endpoint=raw_info.get("endpoint"),
             access_key=raw_info.get("access-key"),
@@ -284,7 +290,10 @@ class KyuubiCharm(ops.CharmBase):
 
         raw_info = self.metastore_db.fetch_relation_data()
         for data in raw_info.values():
-            if not data:
+            if any([
+                key not in data
+                for key in ["endpoints", "username", "password"]
+            ]):
                 continue
             return DatabaseConnectionInfo(
                 endpoint=data["endpoints"],
@@ -303,7 +312,10 @@ class KyuubiCharm(ops.CharmBase):
 
         raw_info = self.auth_db.fetch_relation_data()
         for data in raw_info.values():
-            if not data:
+            if any([
+                key not in data
+                for key in ["endpoints", "username", "password"]
+            ]):
                 continue
             hostname, port = data["endpoints"].split(":")
             return DatabaseConnectionInfo(
