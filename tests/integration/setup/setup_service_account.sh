@@ -16,4 +16,6 @@ echo "Creating namespace $NAMESPACE..."
 kubectl create namespace $NAMESPACE
 
 echo "Creating service account $SERVICE_ACCOUNT..."
-spark-client.service-account-registry create --username $SERVICE_ACCOUNT --namespace $NAMESPACE
+spark-client.service-account-registry create \
+    --username $SERVICE_ACCOUNT --namespace $NAMESPACE \
+    --conf spark.kubernetes.executor.request.cores=0.1 
