@@ -47,10 +47,10 @@ class SparkConfig(WithLogging):
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""
-        # interface = LightKube(None, None)
-        # registry = K8sServiceAccountRegistry(interface)
-        # if sa := registry.get(f"{self.namespace}:{self.service_account}"):
-        #     return sa.configurations.props
+        interface = LightKube(None, None)
+        registry = K8sServiceAccountRegistry(interface)
+        if sa := registry.get(f"{self.namespace}:{self.service_account}"):
+            return sa.configurations.props
         return {}
 
     def _user_conf(self):
