@@ -59,7 +59,9 @@ def test_s3_relation_invalid_credentials(
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_s3_relation_valid_credentials(
+    mock_sa_conf,
     mock_get_master,
     mock_valid_sa,
     mock_valid_ns,
@@ -92,7 +94,9 @@ def test_s3_relation_valid_credentials(
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_s3_relation_broken(
+    mock_sa_conf,
     mock_get_master,
     mock_valid_sa,
     mock_valid_ns,

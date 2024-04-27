@@ -36,7 +36,6 @@ class SparkConfig(WithLogging):
         cluster_address = Client().config.cluster.server
         return f"k8s://{cluster_address}"
 
-    @property
     def _base_conf(self):
         """Return base Spark configurations."""
         return {
@@ -47,16 +46,14 @@ class SparkConfig(WithLogging):
             "spark.submit.deployMode": "cluster",
         }
 
-    @property
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""
-        interface = LightKube(None, None)
-        registry = K8sServiceAccountRegistry(interface)
-        if sa := registry.get(f"{self.namespace}:{self.service_account}"):
-            return sa.configurations.props
+        # interface = LightKube(None, None)
+        # registry = K8sServiceAccountRegistry(interface)
+        # if sa := registry.get(f"{self.namespace}:{self.service_account}"):
+        #     return sa.configurations.props
         return {}
 
-    @property
     def _user_conf(self):
         """Spark configurations generated from relations."""
         conf = {}
@@ -83,7 +80,7 @@ class SparkConfig(WithLogging):
             2. Configurations associated with service account read from Spark8t
             3. Base configurations
         """
-        return self._base_conf | self._sa_conf | self._user_conf
+        return self._base_conf() | self._sa_conf() | self._user_conf()
 
     @property
     def contents(self) -> str:
