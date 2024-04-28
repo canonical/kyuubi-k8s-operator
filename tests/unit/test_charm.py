@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from scenario import Container, State
 
-from constants import KYUUBI_CONTAINER_NAME, SPARK_PROPERTIES_FILE
+from constants import KYUUBI_CONTAINER_NAME, KYUUBI_OCI_IMAGE, SPARK_PROPERTIES_FILE
 from models import Status
 
 logger = logging.getLogger(__name__)
@@ -158,3 +158,51 @@ def test_invalid_service_account(
     )
     out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
     assert out.unit_status == Status.INVALID_SERVICE_ACCOUNT.value
+
+
+@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("utils.k8s.is_valid_namespace", return_value=True)
+@patch("utils.k8s.is_valid_service_account", return_value=True)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch(
+    "config.spark.SparkConfig._sa_conf",
+    return_value={
+        "new_property": "new_value",
+        "spark.kubernetes.container.image": "image_from_service_account",
+        "spark.hadoop.fs.s3a.endpoint": "endpoint_from_service_account",
+    },
+)
+def test_spark_property_priorities(
+    mock_sa_conf,
+    mock_get_master,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_s3_verify,
+    tmp_path,
+    kyuubi_context,
+    kyuubi_container,
+    s3_relation,
+):
+    state = State(
+        relations=[s3_relation],
+        containers=[kyuubi_container],
+    )
+    kyuubi_context.run(s3_relation.changed_event, state)
+
+    spark_properties = parse_spark_properties(tmp_path)
+
+    # New property read from service account (via spark8t) should
+    # appear in the Spark properties file
+    assert spark_properties["new_property"] == "new_value"
+
+    # Property read from service account (via spark8t) should
+    # override the property of same name set by Kyuubi charm.
+    assert spark_properties["spark.kubernetes.container.image"] != KYUUBI_OCI_IMAGE
+    assert spark_properties["spark.kubernetes.container.image"] == "image_from_service_account"
+
+    # However, property created by charm relation should override
+    # property read from service account (via spark8t)
+    assert spark_properties["spark.hadoop.fs.s3a.endpoint"] != "endpoint_from_service_account"
+    assert (
+        spark_properties["spark.hadoop.fs.s3a.endpoint"] == s3_relation.remote_app_data["endpoint"]
+    )

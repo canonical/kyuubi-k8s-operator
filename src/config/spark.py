@@ -8,6 +8,7 @@
 from typing import Optional
 
 from lightkube import Client
+from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
 from s3 import S3ConnectionInfo
