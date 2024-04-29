@@ -787,7 +787,8 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
 @pytest.mark.abort_on_fail
 async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, service_account):
     """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi."""
-    namespace, sa_name = service_account
+    namespace, _ = service_account
+    sa_name = "custom_sa"
 
     # Adding a custom property via Spark8t to the service account
     assert (
@@ -795,7 +796,7 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
             [
                 "python",
                 "-m" "spark8t.cli.service_account_registry",
-                "add-config",
+                "create",
                 "--username",
                 sa_name,
                 "--namespace",
@@ -805,6 +806,18 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
             ],
         ).returncode
         == 0
+    )
+
+    logger.info("Changing configuration for kyuubi-k8s charm...")
+    await ops_test.model.applications[APP_NAME].set_config(
+        {"namespace": namespace, "service-account": sa_name}
+    )
+
+    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME],
+        status="blocked",
+        timeout=1000,
     )
 
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
