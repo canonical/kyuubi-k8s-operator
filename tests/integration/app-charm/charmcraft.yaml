@@ -1,0 +1,23 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: application
+type: charm
+bases:
+  - build-on:
+      - name: "ubuntu"
+        channel: "22.04"
+    run-on:
+      - name: "ubuntu"
+        channel: "22.04"
+
+description: |
+  Dummy charm used in integration tests for Kyuubi.
+summary: |
+  Dummy charm application meant to be used
+  only for testing of the libs in this repository.
+
+
+requires:
+  jdbc:
+    interface: kyuubi_client

@@ -60,6 +60,21 @@ class Authentication(WithLogging):
         status, _ = self.database.execute(query=query, vars=vars)
         return status
 
+    def delete_user(self, username: str) -> bool:
+        """Delete a user with given username.
+
+        Args:
+            username (str): Username of the user to be deleted.
+
+        Returns:
+            bool: signifies whether the user has been deleted successfully
+        """
+        self.logger.info(f"Deleting user {username}...")
+        query = f"DELETE FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        vars = (username,)
+        status, _ = self.database.execute(query=query, vars=vars)
+        return status
+
     def get_password(self, username: str) -> str:
         """Returns the password for the given username."""
         query = f"SELECT passwd FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s"

@@ -44,6 +44,7 @@ class SparkConfig(WithLogging):
             "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account,
             "spark.kubernetes.namespace": self.namespace,
             "spark.submit.deployMode": "cluster",
+            "spark.kubernetes.file.upload.path": self._get_upload_path(),
         }
 
     def _sa_conf(self):
