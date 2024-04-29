@@ -15,6 +15,7 @@ from pytest_operator.plugin import OpsTest
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
+    METASTORE_DATABASE_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -126,38 +127,38 @@ async def test_integration_with_s3_integrator(
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
-# @pytest.mark.abort_on_fail
-# async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod):
-#     """Test the JDBC endpoint exposed by the charm."""
-#     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-#     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-#     action = await kyuubi_unit.run_action(
-#         action_name="get-jdbc-endpoint",
-#     )
-#     result = await action.wait()
+@pytest.mark.abort_on_fail
+async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod):
+    """Test the JDBC endpoint exposed by the charm."""
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
 
-#     jdbc_endpoint = result.results.get("endpoint")
-#     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-#     logger.info(
-#         "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
-#     )
-#     process = subprocess.run(
-#         [
-#             "./tests/integration/test_jdbc_endpoint.sh",
-#             test_pod,
-#             jdbc_endpoint,
-#             "db_default_metastore",
-#             "table_default_metastore",
-#         ],
-#         capture_output=True,
-#     )
-#     print("========== test_jdbc_endpoint.sh STDOUT =================")
-#     print(process.stdout.decode())
-#     print("========== test_jdbc_endpoint.sh STDERR =================")
-#     print(process.stderr.decode())
-#     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
-#     assert process.returncode == 0
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
+    )
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            jdbc_endpoint,
+            "db_default_metastore",
+            "table_default_metastore",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
 
 
 @pytest.mark.abort_on_fail
@@ -187,159 +188,159 @@ async def test_integration_with_postgresql_over_metastore_db(ops_test: OpsTest, 
     assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
 
 
-# @pytest.mark.abort_on_fail
-# async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod, charm_versions):
-#     """Test the JDBC endpoint exposed by the charm."""
-#     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-#     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-#     action = await kyuubi_unit.run_action(
-#         action_name="get-jdbc-endpoint",
-#     )
-#     result = await action.wait()
+@pytest.mark.abort_on_fail
+async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod, charm_versions):
+    """Test the JDBC endpoint exposed by the charm."""
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
 
-#     jdbc_endpoint = result.results.get("endpoint")
-#     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-#     logger.info(
-#         "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
-#     )
-#     process = subprocess.run(
-#         [
-#             "./tests/integration/test_jdbc_endpoint.sh",
-#             test_pod,
-#             jdbc_endpoint,
-#             "db_postgres_metastore",
-#             "table_postgres_metastore",
-#         ],
-#         capture_output=True,
-#     )
-#     print("========== test_jdbc_endpoint.sh STDOUT =================")
-#     print(process.stdout.decode())
-#     print("========== test_jdbc_endpoint.sh STDERR =================")
-#     print(process.stderr.decode())
-#     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
-#     assert process.returncode == 0
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
+    )
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            jdbc_endpoint,
+            "db_postgres_metastore",
+            "table_postgres_metastore",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
 
-#     # Fetch password for default user from postgresql-k8s
-#     postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
-#     action = await postgres_unit.run_action(
-#         action_name="get-password",
-#     )
-#     result = await action.wait()
-#     password = result.results.get("password")
+    # Fetch password for default user from postgresql-k8s
+    postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
+    action = await postgres_unit.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+    password = result.results.get("password")
 
-#     # Fetch host address of postgresql-k8s
-#     status = await ops_test.model.get_status()
-#     postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
-#         "units"
-#     ][f"{charm_versions.postgres.application_name}/0"]["address"]
+    # Fetch host address of postgresql-k8s
+    status = await ops_test.model.get_status()
+    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
+        "units"
+    ][f"{charm_versions.postgres.application_name}/0"]["address"]
 
-#     # Connect to PostgreSQL metastore database
-#     connection = psycopg2.connect(
-#         host=postgresql_host_address,
-#         database=METASTORE_DATABASE_NAME,
-#         user="operator",
-#         password=password,
-#     )
+    # Connect to PostgreSQL metastore database
+    connection = psycopg2.connect(
+        host=postgresql_host_address,
+        database=METASTORE_DATABASE_NAME,
+        user="operator",
+        password=password,
+    )
 
-#     # Fetch number of new db and tables that have been added to metastore
-#     num_dbs = num_tables = 0
-#     with connection.cursor() as cursor:
-#         cursor.execute(""" SELECT * FROM "DBS" WHERE "NAME" = 'db_postgres_metastore' """)
-#         num_dbs = cursor.rowcount
-#         cursor.execute(""" SELECT * FROM "TBLS" WHERE "TBL_NAME" = 'table_postgres_metastore' """)
-#         num_tables = cursor.rowcount
+    # Fetch number of new db and tables that have been added to metastore
+    num_dbs = num_tables = 0
+    with connection.cursor() as cursor:
+        cursor.execute(""" SELECT * FROM "DBS" WHERE "NAME" = 'db_postgres_metastore' """)
+        num_dbs = cursor.rowcount
+        cursor.execute(""" SELECT * FROM "TBLS" WHERE "TBL_NAME" = 'table_postgres_metastore' """)
+        num_tables = cursor.rowcount
 
-#     connection.close()
+    connection.close()
 
-#     # Assert that new database and tables have indeed been added to metastore
-#     assert num_dbs != 0
-#     assert num_tables != 0
+    # Assert that new database and tables have indeed been added to metastore
+    assert num_dbs != 0
+    assert num_tables != 0
 
 
-# @pytest.mark.abort_on_fail
-# async def test_jdbc_endpoint_after_removing_postgresql_metastore(
-#     ops_test: OpsTest, test_pod, charm_versions
-# ):
-#     """Test the JDBC endpoint exposed by the charm."""
-#     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
-#     await ops_test.model.applications[APP_NAME].remove_relation(
-#         f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
-#     )
+@pytest.mark.abort_on_fail
+async def test_jdbc_endpoint_after_removing_postgresql_metastore(
+    ops_test: OpsTest, test_pod, charm_versions
+):
+    """Test the JDBC endpoint exposed by the charm."""
+    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
+    await ops_test.model.applications[APP_NAME].remove_relation(
+        f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
+    )
 
-#     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-#     )
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+    )
 
-#     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-#     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-#     action = await kyuubi_unit.run_action(
-#         action_name="get-jdbc-endpoint",
-#     )
-#     result = await action.wait()
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
 
-#     jdbc_endpoint = result.results.get("endpoint")
-#     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-#     logger.info(
-#         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
-#     )
-#     process = subprocess.run(
-#         [
-#             "./tests/integration/test_jdbc_endpoint.sh",
-#             test_pod,
-#             jdbc_endpoint,
-#             "db_default_metastore_2",
-#             "table_default_metastore_2",
-#         ],
-#         capture_output=True,
-#     )
-#     print("========== test_jdbc_endpoint.sh STDOUT =================")
-#     print(process.stdout.decode())
-#     print("========== test_jdbc_endpoint.sh STDERR =================")
-#     print(process.stderr.decode())
-#     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
-#     assert process.returncode == 0
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
+    )
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            jdbc_endpoint,
+            "db_default_metastore_2",
+            "table_default_metastore_2",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
 
-#     # Fetch password for default user from postgresql-k8s
-#     postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
-#     action = await postgres_unit.run_action(
-#         action_name="get-password",
-#     )
-#     result = await action.wait()
-#     password = result.results.get("password")
+    # Fetch password for default user from postgresql-k8s
+    postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
+    action = await postgres_unit.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+    password = result.results.get("password")
 
-#     # Fetch host address of postgresql-k8s
-#     status = await ops_test.model.get_status()
-#     postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
-#         "units"
-#     ][f"{charm_versions.postgres.application_name}/0"]["address"]
+    # Fetch host address of postgresql-k8s
+    status = await ops_test.model.get_status()
+    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
+        "units"
+    ][f"{charm_versions.postgres.application_name}/0"]["address"]
 
-#     # Connect to PostgreSQL metastore database
-#     connection = psycopg2.connect(
-#         host=postgresql_host_address,
-#         database=METASTORE_DATABASE_NAME,
-#         user="operator",
-#         password=password,
-#     )
+    # Connect to PostgreSQL metastore database
+    connection = psycopg2.connect(
+        host=postgresql_host_address,
+        database=METASTORE_DATABASE_NAME,
+        user="operator",
+        password=password,
+    )
 
-#     # Fetch number of new db and tables that have been added to metastore
-#     num_dbs = num_tables = 0
-#     with connection.cursor() as cursor:
-#         cursor.execute(""" SELECT * FROM "DBS" WHERE "NAME" = 'db_default_metastore_2' """)
-#         num_dbs = cursor.rowcount
-#         logger.info(cursor.fetchall())
-#         cursor.execute(""" SELECT * FROM "TBLS" WHERE "TBL_NAME" = 'table_default_metastore_2' """)
-#         num_tables = cursor.rowcount
-#         logger.info(cursor.fetchall())
+    # Fetch number of new db and tables that have been added to metastore
+    num_dbs = num_tables = 0
+    with connection.cursor() as cursor:
+        cursor.execute(""" SELECT * FROM "DBS" WHERE "NAME" = 'db_default_metastore_2' """)
+        num_dbs = cursor.rowcount
+        logger.info(cursor.fetchall())
+        cursor.execute(""" SELECT * FROM "TBLS" WHERE "TBL_NAME" = 'table_default_metastore_2' """)
+        num_tables = cursor.rowcount
+        logger.info(cursor.fetchall())
 
-#     connection.close()
+    connection.close()
 
-#     # Assert that new database and tables are not created in PostgreSQL
-#     # (because the relation has already been removed.)
-#     assert num_dbs == 0
-#     assert num_tables == 0
+    # Assert that new database and tables are not created in PostgreSQL
+    # (because the relation has already been removed.)
+    assert num_dbs == 0
+    assert num_tables == 0
 
 
 @pytest.mark.abort_on_fail
@@ -613,9 +614,6 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
 
     logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
 
-    # import time
-    # time.sleep(300)
-
     # Get JDBC endpoint
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
@@ -745,62 +743,62 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
     assert "Error validating the login" in process.stderr.decode()
 
 
-# @pytest.mark.abort_on_fail
-# async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions):
-#     """Test the JDBC connection when authentication is disabled."""
-#     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s over auth-db endpoint...")
-#     await ops_test.model.applications[APP_NAME].remove_relation(
-#         f"{APP_NAME}:auth-db", f"{charm_versions.postgres.application_name}:database"
-#     )
+@pytest.mark.abort_on_fail
+async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions):
+    """Test the JDBC connection when authentication is disabled."""
+    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s over auth-db endpoint...")
+    await ops_test.model.applications[APP_NAME].remove_relation(
+        f"{APP_NAME}:auth-db", f"{charm_versions.postgres.application_name}:database"
+    )
 
-#     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-#     )
-#     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-#     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-#     action = await kyuubi_unit.run_action(
-#         action_name="get-jdbc-endpoint",
-#     )
-#     result = await action.wait()
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+    )
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
 
-#     jdbc_endpoint = result.results.get("endpoint")
-#     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-#     logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
-#     process = subprocess.run(
-#         [
-#             "./tests/integration/test_jdbc_endpoint.sh",
-#             test_pod,
-#             jdbc_endpoint,
-#             "db_555",
-#             "table_555",
-#         ],
-#         capture_output=True,
-#     )
-#     print("========== test_jdbc_endpoint.sh STDOUT =================")
-#     print(process.stdout.decode())
-#     print("========== test_jdbc_endpoint.sh STDERR =================")
-#     print(process.stderr.decode())
-#     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
-#     assert process.returncode == 0
+    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            jdbc_endpoint,
+            "db_555",
+            "table_555",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
 
 
-# @pytest.mark.abort_on_fail
-# async def test_invalid_config(
-#     ops_test: OpsTest,
-# ):
-#     """Test the behavior of charm when the  config provided to it are invalid."""
-#     logger.info("Setting invalid configuration for kyuubi-k8s charm...")
-#     await ops_test.model.applications[APP_NAME].set_config(
-#         {"namespace": "invalid", "service-account": "invalid"}
-#     )
+@pytest.mark.abort_on_fail
+async def test_invalid_config(
+    ops_test: OpsTest,
+):
+    """Test the behavior of charm when the  config provided to it are invalid."""
+    logger.info("Setting invalid configuration for kyuubi-k8s charm...")
+    await ops_test.model.applications[APP_NAME].set_config(
+        {"namespace": "invalid", "service-account": "invalid"}
+    )
 
-#     logger.info("Waiting for kyuubi-k8s app to be idle...")
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME],
-#         timeout=1000,
-#     )
+    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME],
+        timeout=1000,
+    )
 
-#     # Assert that the charm is in blocked state, due to invalid config options
-#     assert ops_test.model.applications[APP_NAME].status == "blocked"
+    # Assert that the charm is in blocked state, due to invalid config options
+    assert ops_test.model.applications[APP_NAME].status == "blocked"
