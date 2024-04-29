@@ -28,6 +28,7 @@ from config.spark import SparkConfig
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     DEFAULT_ADMIN_USERNAME,
+    KYUUBI_CLIENT_RELATION_NAME,
     KYUUBI_CONTAINER_NAME,
     METASTORE_DATABASE_NAME,
     NAMESPACE_CONFIG_NAME,
@@ -38,6 +39,7 @@ from constants import (
 )
 from database import DatabaseConnectionInfo
 from models import Status
+from relation import KyuubiClientProvider
 from s3 import S3ConnectionInfo
 from utils import k8s
 from utils.auth import Authentication
@@ -64,6 +66,7 @@ class KyuubiCharm(ops.CharmBase):
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
         )
+        self.kyuubi_client_provider = KyuubiClientProvider(self, KYUUBI_CLIENT_RELATION_NAME)
         self.register_event_handlers()
 
     def register_event_handlers(self):
@@ -329,7 +332,7 @@ class KyuubiCharm(ops.CharmBase):
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
-        return self.auth_db_connection_info is not None
+        return bool(self.auth_db.relations)
 
 
 if __name__ == "__main__":  # pragma: nocover

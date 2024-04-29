@@ -50,6 +50,7 @@ class SparkConfig(WithLogging):
             "spark.kubernetes.namespace": self.namespace,
             "spark.submit.deployMode": "cluster",
             "spark.kubernetes.file.upload.path": self._get_upload_path(),
+            "spark.kubernetes.executor.request.cores": "0.1",  # TODO: Remove this once Kyuubi is able to read K8s secrets
         }
 
     @property
