@@ -784,28 +784,28 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
     assert process.returncode == 0
 
 
-
 @pytest.mark.abort_on_fail
 async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, service_account):
-    """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi"""
-
+    """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi."""
     namespace, sa_name = service_account
 
     # Adding a custom property via Spark8t to the service account
-    assert subprocess.run(
-        [
-            "python",
-            "-m"
-            "spark8t.cli.service_account_registry",
-            "add-config",
-            "--username",
-            sa_name,
-            "--namespace",
-            namespace,
-            "--conf",
-            "spark.executor.instances=3"
-        ],
-    ).returncode == 0
+    assert (
+        subprocess.run(
+            [
+                "python",
+                "-m" "spark8t.cli.service_account_registry",
+                "add-config",
+                "--username",
+                sa_name,
+                "--namespace",
+                namespace,
+                "--conf",
+                "spark.executor.instances=3",
+            ],
+        ).returncode
+        == 0
+    )
 
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
@@ -837,20 +837,13 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
 
     logger.info("Sleeping for a while...")
     import time
+
     time.sleep(100)
 
     # Check exactly 3 executor pods were created.
     list_pods_process = subprocess.run(
-        [
-            "kubectl",
-            "get",
-            "pods",
-            "-n",
-            namespace,
-            "--sort-by",
-            ".metadata.creationTimestamp"
-        ],
-        capture_output=True
+        ["kubectl", "get", "pods", "-n", namespace, "--sort-by", ".metadata.creationTimestamp"],
+        capture_output=True,
     )
 
     assert list_pods_process.returncode == 0
@@ -869,7 +862,7 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
     expected_executor_pod_names = [
         driver_pod_name.replace("driver", "exec-1"),
         driver_pod_name.replace("driver", "exec-2"),
-        driver_pod_name.replace("driver", "exec-3")
+        driver_pod_name.replace("driver", "exec-3"),
     ]
 
     assert len(executor_pod_names) == len(expected_executor_pod_names)
