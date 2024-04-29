@@ -784,6 +784,98 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
     assert process.returncode == 0
 
 
+
+@pytest.mark.abort_on_fail
+async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, service_account):
+    """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi"""
+
+    namespace, sa_name = service_account
+
+    # Adding a custom property via Spark8t to the service account
+    assert subprocess.run(
+        [
+            "python",
+            "-m"
+            "spark8t.cli.service_account_registry",
+            "add-config",
+            "--username",
+            sa_name,
+            "--namespace",
+            namespace,
+            "--conf",
+            "spark.executor.instances=3"
+        ],
+    ).returncode == 0
+
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
+
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+
+    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            jdbc_endpoint,
+            "db_555",
+            "table_555",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
+
+    logger.info("Sleeping for a while...")
+    import time
+    time.sleep(100)
+
+    # Check exactly 3 executor pods were created.
+    list_pods_process = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "pods",
+            "-n",
+            namespace,
+            "--sort-by",
+            ".metadata.creationTimestamp"
+        ],
+        capture_output=True
+    )
+
+    assert list_pods_process.returncode == 0
+
+    pods_list = list_pods_process.stdout.decode().splitlines()
+
+    driver_pod_name = ""
+    executor_pod_names = []
+    for pod in pods_list[-4:]:
+        name = pod.split()[0]
+        if "driver" in name:
+            driver_pod_name = name
+        else:
+            executor_pod_names.append(name)
+
+    expected_executor_pod_names = [
+        driver_pod_name.replace("driver", "exec-1"),
+        driver_pod_name.replace("driver", "exec-2"),
+        driver_pod_name.replace("driver", "exec-3")
+    ]
+
+    assert len(executor_pod_names) == len(expected_executor_pod_names)
+    assert set(executor_pod_names) == set(expected_executor_pod_names)
+
+
 @pytest.mark.abort_on_fail
 async def test_invalid_config(
     ops_test: OpsTest,

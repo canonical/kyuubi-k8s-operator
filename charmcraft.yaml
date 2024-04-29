@@ -9,6 +9,7 @@ parts:
       - rustc
       - cargo
       - libpq-dev
+      - git
     charm-strict-dependencies: true
   libpq:
     build-packages:
