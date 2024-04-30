@@ -788,22 +788,25 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
 async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, service_account):
     """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi."""
     namespace, _ = service_account
-    sa_name = "custom_sa"
+    sa_name = "custom-sa"
 
     # Adding a custom property via Spark8t to the service account
     assert (
         subprocess.run(
             [
                 "python",
-                "-m" "spark8t.cli.service_account_registry",
+                "-m",
+                "spark8t.cli.service_account_registry",
                 "create",
                 "--username",
                 sa_name,
                 "--namespace",
                 namespace,
                 "--conf",
+                "spark.kubernetes.executor.request.cores=0.1",
+                "--conf",
                 "spark.executor.instances=3",
-            ],
+            ]
         ).returncode
         == 0
     )
@@ -816,7 +819,7 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
-        status="blocked",
+        status="active",
         timeout=1000,
     )
 
@@ -836,8 +839,8 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
             jdbc_endpoint,
-            "db_555",
-            "table_555",
+            "db_888",
+            "table_888",
         ],
         capture_output=True,
     )
@@ -847,11 +850,6 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
     print(process.stderr.decode())
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
     assert process.returncode == 0
-
-    logger.info("Sleeping for a while...")
-    import time
-
-    time.sleep(100)
 
     # Check exactly 3 executor pods were created.
     list_pods_process = subprocess.run(
