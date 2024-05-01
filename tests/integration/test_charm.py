@@ -863,6 +863,9 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
 
     driver_pod_name = ""
     executor_pod_names = []
+
+    # Last 4 pods in the list are of interest,
+    # one is the driver and 3 should be executor pods
     for pod in pods_list[-4:]:
         name = pod.split()[0]
         if "driver" in name:
