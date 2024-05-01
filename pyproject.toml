@@ -37,7 +37,7 @@ boto3 = "^1.26.75"
 jsonschema = "^4.19.1"
 lightkube = "^0.15.2"
 psycopg2 = "^2.9.9"
-spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag="v0.0.7", python=">3.8,<4.0"}
+spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag="v0.0.8", python=">3.8,<4.0"}
 
 [tool.poetry.group.format]
 optional = true
