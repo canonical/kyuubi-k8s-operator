@@ -41,7 +41,7 @@ def test_pebble_ready(kyuubi_context, kyuubi_container):
     assert out.unit_status == Status.MISSING_S3_RELATION.value
 
 
-@patch("s3.S3ConnectionInfo.verify", return_value=False)
+@patch("managers.s3.S3Manager.verify", return_value=False)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 def test_s3_relation_invalid_credentials(

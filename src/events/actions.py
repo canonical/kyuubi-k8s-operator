@@ -10,7 +10,7 @@ from ops.charm import ActionEvent
 from constants import DEFAULT_ADMIN_USERNAME
 from core.context import Context
 from events.base import BaseEventHandler
-from managers.auth import Authentication
+from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
@@ -27,7 +27,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.auth = Authentication(self.context.auth_db)
+        self.auth = AuthenticationManager(self.context.auth_db)
 
         self.framework.observe(self.charm.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
         self.framework.observe(self.charm.on.get_password_action, self._on_get_password)
