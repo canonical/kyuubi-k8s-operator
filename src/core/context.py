@@ -4,14 +4,13 @@
 
 """Charm Context definition and parsing logic."""
 
-from enum import Enum
 
 # from charms.data_platform_libs.v0.data_interfaces import RequirerData
-from ops import ActiveStatus, BlockedStatus, CharmBase, MaintenanceStatus, Relation
+from ops import CharmBase, Relation
 
-from utils.logging import WithLogging
 from constants import S3_INTEGRATOR_REL
-from core.domain import S3ConnectionInfo, DatabaseConnectionInfo, ServiceAccountInfo
+from core.domain import S3ConnectionInfo, ServiceAccountInfo
+from utils.logging import WithLogging
 
 
 class Context(WithLogging):
@@ -25,7 +24,9 @@ class Context(WithLogging):
     @property
     def _s3_relation_id(self) -> int | None:
         """The S3 relation."""
-        return relation.id if (relation := self.charm.model.get_relation(S3_INTEGRATOR_REL)) else None
+        return (
+            relation.id if (relation := self.charm.model.get_relation(S3_INTEGRATOR_REL)) else None
+        )
 
     @property
     def _s3_relation(self) -> Relation | None:
@@ -36,19 +37,21 @@ class Context(WithLogging):
 
     @property
     def s3(self) -> S3ConnectionInfo | None:
-        """The server state of the current running Unit."""
+        """The state of S3 connection."""
         return S3ConnectionInfo(rel, rel.app) if (rel := self._s3_relation) else None
 
     @property
     def metastore_db(self):
+        """The state of metastore DB connection."""
         pass
 
     @property
     def auth_db(self):
-        pass
+        """The state of authentication DB connection."""
 
     @property
     def service_account(self):
+        """The state of service account information."""
         return ServiceAccountInfo(self.charm)
 
     def is_authentication_enabled(self) -> bool:

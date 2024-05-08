@@ -5,16 +5,23 @@
 
 """Definition of various model classes."""
 
+import json
 from dataclasses import dataclass
 from enum import Enum
-import json
+from typing import List, MutableMapping
 
+from ops import Application, CharmBase, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
-from ops import CharmBase
 
-from typing import MutableMapping, List
-from ops import Application, Relation, Unit
-from constants import METASTORE_DATABASE_NAME, AUTHENTICATION_DATABASE_NAME, POSTGRESQL_METASTORE_DB_REL, POSTGRESQL_AUTH_DB_REL, NAMESPACE_CONFIG_NAME, SERVICE_ACCOUNT_CONFIG_NAME
+from constants import (
+    AUTHENTICATION_DATABASE_NAME,
+    METASTORE_DATABASE_NAME,
+    NAMESPACE_CONFIG_NAME,
+    POSTGRESQL_AUTH_DB_REL,
+    POSTGRESQL_METASTORE_DB_REL,
+    SERVICE_ACCOUNT_CONFIG_NAME,
+)
+
 
 @dataclass
 class User:
@@ -65,7 +72,6 @@ class StateBase:
         self.relation.data[self.component] = {}
 
 
-
 class S3ConnectionInfo(StateBase):
     """Class representing credentials and endpoints to connect to S3."""
 
@@ -112,7 +118,6 @@ class S3ConnectionInfo(StateBase):
         return f"s3a://{self.bucket}/{self.path}"
 
 
-
 class DatabaseConnectionInfo(StateBase):
     """Class representing credentials and endpoints to connect to S3."""
 
@@ -133,23 +138,22 @@ class DatabaseConnectionInfo(StateBase):
     def password(self) -> str:
         """Return the password to connect to the database."""
         return self.relation_data.get("secret-key", "")
-    
+
     @property
     def dbname(self) -> str | None:
+        """Return the name of database to connect to."""
         if self.relation.name == POSTGRESQL_METASTORE_DB_REL:
             return METASTORE_DATABASE_NAME
         elif self.relation.name == POSTGRESQL_AUTH_DB_REL:
             return AUTHENTICATION_DATABASE_NAME
         return None
 
-    
 
-class ServiceAccountInfo():
-    """
-    Class representing service account and namespace to be used by Kyuubi.
+class ServiceAccountInfo:
+    """Class representing service account and namespace to be used by Kyuubi.
 
     For the time being, this is being read from the config options. However, when Kyuubi
-    is fully integrated with the integration hub, this will be read from the integration hub 
+    is fully integrated with the integration hub, this will be read from the integration hub
     relation in a pattern similar to S3ConnectionInfo and DatabaseConnectionInfo.
     """
 
@@ -158,8 +162,10 @@ class ServiceAccountInfo():
 
     @property
     def namespace(self) -> str | None:
+        """Return the namespace."""
         return self.charm.config[NAMESPACE_CONFIG_NAME]
-    
+
     @property
     def service_account(self) -> str | None:
+        """Return the name of service account."""
         return self.charm.config[SERVICE_ACCOUNT_CONFIG_NAME]

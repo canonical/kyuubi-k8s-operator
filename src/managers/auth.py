@@ -8,12 +8,14 @@
 import secrets
 import string
 
+from database import DatabaseConnectionInfo
+
 from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
-from database import DatabaseConnectionInfo
-from utils.logging import WithLogging
 from managers.database import DatabaseManager
+from utils.logging import WithLogging
+
 
 class AuthenticationManager(WithLogging):
     """Manager encapsulating various authentication related methods."""

@@ -3,19 +3,11 @@
 # See LICENSE file for licensing details.
 
 """Module containing all business logic related to the workload."""
-import json
-
-import ops.pebble
-from ops.model import Container
-
-from workload.k8s import K8sWorkload
-from utils.logging import WithLogging
-from core.domain import User
-from workload.base import KyuubiWorkloadBase
 
 import re
 import socket
 
+import ops.pebble
 from ops.model import Container
 
 from constants import (
@@ -30,10 +22,12 @@ from constants import (
 from core.domain import User
 from utils.io import ContainerFile, IOMode
 from utils.logging import WithLogging
+from workload.base import KyuubiWorkloadBase
+from workload.k8s import K8sWorkload
 
 
 class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
-    """Class representing workload implementation for Kyuubi on K8s"""
+    """Class representing workload implementation for Kyuubi on K8s."""
 
     def __init__(self, container: Container, user: User = User()):
         self.container = container

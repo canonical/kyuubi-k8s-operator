@@ -18,7 +18,11 @@ from utils.logging import WithLogging
 class SparkConfig(WithLogging):
     """Spark Configurations."""
 
-    def __init__(self, s3_info: Optional[S3ConnectionInfo], service_account_info: Optional[ServiceAccountInfo]):
+    def __init__(
+        self,
+        s3_info: Optional[S3ConnectionInfo],
+        service_account_info: Optional[ServiceAccountInfo],
+    ):
         self.s3_info = s3_info
         self.namespace = service_account_info.namespace
         self.service_account = service_account_info.service_account

@@ -9,16 +9,15 @@ from typing import Callable
 
 from ops import CharmBase, EventBase, Object, StatusBase
 
-from workload.kyuubi import KyuubiWorkload
-from utils.logging import WithLogging
-from managers.s3 import S3ConnectionInfo
-from core.domain import Status
-from utils import k8s
-
 from constants import (
     NAMESPACE_CONFIG_NAME,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
+from core.domain import Status
+from managers.s3 import S3ConnectionInfo
+from utils import k8s
+from utils.logging import WithLogging
+from workload.kyuubi import KyuubiWorkload
 
 
 class BaseEventHandler(Object, WithLogging):

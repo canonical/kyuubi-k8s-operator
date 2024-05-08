@@ -7,8 +7,8 @@
 from abc import abstractmethod
 from pathlib import Path
 
-from workload import AbstractWorkload
 from core.domain import User
+from workload import AbstractWorkload
 
 
 class KyuubiPaths:

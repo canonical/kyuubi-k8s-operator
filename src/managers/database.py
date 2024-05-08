@@ -11,8 +11,9 @@ import psycopg2
 from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
-from utils.logging import WithLogging
 from core.domain import DatabaseConnectionInfo
+from utils.logging import WithLogging
+
 
 class DatabaseManager(WithLogging):
     """Manager class encapsulating various database operations."""

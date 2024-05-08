@@ -4,19 +4,19 @@
 
 """Authentication related event handlers."""
 
-from ops import CharmBase
-
-from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
-from managers.kyuubi import KyuubiManager
-from managers.auth import AuthenticationManager
-from core.context import Context
-from constants import POSTGRESQL_AUTH_DB_REL, AUTHENTICATION_DATABASE_NAME
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
     DatabaseRequires,
 )
+from ops import CharmBase
+
+from constants import AUTHENTICATION_DATABASE_NAME, POSTGRESQL_AUTH_DB_REL
+from core.context import Context
+from events.base import BaseEventHandler
+from managers.auth import AuthenticationManager
+from managers.kyuubi import KyuubiManager
+from utils.logging import WithLogging
+from workload.base import KyuubiWorkloadBase
 
 
 class AuthenticationEvents(BaseEventHandler, WithLogging):
@@ -31,7 +31,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload)
         self.auth = AuthenticationManager(self.context.auth_db)
-        self.auth_db =  DatabaseRequires(
+        self.auth_db = DatabaseRequires(
             self, relation_name=POSTGRESQL_AUTH_DB_REL, database_name=AUTHENTICATION_DATABASE_NAME
         )
 
@@ -39,7 +39,9 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.framework.observe(
             self.auth_db.on.endpoints_changed, self._on_auth_db_endpoints_changed
         )
-        self.framework.observe(self.charm.on.auth_db_relation_broken, self._on_auth_db_relation_removed)
+        self.framework.observe(
+            self.charm.on.auth_db_relation_broken, self._on_auth_db_relation_removed
+        )
         self.framework.observe(
             self.charm.on.auth_db_relation_departed, self._on_auth_db_relation_departed
         )
@@ -54,7 +56,6 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
         )
 
-
     def _on_auth_db_endpoints_changed(self, event) -> None:
         self.logger.info("Authentication database endpoints changed...")
         self.kyuubi.update(
@@ -63,7 +64,6 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             auth_db_info=self.context.auth_db,
             service_account_info=self.context.service_account,
         )
-
 
     def _on_auth_db_relation_removed(self, event) -> None:
         self.logger.info("Authentication database relation removed")

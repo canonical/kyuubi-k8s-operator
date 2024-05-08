@@ -4,19 +4,18 @@
 
 """S3 Integration related event handlers."""
 
-from ops import CharmBase
-
-
-from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
-from managers.kyuubi import KyuubiManager
-from core.context import Context
-from constants import POSTGRESQL_METASTORE_DB_REL, METASTORE_DATABASE_NAME
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
     DatabaseRequires,
 )
+from ops import CharmBase
+
+from constants import METASTORE_DATABASE_NAME, POSTGRESQL_METASTORE_DB_REL
+from core.context import Context
+from events.base import BaseEventHandler, compute_status
+from managers.kyuubi import KyuubiManager
+from utils.logging import WithLogging
+from workload.base import KyuubiWorkloadBase
 
 
 class MetastoreEvents(BaseEventHandler, WithLogging):
@@ -30,7 +29,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.metastore_db =  DatabaseRequires(
+        self.metastore_db = DatabaseRequires(
             self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
 
@@ -51,7 +50,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
             auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account
+            service_account_info=self.context.service_account,
         )
 
     @compute_status
@@ -61,5 +60,5 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
             auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account
+            service_account_info=self.context.service_account,
         )

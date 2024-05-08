@@ -5,15 +5,15 @@
 """Action related event handlers."""
 
 from ops import CharmBase
+from ops.charm import ActionEvent
 
+from constants import DEFAULT_ADMIN_USERNAME
+from core.context import Context
+from events.base import BaseEventHandler
+from managers.auth import Authentication
+from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
-from managers.kyuubi import KyuubiManager
-from core.context import Context
-from constants import DEFAULT_ADMIN_USERNAME
-from ops.charm import ActionEvent
-from managers.auth import Authentication
 
 
 class ActionEvents(BaseEventHandler, WithLogging):
@@ -37,7 +37,6 @@ class ActionEvents(BaseEventHandler, WithLogging):
         result = {"endpoint": self.workload.get_jdbc_endpoint()}
         event.set_results(result)
 
-
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for admin user."""
         if not self.context.is_authentication_enabled():
@@ -46,9 +45,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
             )
             return
-        password = self.auth.get_password(
-            DEFAULT_ADMIN_USERNAME
-        )
+        password = self.auth.get_password(DEFAULT_ADMIN_USERNAME)
         event.set_results({"password": password})
 
     def _on_set_password(self, event: ActionEvent) -> None:

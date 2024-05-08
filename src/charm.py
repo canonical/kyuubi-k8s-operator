@@ -10,20 +10,19 @@
 import logging
 
 import ops
+
 from constants import (
     KYUUBI_CONTAINER_NAME,
 )
+from core.context import Context
+from events.actions import ActionEvents
+from events.auth import AuthenticationEvents
+from events.metastore import MetastoreEvents
+from events.s3 import S3Events
+from workload.kyuubi import KyuubiWorkload
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
-
-
-from workload.kyuubi import KyuubiWorkload
-from core.context import Context
-from events.s3 import S3Events
-from events.metastore import MetastoreEvents
-from events.auth import AuthenticationEvents
-from events.actions import ActionEvents
 
 
 class KyuubiCharm(ops.CharmBase):
@@ -41,7 +40,6 @@ class KyuubiCharm(ops.CharmBase):
         self.metastore = MetastoreEvents(self, self.context, self.workload)
         self.auth = AuthenticationEvents(self, self.context, self.workload)
         self.actions = ActionEvents(self, self.context, self.workload)
-
 
 
 if __name__ == "__main__":  # pragma: nocover

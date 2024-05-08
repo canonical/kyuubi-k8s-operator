@@ -11,12 +11,13 @@ from charms.data_platform_libs.v0.s3 import (
 )
 from ops import CharmBase
 
-from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
+from constants import S3_INTEGRATOR_REL
+from core.context import Context
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
-from core.context import Context
-from constants import S3_INTEGRATOR_REL
+from utils.logging import WithLogging
+from workload.base import KyuubiWorkloadBase
+
 
 class S3Events(BaseEventHandler, WithLogging):
     """Class implementing S3 Integration event hooks."""
@@ -44,7 +45,7 @@ class S3Events(BaseEventHandler, WithLogging):
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
             auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account
+            service_account_info=self.context.service_account,
         )
 
     @compute_status
@@ -55,5 +56,5 @@ class S3Events(BaseEventHandler, WithLogging):
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
             auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account
+            service_account_info=self.context.service_account,
         )

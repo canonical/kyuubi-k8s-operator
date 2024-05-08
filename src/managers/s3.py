@@ -10,8 +10,9 @@ from functools import cached_property
 import boto3
 from botocore.exceptions import ClientError
 
-from utils.logging import WithLogging
 from core.domain import S3ConnectionInfo
+from utils.logging import WithLogging
+
 
 class S3Manager(WithLogging):
     """Class representing credentials and endpoints to connect to S3."""
@@ -29,7 +30,9 @@ class S3Manager(WithLogging):
 
     def verify(self) -> bool:
         """Verify S3 credentials."""
-        s3 = self.session.client("s3", endpoint_url=self.s3_info.endpoint or "https://s3.amazonaws.com")
+        s3 = self.session.client(
+            "s3", endpoint_url=self.s3_info.endpoint or "https://s3.amazonaws.com"
+        )
 
         try:
             s3.list_buckets()
