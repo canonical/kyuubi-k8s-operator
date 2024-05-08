@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
-
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""This model contains classes and methods related to Kyuubi workload."""
+"""Module containing all business logic related to the workload."""
+import json
+
+import ops.pebble
+from ops.model import Container
+
+from workload.k8s import K8sWorkload
+from utils.logging import WithLogging
+from core.domain import User
+from workload.base import KyuubiWorkloadBase
 
 import re
 import socket
@@ -19,13 +27,13 @@ from constants import (
     KYUUBI_VERSION_FILE,
     SPARK_PROPERTIES_FILE,
 )
-from models import User
+from core.domain import User
 from utils.io import ContainerFile, IOMode
 from utils.logging import WithLogging
 
 
-class KyuubiServer(WithLogging):
-    """The abstraction of Kyuubi workload container."""
+class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
+    """Class representing workload implementation for Kyuubi on K8s"""
 
     def __init__(self, container: Container, user: User = User()):
         self.container = container
@@ -89,9 +97,14 @@ class KyuubiServer(WithLogging):
         """Check whether the service is ready to be used."""
         return self.container.can_connect()
 
-    def health(self) -> bool:
+    def active(self) -> bool:
         """Return the health of the service."""
-        return self.container.get_service(KYUUBI_SERVICE_NAME).is_running()
+        try:
+            service = self.container.get_service(KYUUBI_SERVICE_NAME)
+        except ops.pebble.ConnectionError:
+            self.logger.debug(f"Service {KYUUBI_SERVICE_NAME} not running")
+            return False
+        return service.is_running()
 
     @property
     def kyuubi_version(self):

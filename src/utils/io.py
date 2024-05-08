@@ -12,7 +12,7 @@ from typing import Literal, Union
 
 from ops.model import Container
 
-from models import User
+from core.domain import User
 
 PathLike = Union[str, "os.PathLike[str]"]
 

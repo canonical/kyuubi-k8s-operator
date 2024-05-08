@@ -10,7 +10,7 @@ from unittest.mock import patch
 from scenario import Container, State
 
 from constants import KYUUBI_CONTAINER_NAME, KYUUBI_OCI_IMAGE, SPARK_PROPERTIES_FILE
-from models import Status
+from core.domain import Status
 
 logger = logging.getLogger(__name__)
 

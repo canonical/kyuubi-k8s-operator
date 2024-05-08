@@ -11,17 +11,17 @@ from lightkube import Client
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
-from s3 import S3ConnectionInfo
+from core.domain import S3ConnectionInfo, ServiceAccountInfo
 from utils.logging import WithLogging
 
 
 class SparkConfig(WithLogging):
     """Spark Configurations."""
 
-    def __init__(self, s3_info: Optional[S3ConnectionInfo], namespace: str, service_account: str):
+    def __init__(self, s3_info: Optional[S3ConnectionInfo], service_account_info: Optional[ServiceAccountInfo]):
         self.s3_info = s3_info
-        self.namespace = namespace
-        self.service_account = service_account
+        self.namespace = service_account_info.namespace
+        self.service_account = service_account_info.service_account
 
     def _get_upload_path(self) -> str:
         bucket_name = self.s3_info.bucket or "kyuubi"

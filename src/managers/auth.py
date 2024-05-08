@@ -3,7 +3,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""Authentication utility class and methods."""
+"""Authentication manager."""
 
 import secrets
 import string
@@ -13,17 +13,17 @@ from constants import (
 )
 from database import DatabaseConnectionInfo
 from utils.logging import WithLogging
+from managers.database import DatabaseManager
 
-
-class Authentication(WithLogging):
-    """Class representing authentication."""
+class AuthenticationManager(WithLogging):
+    """Manager encapsulating various authentication related methods."""
 
     DEFAULT_ADMIN_USERNAME = "admin"
     AUTHENTICATION_TABLE_NAME = "kyuubi_users"
 
     def __init__(self, db_info: DatabaseConnectionInfo = None) -> None:
         super().__init__()
-        self.database = db_info
+        self.database = DatabaseManager(db_info=db_info)
 
     def create_authentication_table(self) -> bool:
         """Create authentication table in the authentication database."""

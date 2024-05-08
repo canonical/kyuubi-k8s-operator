@@ -3,9 +3,8 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""S3 connection utility classes and methods."""
+"""Database connection manager."""
 
-from dataclasses import dataclass
 
 import psycopg2
 
@@ -13,16 +12,13 @@ from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
 from utils.logging import WithLogging
+from core.domain import DatabaseConnectionInfo
 
+class DatabaseManager(WithLogging):
+    """Manager class encapsulating various database operations."""
 
-@dataclass
-class DatabaseConnectionInfo(WithLogging):
-    """Class representing credentials and endpoints to connect to Postgres database."""
-
-    endpoint: str
-    username: str
-    password: str
-    dbname: str
+    def __init__(self, db_info: DatabaseConnectionInfo):
+        self.db_info = db_info
 
     def execute(self, query: str, vars=None, dbname: str = None) -> tuple[bool, list]:
         """Execute a SQL query by connecting to a given database.
@@ -38,14 +34,14 @@ class DatabaseConnectionInfo(WithLogging):
                 rows were returned when executing the query.
         """
         if not dbname:
-            dbname = self.dbname
+            dbname = self.db_info.dbname
         connection = None
         cursor = None
         try:
             connection = psycopg2.connect(
-                host=self.endpoint,
-                user=self.username,
-                password=self.password,
+                host=self.db_info.endpoint,
+                user=self.db_info.username,
+                password=self.db_info.password,
                 dbname=dbname,
             )
             connection.autocommit = True

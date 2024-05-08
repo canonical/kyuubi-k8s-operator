@@ -8,7 +8,7 @@
 from typing import Optional
 
 from constants import AUTHENTICATION_TABLE_NAME
-from database import DatabaseConnectionInfo
+from core.domain import DatabaseConnectionInfo
 from utils.logging import WithLogging
 
 

@@ -13,7 +13,7 @@ from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import BlockedStatus
 
-from utils.auth import Authentication
+from managers.auth import Authentication
 
 logger = logging.getLogger(__name__)
 
