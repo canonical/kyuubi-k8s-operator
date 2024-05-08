@@ -32,7 +32,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.kyuubi = KyuubiManager(self.workload)
         self.auth = AuthenticationManager(self.context.auth_db)
         self.auth_db = DatabaseRequires(
-            self, relation_name=POSTGRESQL_AUTH_DB_REL, database_name=AUTHENTICATION_DATABASE_NAME
+            self.charm, relation_name=POSTGRESQL_AUTH_DB_REL, database_name=AUTHENTICATION_DATABASE_NAME
         )
 
         self.framework.observe(self.auth_db.on.database_created, self._on_auth_db_created)

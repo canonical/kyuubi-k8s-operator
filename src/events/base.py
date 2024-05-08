@@ -13,8 +13,8 @@ from constants import (
     NAMESPACE_CONFIG_NAME,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
-from core.domain import Status
-from managers.s3 import S3ConnectionInfo
+from core.domain import Status, S3ConnectionInfo, ServiceAccountInfo
+from managers.s3 import S3Manager
 from utils import k8s
 from utils.logging import WithLogging
 from workload.kyuubi import KyuubiWorkload
@@ -29,6 +29,7 @@ class BaseEventHandler(Object, WithLogging):
     def get_app_status(
         self,
         s3_info: S3ConnectionInfo | None,
+        service_account_info: ServiceAccountInfo | None,
     ) -> StatusBase:
         """Return the status of the charm."""
         if not self.workload.ready():
@@ -37,14 +38,15 @@ class BaseEventHandler(Object, WithLogging):
         if not s3_info:
             return Status.MISSING_S3_RELATION.value
 
-        if not s3_info.verify():
+        s3_manager = S3Manager(s3_info=s3_info)
+        if not s3_manager.verify():
             return Status.INVALID_CREDENTIALS.value
 
-        namespace = self.charm.config[NAMESPACE_CONFIG_NAME]
+        namespace = service_account_info.namespace
         if not k8s.is_valid_namespace(namespace=namespace):
             return Status.INVALID_NAMESPACE.value
 
-        service_account = self.charm.config[SERVICE_ACCOUNT_CONFIG_NAME]
+        service_account = service_account_info.service_account
         if not k8s.is_valid_service_account(namespace=namespace, service_account=service_account):
             return Status.INVALID_SERVICE_ACCOUNT.value
 
@@ -61,11 +63,11 @@ def compute_status(
         """Return output after resetting statuses."""
         res = hook(event_handler, event)
         if event_handler.charm.unit.is_leader():
-            event_handler.chBaseEventHandlerarm.app.status = event_handler.get_app_status(
-                event_handler.context.s3, event_handler.context.pushgateway
+            event_handler.charm.app.status = event_handler.get_app_status(
+                event_handler.context.s3, event_handler.context.service_account
             )
         event_handler.charm.unit.status = event_handler.get_app_status(
-            event_handler.context.s3, event_handler.context.pushgateway
+            event_handler.context.s3, event_handler.context.service_account
         )
         return res
 

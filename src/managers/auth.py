@@ -112,7 +112,7 @@ class AuthenticationManager(WithLogging):
     def remove_auth_db(self) -> None:
         """Remove authentication database from PostgreSQL."""
         self.logger.info("Removing auth_db...")
-        query = f"DROP DATABASE {self.database.dbname} WITH (FORCE);"
+        query = f"DROP DATABASE {self.database.db_info.dbname} WITH (FORCE);"
 
         # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped
         # while being connected to itself.

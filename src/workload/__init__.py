@@ -60,20 +60,3 @@ class AbstractWorkload(ABC):
         Args:
             path: the full filepath to be checked for
         """
-
-    @staticmethod
-    def from_env(content: list[str]) -> dict[str, str]:
-        """Parse environment file content into a dict structure."""
-        map_env = {}
-        for var in content:
-            key = "".join(var.split("=", maxsplit=1)[0])
-            value = "".join(var.split("=", maxsplit=1)[1:])
-            if key:
-                # only check for keys, as we can have an empty value for a variable
-                map_env[key] = value
-        return map_env
-
-    @staticmethod
-    def to_env(env: dict[str, str]) -> list[str]:
-        """Serialize dict into an environment file format."""
-        return [f"{key}={value}" for key, value in env.items()]

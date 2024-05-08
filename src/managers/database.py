@@ -38,9 +38,11 @@ class DatabaseManager(WithLogging):
             dbname = self.db_info.dbname
         connection = None
         cursor = None
+        host, port = self.db_info.endpoint.split(":")
         try:
             connection = psycopg2.connect(
-                host=self.db_info.endpoint,
+                host=host,
+                port=int(port),
                 user=self.db_info.username,
                 password=self.db_info.password,
                 dbname=dbname,

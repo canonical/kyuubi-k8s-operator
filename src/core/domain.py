@@ -132,12 +132,15 @@ class DatabaseConnectionInfo(StateBase):
     @property
     def username(self) -> str:
         """Return the username to connect to the database."""
-        return self.relation_data.get("access-key", "")
+        return self.relation_data.get("username", "")
 
     @property
     def password(self) -> str:
         """Return the password to connect to the database."""
-        return self.relation_data.get("secret-key", "")
+        import logging
+        logging.warning("PASSWORD: " )
+        logging.warning(self.relation_data)
+        return self.relation_data.get("password", "")
 
     @property
     def dbname(self) -> str | None:

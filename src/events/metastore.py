@@ -30,7 +30,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload)
         self.metastore_db = DatabaseRequires(
-            self, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
+            self.charm, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
 
         self.framework.observe(

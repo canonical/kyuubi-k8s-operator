@@ -19,6 +19,7 @@ from events.actions import ActionEvents
 from events.auth import AuthenticationEvents
 from events.metastore import MetastoreEvents
 from events.s3 import S3Events
+from events.kyuubi import KyuubiEvents
 from workload.kyuubi import KyuubiWorkload
 
 # Log messages can be retrieved using juju debug-log
@@ -36,6 +37,7 @@ class KyuubiCharm(ops.CharmBase):
         )
         self.context = Context(self)
 
+        self.kyuubi = KyuubiEvents(self, self.context, self.workload)
         self.s3 = S3Events(self, self.context, self.workload)
         self.metastore = MetastoreEvents(self, self.context, self.workload)
         self.auth = AuthenticationEvents(self, self.context, self.workload)

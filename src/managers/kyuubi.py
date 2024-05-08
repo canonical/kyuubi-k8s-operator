@@ -21,10 +21,10 @@ class KyuubiManager(WithLogging):
 
     def update(
         self,
-        s3_info: S3ConnectionInfo | None = None,
-        metastore_db_info: DatabaseConnectionInfo | None = None,
-        auth_db_info: DatabaseConnectionInfo | None = None,
-        service_account_info: ServiceAccountInfo | None = None,
+        s3_info: S3ConnectionInfo | None,
+        metastore_db_info: DatabaseConnectionInfo | None,
+        auth_db_info: DatabaseConnectionInfo | None,
+        service_account_info: ServiceAccountInfo | None,
     ):
         """Update Kyuubi service and restart it."""
         with self.workload.get_spark_configuration_file(IOMode.WRITE) as spark_fid:

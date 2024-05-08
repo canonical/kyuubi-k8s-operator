@@ -36,11 +36,6 @@ class KyuubiWorkloadBase(AbstractWorkload):
         self.start()
 
     @abstractmethod
-    def set_environment(self, env: dict[str, str | None]):
-        """Set the environment."""
-        ...
-
-    @abstractmethod
     def active(self) -> bool:
         """Checks that the workload is active."""
         ...

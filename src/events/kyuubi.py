@@ -9,7 +9,7 @@ from ops import CharmBase
 
 from core.context import Context
 from core.domain import Status
-from events.base import BaseEventHandler
+from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
@@ -32,13 +32,14 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
 
+    @compute_status
     def _on_install(self, event: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
-        self.unit.status = Status.WAITING_PEBBLE.value
 
+    @compute_status
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
-        if not self.unit.is_leader():
+        if not self.charm.unit.is_leader():
             return
 
         self.kyuubi.update(
@@ -48,10 +49,12 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
         )
 
-    def _update_event(self, _):
+    @compute_status
+    def _update_event(self, event):
         """Handle the update event hook."""
-        self.unit.status = self.get_app_status()
+        # self.charm.unit.status = self.get_app_status()
 
+    @compute_status
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")
