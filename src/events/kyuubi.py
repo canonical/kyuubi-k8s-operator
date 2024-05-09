@@ -41,6 +41,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
+        if not self.workload.ready():
+            event.defer()
+            return
+
         self.kyuubi.update(
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
