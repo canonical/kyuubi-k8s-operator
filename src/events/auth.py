@@ -6,11 +6,9 @@
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
-    DatabaseRequires,
 )
 from ops import CharmBase
 
-from constants import AUTHENTICATION_DATABASE_NAME, POSTGRESQL_AUTH_DB_REL
 from core.context import Context
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
@@ -30,14 +28,10 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.auth = AuthenticationManager(self.context.auth_db)
-        self.auth_db = DatabaseRequires(
-            self.charm, relation_name=POSTGRESQL_AUTH_DB_REL, database_name=AUTHENTICATION_DATABASE_NAME
-        )
 
-        self.framework.observe(self.auth_db.on.database_created, self._on_auth_db_created)
+        self.framework.observe(self.charm.auth_db.on.database_created, self._on_auth_db_created)
         self.framework.observe(
-            self.auth_db.on.endpoints_changed, self._on_auth_db_endpoints_changed
+            self.charm.auth_db.on.endpoints_changed, self._on_auth_db_endpoints_changed
         )
         self.framework.observe(
             self.charm.on.auth_db_relation_broken, self._on_auth_db_relation_removed
@@ -48,7 +42,8 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
 
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         self.logger.info("Authentication database created...")
-        self.auth.prepare_auth_db()
+        auth = AuthenticationManager(self.context.auth_db)
+        auth.prepare_auth_db()
         self.kyuubi.update(
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
@@ -76,4 +71,5 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
 
     def _on_auth_db_relation_departed(self, event) -> None:
         self.logger.info("Authentication database relation departed")
-        self.auth.remove_auth_db()
+        auth = AuthenticationManager(self.context.auth_db)
+        auth.remove_auth_db()

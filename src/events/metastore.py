@@ -6,11 +6,9 @@
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
-    DatabaseRequires,
 )
 from ops import CharmBase
 
-from constants import METASTORE_DATABASE_NAME, POSTGRESQL_METASTORE_DB_REL
 from core.context import Context
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
@@ -29,15 +27,12 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.metastore_db = DatabaseRequires(
-            self.charm, relation_name=POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
-        )
 
         self.framework.observe(
-            self.metastore_db.on.database_created, self._on_metastore_db_created
+            self.charm.metastore_db.on.database_created, self._on_metastore_db_created
         )
         self.framework.observe(
-            self.metastore_db.on.endpoints_changed, self._on_metastore_db_created
+            self.charm.metastore_db.on.endpoints_changed, self._on_metastore_db_created
         )
         self.framework.observe(
             self.charm.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed

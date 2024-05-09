@@ -55,7 +55,7 @@ def test_s3_relation_invalid_credentials(
     assert out.unit_status == Status.INVALID_CREDENTIALS.value
 
 
-@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
@@ -90,7 +90,7 @@ def test_s3_relation_valid_credentials(
     )
 
 
-@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
@@ -118,7 +118,7 @@ def test_s3_relation_broken(
     assert state_after_relation_broken.unit_status == Status.MISSING_S3_RELATION.value
 
 
-@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=False)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
@@ -139,7 +139,7 @@ def test_invalid_namespace(
     assert out.unit_status == Status.INVALID_NAMESPACE.value
 
 
-@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=False)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
@@ -160,7 +160,7 @@ def test_invalid_service_account(
     assert out.unit_status == Status.INVALID_SERVICE_ACCOUNT.value
 
 
-@patch("s3.S3ConnectionInfo.verify", return_value=True)
+@patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("utils.k8s.is_valid_namespace", return_value=True)
 @patch("utils.k8s.is_valid_service_account", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")

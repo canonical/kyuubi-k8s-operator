@@ -8,7 +8,6 @@ import ops
 from ops import CharmBase
 
 from core.context import Context
-from core.domain import Status
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging

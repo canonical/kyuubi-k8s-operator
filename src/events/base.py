@@ -9,11 +9,7 @@ from typing import Callable
 
 from ops import CharmBase, EventBase, Object, StatusBase
 
-from constants import (
-    NAMESPACE_CONFIG_NAME,
-    SERVICE_ACCOUNT_CONFIG_NAME,
-)
-from core.domain import Status, S3ConnectionInfo, ServiceAccountInfo
+from core.domain import S3ConnectionInfo, ServiceAccountInfo, Status
 from managers.s3 import S3Manager
 from utils import k8s
 from utils.logging import WithLogging

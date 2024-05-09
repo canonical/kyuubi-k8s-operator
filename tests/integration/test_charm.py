@@ -578,7 +578,7 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
         "units"
     ][f"{charm_versions.postgres.application_name}/0"]["address"]
 
-    # Connect to PostgreSQL metastore database
+    # Connect to PostgreSQL authentication database
     connection = psycopg2.connect(
         host=postgresql_host_address,
         database=AUTHENTICATION_DATABASE_NAME,

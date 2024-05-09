@@ -14,11 +14,7 @@ from ops import Application, CharmBase, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 from constants import (
-    AUTHENTICATION_DATABASE_NAME,
-    METASTORE_DATABASE_NAME,
     NAMESPACE_CONFIG_NAME,
-    POSTGRESQL_AUTH_DB_REL,
-    POSTGRESQL_METASTORE_DB_REL,
     SERVICE_ACCOUNT_CONFIG_NAME,
 )
 
@@ -118,38 +114,14 @@ class S3ConnectionInfo(StateBase):
         return f"s3a://{self.bucket}/{self.path}"
 
 
-class DatabaseConnectionInfo(StateBase):
-    """Class representing credentials and endpoints to connect to S3."""
+@dataclass
+class DatabaseConnectionInfo:
+    """Class representing a information related to a database connection."""
 
-    def __init__(self, relation: Relation, component: Application):
-        super().__init__(relation, component)
-
-    @property
-    def endpoint(self) -> str | None:
-        """Return endpoint of the database."""
-        return self.relation_data.get("endpoints", None)
-
-    @property
-    def username(self) -> str:
-        """Return the username to connect to the database."""
-        return self.relation_data.get("username", "")
-
-    @property
-    def password(self) -> str:
-        """Return the password to connect to the database."""
-        import logging
-        logging.warning("PASSWORD: " )
-        logging.warning(self.relation_data)
-        return self.relation_data.get("password", "")
-
-    @property
-    def dbname(self) -> str | None:
-        """Return the name of database to connect to."""
-        if self.relation.name == POSTGRESQL_METASTORE_DB_REL:
-            return METASTORE_DATABASE_NAME
-        elif self.relation.name == POSTGRESQL_AUTH_DB_REL:
-            return AUTHENTICATION_DATABASE_NAME
-        return None
+    endpoint: str
+    username: str
+    password: str
+    dbname: str
 
 
 class ServiceAccountInfo:

@@ -16,11 +16,6 @@ from core.domain import User
 
 PathLike = Union[str, "os.PathLike[str]"]
 
-LevelTypes = Literal[
-    "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET", 50, 40, 30, 20, 10, 0
-]
-StrLevelTypes = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
-
 
 class IOMode(str, Enum):
     """Class representing the modes to open file resources."""

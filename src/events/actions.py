@@ -58,7 +58,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             return
 
         # Only leader can write the new password
-        if not self.unit.is_leader():
+        if not self.charm.unit.is_leader():
             event.fail("The action can be run only on leader unit")
             return
 

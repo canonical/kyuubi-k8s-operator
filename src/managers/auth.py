@@ -8,11 +8,10 @@
 import secrets
 import string
 
-from core.domain import DatabaseConnectionInfo
-
 from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
+from core.domain import DatabaseConnectionInfo
 from managers.database import DatabaseManager
 from utils.logging import WithLogging
 

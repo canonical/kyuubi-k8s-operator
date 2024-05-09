@@ -7,11 +7,9 @@
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
-    S3Requirer,
 )
 from ops import CharmBase
 
-from constants import S3_INTEGRATOR_REL
 from core.context import Context
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
@@ -30,12 +28,11 @@ class S3Events(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.s3_requirer = S3Requirer(self.charm, S3_INTEGRATOR_REL)
 
         self.framework.observe(
-            self.s3_requirer.on.credentials_changed, self._on_s3_credential_changed
+            self.charm.s3.on.credentials_changed, self._on_s3_credential_changed
         )
-        self.framework.observe(self.s3_requirer.on.credentials_gone, self._on_s3_credential_gone)
+        self.framework.observe(self.charm.s3.on.credentials_gone, self._on_s3_credential_gone)
 
     @compute_status
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
