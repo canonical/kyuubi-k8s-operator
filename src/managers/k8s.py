@@ -14,7 +14,7 @@ from utils.logging import WithLogging
 
 
 class K8sManager(WithLogging):
-    """Class representing credentials and endpoints to connect to S3."""
+    """Class that encapsulates various utilities related to K8s."""
 
     def __init__(self, service_account_info: ServiceAccountInfo):
         self.namespace = service_account_info.namespace

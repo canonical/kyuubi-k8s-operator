@@ -15,7 +15,7 @@ from workload.base import KyuubiWorkloadBase
 
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
-    """Class implementing S3 Integration event hooks."""
+    """Class implementing Kyuubih related event hooks."""
 
     def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
         super().__init__(charm, "kyuubi")

@@ -2,7 +2,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""S3 Integration related event handlers."""
+"""Metastore database related event handlers."""
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
