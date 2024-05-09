@@ -5,30 +5,17 @@
 """Implementation and blue-print for Kyuubi workloads."""
 
 from abc import abstractmethod
-from pathlib import Path
 
-from core.domain import User
 from workload import AbstractWorkload
-
-
-class KyuubiPaths:
-    """Object to store common paths for Kyuubi."""
-
-    def __init__(self, conf_path: Path | str, keytool: str):
-        self.conf_path = conf_path if isinstance(conf_path, Path) else Path(conf_path)
-        self.keytool = keytool
-
-    @property
-    def spark_properties(self) -> Path:
-        """Return the path of the spark-properties file."""
-        return self.conf_path / "spark-properties.conf"
 
 
 class KyuubiWorkloadBase(AbstractWorkload):
     """Base interface for common workload operations."""
 
-    paths: KyuubiPaths
-    user: User
+    SPARK_PROPERTIES_FILE = "/etc/spark8t/conf/spark-defaults.conf"
+    HIVE_CONFIGURATION_FILE = "/etc/spark8t/conf/hive-site.xml"
+    KYUUBI_CONFIGURATION_FILE = "/opt/kyuubi/conf/kyuubi-defaults.conf"
+    KYUUBI_VERSION_FILE = "/opt/kyuubi/RELEASE"
 
     def restart(self) -> None:
         """Restarts the workload service."""

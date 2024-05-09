@@ -11,16 +11,11 @@ import ops.pebble
 from ops.model import Container
 
 from constants import (
-    HIVE_CONFIGURATION_FILE,
     JDBC_PORT,
-    KYUUBI_CONFIGURATION_FILE,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
-    KYUUBI_VERSION_FILE,
-    SPARK_PROPERTIES_FILE,
 )
 from core.domain import User
-from utils.io import ContainerFile, IOMode
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
 from workload.k8s import K8sWorkload
@@ -32,18 +27,6 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def __init__(self, container: Container, user: User = User()):
         self.container = container
         self.user = user
-
-    def get_spark_configuration_file(self, mode: IOMode) -> ContainerFile:
-        """Return the configuration file for Spark."""
-        return ContainerFile(self.container, self.user, SPARK_PROPERTIES_FILE, mode)
-
-    def get_hive_configuration_file(self, mode: IOMode) -> ContainerFile:
-        """Return the configuration file for Hive parameters."""
-        return ContainerFile(self.container, self.user, HIVE_CONFIGURATION_FILE, mode)
-
-    def get_kyuubi_configuration_file(self, mode: IOMode) -> ContainerFile:
-        """Return the configuration file for Hive parameters."""
-        return ContainerFile(self.container, self.user, KYUUBI_CONFIGURATION_FILE, mode)
 
     def get_jdbc_endpoint(self) -> str:
         """Return the JDBC endpoint to connect to Kyuubi server."""
@@ -70,10 +53,9 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         services = self.container.get_plan().services
         self.logger.info(f"Pebble services: {services}")
 
-        spark_configuration_file = self.get_spark_configuration_file(IOMode.READ)
-        if not spark_configuration_file.exists():
-            self.logger.error(f"{spark_configuration_file.path} not found")
-            raise FileNotFoundError(spark_configuration_file.path)
+        if not self.exists(self.SPARK_PROPERTIES_FILE):
+            self.logger.error(f"{self.SPARK_PROPERTIES_FILE} not found")
+            raise FileNotFoundError(self.SPARK_PROPERTIES_FILE)
 
         if services[KYUUBI_SERVICE_NAME].startup != "enabled":
             self.logger.info("Adding kyuubi pebble layer...")
@@ -104,11 +86,8 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def kyuubi_version(self):
         """Return the version of Kyuubi."""
         version_pattern = r"Kyuubi (?P<version>[\d\.]+)"
-        with ContainerFile(
-            self.container, self.user, KYUUBI_VERSION_FILE, IOMode.READ
-        ) as version_file:
-            contents = version_file.read()
-            version = re.search(version_pattern, contents)
+        for line in self.read(self.KYUUBI_VERSION_FILE):
+            version = re.search(version_pattern, line)
             if version:
                 return version.group("version")
         return ""

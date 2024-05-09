@@ -8,7 +8,6 @@ from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
 from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, ServiceAccountInfo
-from utils.io import IOMode
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
 
@@ -27,13 +26,14 @@ class KyuubiManager(WithLogging):
         service_account_info: ServiceAccountInfo | None,
     ):
         """Update Kyuubi service and restart it."""
-        with self.workload.get_spark_configuration_file(IOMode.WRITE) as spark_fid:
-            config = SparkConfig(s3_info=s3_info, service_account_info=service_account_info)
-            spark_fid.write(config.contents)
-        with self.workload.get_hive_configuration_file(IOMode.WRITE) as hive_fid:
-            config = HiveConfig(db_info=metastore_db_info)
-            hive_fid.write(config.contents)
-        with self.workload.get_kyuubi_configuration_file(IOMode.WRITE) as kyuubi_fid:
-            config = KyuubiConfig(db_info=auth_db_info)
-            kyuubi_fid.write(config.contents)
+        spark_config = SparkConfig(
+            s3_info=s3_info, service_account_info=service_account_info
+        ).contents
+        hive_config = HiveConfig(db_info=metastore_db_info).contents
+        kyuubi_config = KyuubiConfig(db_info=auth_db_info).contents
+
+        self.workload.write(spark_config, self.workload.SPARK_PROPERTIES_FILE)
+        self.workload.write(hive_config, self.workload.HIVE_CONFIGURATION_FILE)
+        self.workload.write(kyuubi_config, self.workload.KYUUBI_CONFIGURATION_FILE)
+
         self.workload.restart()

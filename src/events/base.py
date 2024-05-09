@@ -10,8 +10,8 @@ from typing import Callable
 from ops import CharmBase, EventBase, Object, StatusBase
 
 from core.domain import S3ConnectionInfo, ServiceAccountInfo, Status
+from managers.k8s import K8sManager
 from managers.s3 import S3Manager
-from utils import k8s
 from utils.logging import WithLogging
 from workload.kyuubi import KyuubiWorkload
 
@@ -38,12 +38,11 @@ class BaseEventHandler(Object, WithLogging):
         if not s3_manager.verify():
             return Status.INVALID_CREDENTIALS.value
 
-        namespace = service_account_info.namespace
-        if not k8s.is_valid_namespace(namespace=namespace):
+        k8s_manager = K8sManager(service_account_info=service_account_info)
+        if not k8s_manager.is_namespace_valid():
             return Status.INVALID_NAMESPACE.value
 
-        service_account = service_account_info.service_account
-        if not k8s.is_valid_service_account(namespace=namespace, service_account=service_account):
+        if not k8s_manager.is_service_account_valid():
             return Status.INVALID_SERVICE_ACCOUNT.value
 
         return Status.ACTIVE.value
