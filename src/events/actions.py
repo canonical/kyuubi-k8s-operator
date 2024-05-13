@@ -37,7 +37,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return
-        if not self.get_app_status() != Status.ACTIVE:
+        if not self.get_app_status(s3_info=self.context.s3, service_account_info=self.context.service_account) != Status.ACTIVE:
             event.fail("The action failed because the charm is not in active state.")
             return
         result = {"endpoint": self.workload.get_jdbc_endpoint()}
@@ -54,7 +54,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return
-        if not self.get_app_status() != Status.ACTIVE:
+        if not self.get_app_status(s3_info=self.context.s3, service_account_info=self.context.service_account) != Status.ACTIVE:
             event.fail("The action failed because the charm is not in active state.")
             return
         password = self.auth.get_password(DEFAULT_ADMIN_USERNAME)
@@ -77,7 +77,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return
-        if not self.get_app_status() != Status.ACTIVE:
+        if not self.get_app_status(s3_info=self.context.s3, service_account_info=self.context.service_account) != Status.ACTIVE:
             event.fail("The action failed because the charm is not in active state.")
             return
 
