@@ -55,7 +55,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.logger.info("Mestastore database relation removed")
         self.kyuubi.update(
             s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
+            metastore_db_info=None,
             auth_db_info=self.context.auth_db,
             service_account_info=self.context.service_account,
         )

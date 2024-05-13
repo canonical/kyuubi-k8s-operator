@@ -31,7 +31,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.kyuubi = KyuubiManager(self.workload)
         self.auth_db_handler = DatabaseRequirerEventHandlers(self.charm, self.context.auth_db_requirer)
 
-        self.framework.observe(self.charm.auth_db.on.database_created, self._on_auth_db_created)
+        self.framework.observe(self.auth_db_handler.on.database_created, self._on_auth_db_created)
         self.framework.observe(
             self.auth_db_handler.on.endpoints_changed, self._on_auth_db_endpoints_changed
         )
@@ -67,7 +67,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update(
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
+            auth_db_info=None,
             service_account_info=self.context.service_account,
         )
 

@@ -27,7 +27,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.kyuubi_client = KyuubiClientProvider(self, KYUUBI_CLIENT_RELATION_NAME)
+        self.kyuubi_client = KyuubiClientProvider(self.charm, KYUUBI_CLIENT_RELATION_NAME)
 
         self.framework.observe(self.charm.on.install, self._on_install)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
