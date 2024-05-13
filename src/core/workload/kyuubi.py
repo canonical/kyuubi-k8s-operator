@@ -10,15 +10,15 @@ import socket
 import ops.pebble
 from ops.model import Container
 
+from common.workload.k8s import K8sWorkload
 from constants import (
     JDBC_PORT,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
 )
 from core.domain import User
+from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
-from workload.k8s import K8sWorkload
 
 
 class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):

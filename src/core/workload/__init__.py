@@ -6,7 +6,7 @@
 
 from abc import abstractmethod
 
-from workload import AbstractWorkload
+from common.workload import AbstractWorkload
 
 
 class KyuubiWorkloadBase(AbstractWorkload):

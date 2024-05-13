@@ -11,7 +11,7 @@ from ops import Container
 from ops.pebble import ExecError
 from typing_extensions import override
 
-from workload import AbstractWorkload
+from common.workload import AbstractWorkload
 
 logger = logging.getLogger(__name__)
 
