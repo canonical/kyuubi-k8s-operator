@@ -4,6 +4,7 @@
 
 """Kyuubi related event handlers."""
 
+from constants import KYUUBI_CLIENT_RELATION_NAME
 import ops
 from ops import CharmBase
 
@@ -12,6 +13,7 @@ from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
+from providers import KyuubiClientProvider
 
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
@@ -25,6 +27,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi_client = KyuubiClientProvider(self, KYUUBI_CLIENT_RELATION_NAME)
 
         self.framework.observe(self.charm.on.install, self._on_install)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)

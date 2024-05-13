@@ -14,10 +14,10 @@ from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 from workload.base import KyuubiWorkloadBase
-
+from core.domain import Status
 
 class ActionEvents(BaseEventHandler, WithLogging):
-    """Class implementing PostgreSQL metastore event hooks."""
+    """Class implementing charm action event hooks."""
 
     def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
         super().__init__(charm, "s3")
@@ -34,6 +34,12 @@ class ActionEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.set_password_action, self._on_set_password)
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
+        if not self.workload.ready():
+            event.fail("The action failed because the workload is not ready yet.")
+            return
+        if not self.get_app_status() != Status.ACTIVE:
+            event.fail("The action failed because the charm is not in active state.")
+            return
         result = {"endpoint": self.workload.get_jdbc_endpoint()}
         event.set_results(result)
 
@@ -44,6 +50,12 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 "The action can only be run when authentication is enabled. "
                 "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
             )
+            return
+        if not self.workload.ready():
+            event.fail("The action failed because the workload is not ready yet.")
+            return
+        if not self.get_app_status() != Status.ACTIVE:
+            event.fail("The action failed because the charm is not in active state.")
             return
         password = self.auth.get_password(DEFAULT_ADMIN_USERNAME)
         event.set_results({"password": password})
@@ -60,6 +72,13 @@ class ActionEvents(BaseEventHandler, WithLogging):
         # Only leader can write the new password
         if not self.charm.unit.is_leader():
             event.fail("The action can be run only on leader unit")
+            return
+
+        if not self.workload.ready():
+            event.fail("The action failed because the workload is not ready yet.")
+            return
+        if not self.get_app_status() != Status.ACTIVE:
+            event.fail("The action failed because the charm is not in active state.")
             return
 
         password = self.auth.generate_password()
