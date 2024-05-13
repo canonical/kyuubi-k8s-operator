@@ -10,10 +10,10 @@ from typing import Callable
 from ops import CharmBase, EventBase, Object, StatusBase
 
 from core.domain import S3ConnectionInfo, ServiceAccountInfo, Status
+from core.workload.kyuubi import KyuubiWorkload
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
 from utils.logging import WithLogging
-from workload.kyuubi import KyuubiWorkload
 
 
 class BaseEventHandler(Object, WithLogging):

@@ -11,7 +11,7 @@ from scenario import Container, State
 
 from constants import KYUUBI_CONTAINER_NAME, KYUUBI_OCI_IMAGE
 from core.domain import Status
-from workload.kyuubi import KyuubiWorkload
+from core.workload.kyuubi import KyuubiWorkload
 
 logger = logging.getLogger(__name__)
 

@@ -7,16 +7,16 @@
 from charms.data_platform_libs.v0.s3 import (
     CredentialsChangedEvent,
     CredentialsGoneEvent,
-    S3Requirer
+    S3Requirer,
 )
 from ops import CharmBase
 
+from constants import S3_INTEGRATOR_REL
 from core.context import Context
+from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
-from constants import S3_INTEGRATOR_REL
 
 
 class S3Events(BaseEventHandler, WithLogging):

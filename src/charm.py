@@ -15,12 +15,12 @@ from constants import (
     KYUUBI_CONTAINER_NAME,
 )
 from core.context import Context
+from core.workload.kyuubi import KyuubiWorkload
 from events.actions import ActionEvents
 from events.auth import AuthenticationEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.s3 import S3Events
-from workload.kyuubi import KyuubiWorkload
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)

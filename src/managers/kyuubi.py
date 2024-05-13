@@ -8,8 +8,8 @@ from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
 from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, ServiceAccountInfo
+from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
 
 
 class KyuubiManager(WithLogging):

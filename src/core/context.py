@@ -4,12 +4,18 @@
 
 """Charm Context definition and parsing logic."""
 
+from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
 from ops import CharmBase, Relation
 
-from constants import S3_INTEGRATOR_REL, POSTGRESQL_METASTORE_DB_REL, METASTORE_DATABASE_NAME, POSTGRESQL_AUTH_DB_REL, AUTHENTICATION_DATABASE_NAME
+from constants import (
+    AUTHENTICATION_DATABASE_NAME,
+    METASTORE_DATABASE_NAME,
+    POSTGRESQL_AUTH_DB_REL,
+    POSTGRESQL_METASTORE_DB_REL,
+    S3_INTEGRATOR_REL,
+)
 from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, ServiceAccountInfo
 from utils.logging import WithLogging
-from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
 
 
 class Context(WithLogging):
@@ -19,8 +25,15 @@ class Context(WithLogging):
 
         self.charm = charm
         self.model = charm.model
-        self.metastore_db_requirer = DatabaseRequirerData(self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME)
-        self.auth_db_requirer = DatabaseRequirerData(self.model, POSTGRESQL_AUTH_DB_REL, database_name=AUTHENTICATION_DATABASE_NAME, extra_user_roles="superuser")
+        self.metastore_db_requirer = DatabaseRequirerData(
+            self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
+        )
+        self.auth_db_requirer = DatabaseRequirerData(
+            self.model,
+            POSTGRESQL_AUTH_DB_REL,
+            database_name=AUTHENTICATION_DATABASE_NAME,
+            extra_user_roles="superuser",
+        )
 
     @property
     def _s3_relation(self) -> Relation | None:

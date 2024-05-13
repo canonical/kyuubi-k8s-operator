@@ -6,16 +6,16 @@
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
-    DatabaseRequirerEventHandlers
+    DatabaseRequirerEventHandlers,
 )
 from ops import CharmBase
 
 from core.context import Context
+from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
 
 
 class AuthenticationEvents(BaseEventHandler, WithLogging):
@@ -29,7 +29,9 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.auth_db_handler = DatabaseRequirerEventHandlers(self.charm, self.context.auth_db_requirer)
+        self.auth_db_handler = DatabaseRequirerEventHandlers(
+            self.charm, self.context.auth_db_requirer
+        )
 
         self.framework.observe(self.auth_db_handler.on.database_created, self._on_auth_db_created)
         self.framework.observe(

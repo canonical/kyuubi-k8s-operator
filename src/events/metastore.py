@@ -6,15 +6,15 @@
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
-    DatabaseRequirerEventHandlers
+    DatabaseRequirerEventHandlers,
 )
 from ops import CharmBase
 
 from core.context import Context
+from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
 
 
 class MetastoreEvents(BaseEventHandler, WithLogging):
@@ -28,7 +28,9 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        self.metatstore_db_handler = DatabaseRequirerEventHandlers(self.charm, self.context.metastore_db_requirer)
+        self.metatstore_db_handler = DatabaseRequirerEventHandlers(
+            self.charm, self.context.metastore_db_requirer
+        )
 
         self.framework.observe(
             self.metatstore_db_handler.on.database_created, self._on_metastore_db_created

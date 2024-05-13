@@ -4,16 +4,16 @@
 
 """Kyuubi related event handlers."""
 
-from constants import KYUUBI_CLIENT_RELATION_NAME
 import ops
 from ops import CharmBase
 
+from constants import KYUUBI_CLIENT_RELATION_NAME
 from core.context import Context
+from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
-from utils.logging import WithLogging
-from workload.base import KyuubiWorkloadBase
 from providers import KyuubiClientProvider
+from utils.logging import WithLogging
 
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
