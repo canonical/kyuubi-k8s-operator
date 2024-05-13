@@ -21,7 +21,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
     """Class implementing PostgreSQL metastore event hooks."""
 
     def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
-        super().__init__(charm, "s3")
+        super().__init__(charm, "metastore")
 
         self.charm = charm
         self.context = context

@@ -20,7 +20,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
     """Class implementing charm action event hooks."""
 
     def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
-        super().__init__(charm, "s3")
+        super().__init__(charm, "action-events")
 
         self.charm = charm
         self.context = context
