@@ -80,8 +80,8 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         """Handle the event when the authentication database relation is departed.
 
         Until this point, the relation data is still there and hence the credentials
-        can be fetched for one last time in order to remove authentication database."""
-    
+        can be fetched for one last time in order to remove authentication database.
+        """
         self.logger.info("Authentication database relation departed")
         auth = AuthenticationManager(self.context.auth_db)
         auth.remove_auth_db()
