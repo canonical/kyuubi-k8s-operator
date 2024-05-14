@@ -5,7 +5,7 @@
 """Charm Context definition and parsing logic."""
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
-from ops import CharmBase, Relation
+from ops import ConfigData, Model, Relation
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
@@ -21,10 +21,9 @@ from utils.logging import WithLogging
 class Context(WithLogging):
     """Properties and relations of the charm."""
 
-    def __init__(self, charm: CharmBase):
-
-        self.charm = charm
-        self.model = charm.model
+    def __init__(self, model: Model, config: ConfigData):
+        self.model = model
+        self.charm_config = config
         self.metastore_db_requirer = DatabaseRequirerData(
             self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
@@ -38,7 +37,7 @@ class Context(WithLogging):
     @property
     def _s3_relation(self) -> Relation | None:
         """The S3 relation."""
-        return self.charm.model.get_relation(S3_INTEGRATOR_REL)
+        return self.model.get_relation(S3_INTEGRATOR_REL)
 
     # --- DOMAIN OBJECTS ---
 
@@ -78,7 +77,7 @@ class Context(WithLogging):
     @property
     def service_account(self):
         """The state of service account information."""
-        return ServiceAccountInfo(self.charm)
+        return ServiceAccountInfo(charm_config=self.charm_config)
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""

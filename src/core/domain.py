@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, MutableMapping
 
-from ops import Application, CharmBase, Relation, Unit
+from ops import Application, ConfigData, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 from constants import (
@@ -132,15 +132,15 @@ class ServiceAccountInfo:
     relation in a pattern similar to S3ConnectionInfo and DatabaseConnectionInfo.
     """
 
-    def __init__(self, charm: CharmBase):
-        self.charm = charm
+    def __init__(self, charm_config: ConfigData):
+        self.charm_config = charm_config
 
     @property
     def namespace(self) -> str | None:
         """Return the namespace."""
-        return self.charm.config[NAMESPACE_CONFIG_NAME]
+        return self.charm_config[NAMESPACE_CONFIG_NAME]
 
     @property
     def service_account(self) -> str | None:
         """Return the name of service account."""
-        return self.charm.config[SERVICE_ACCOUNT_CONFIG_NAME]
+        return self.charm_config[SERVICE_ACCOUNT_CONFIG_NAME]
