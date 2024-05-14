@@ -35,6 +35,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.set_password_action, self._on_set_password)
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
+        """Action event handler that returns back with a JDBC endpoint."""
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return

@@ -44,6 +44,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
+        """Handle event when metastore database is created."""
         self.logger.info("Metastore database created...")
         self.kyuubi.update(
             s3_info=self.context.s3,
@@ -54,6 +55,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     def _on_metastore_db_relation_removed(self, event) -> None:
+        """Handle event when metastore database relation is removed."""
         self.logger.info("Mestastore database relation removed")
         self.kyuubi.update(
             s3_info=self.context.s3,
