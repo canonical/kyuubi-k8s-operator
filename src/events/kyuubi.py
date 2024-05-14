@@ -58,6 +58,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @compute_status
     def _update_event(self, event):
         """Handle the update event hook."""
+        pass
 
     @compute_status
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
