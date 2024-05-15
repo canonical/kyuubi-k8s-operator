@@ -3,7 +3,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""Authentication utility class and methods."""
+"""Authentication manager."""
 
 import secrets
 import string
@@ -11,19 +11,20 @@ import string
 from constants import (
     POSTGRESQL_DEFAULT_DATABASE,
 )
-from database import DatabaseConnectionInfo
+from core.domain import DatabaseConnectionInfo
+from managers.database import DatabaseManager
 from utils.logging import WithLogging
 
 
-class Authentication(WithLogging):
-    """Class representing authentication."""
+class AuthenticationManager(WithLogging):
+    """Manager encapsulating various authentication related methods."""
 
     DEFAULT_ADMIN_USERNAME = "admin"
     AUTHENTICATION_TABLE_NAME = "kyuubi_users"
 
     def __init__(self, db_info: DatabaseConnectionInfo = None) -> None:
         super().__init__()
-        self.database = db_info
+        self.database = DatabaseManager(db_info=db_info)
 
     def create_authentication_table(self) -> bool:
         """Create authentication table in the authentication database."""
@@ -110,7 +111,7 @@ class Authentication(WithLogging):
     def remove_auth_db(self) -> None:
         """Remove authentication database from PostgreSQL."""
         self.logger.info("Removing auth_db...")
-        query = f"DROP DATABASE {self.database.dbname} WITH (FORCE);"
+        query = f"DROP DATABASE {self.database.db_info.dbname} WITH (FORCE);"
 
         # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped
         # while being connected to itself.

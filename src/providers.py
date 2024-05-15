@@ -13,7 +13,7 @@ from ops.charm import CharmBase, RelationBrokenEvent
 from ops.framework import Object
 from ops.model import BlockedStatus
 
-from utils.auth import Authentication
+from managers.auth import AuthenticationManager
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +56,13 @@ class KyuubiClientProvider(Object):
         if not self.charm.unit.is_leader():
             return
 
-        if not self.charm.is_authentication_enabled():
+        if not self.charm.context.is_authentication_enabled():
             raise NotImplementedError(
                 "Authentication has not been enabled yet! "
                 "Please integrate kyuubi-k8s with postgresql-k8s "
                 "over auth-db relation endpoint."
             )
-        auth = Authentication(self.charm.auth_db_connection_info)
+        auth = AuthenticationManager(self.charm.context.auth_db)
         try:
             username = f"relation_id_{event.relation.id}"
             password = auth.generate_password()
@@ -91,7 +91,7 @@ class KyuubiClientProvider(Object):
         if not self.charm.unit.is_leader():
             return
 
-        auth = Authentication(self.charm.auth_db_connection_info)
+        auth = AuthenticationManager(self.charm.context.auth_db)
         username = f"relation_id_{event.relation.id}"
 
         try:

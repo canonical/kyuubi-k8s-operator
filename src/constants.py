@@ -17,11 +17,6 @@ POSTGRESQL_AUTH_DB_REL = "auth-db"
 NAMESPACE_CONFIG_NAME = "namespace"
 SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
 
-SPARK_PROPERTIES_FILE = "/etc/spark8t/conf/spark-defaults.conf"
-HIVE_CONFIGURATION_FILE = "/etc/spark8t/conf/hive-site.xml"
-KYUUBI_CONFIGURATION_FILE = "/opt/kyuubi/conf/kyuubi-defaults.conf"
-KYUUBI_VERSION_FILE = "/opt/kyuubi/RELEASE"
-
 JDBC_PORT = 10009
 
 KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge"

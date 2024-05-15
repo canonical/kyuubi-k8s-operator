@@ -11,7 +11,7 @@ from xml.etree import ElementTree
 from constants import (
     METASTORE_DATABASE_NAME,
 )
-from database import DatabaseConnectionInfo
+from core.domain import DatabaseConnectionInfo
 from utils.logging import WithLogging
 
 
