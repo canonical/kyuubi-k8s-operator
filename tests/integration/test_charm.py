@@ -4,19 +4,11 @@
 
 import logging
 import subprocess
-import uuid
 from pathlib import Path
 
-import psycopg2
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
-
-from constants import (
-    AUTHENTICATION_DATABASE_NAME,
-    KYUUBI_CLIENT_RELATION_NAME,
-    METASTORE_DATABASE_NAME,
-)
 
 logger = logging.getLogger(__name__)
 
