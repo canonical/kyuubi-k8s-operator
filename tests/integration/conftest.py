@@ -172,6 +172,9 @@ def test_pod():
     # Yield the name of created pod
     yield pod_name
 
+    import time
+    logger.info("sleeping for 2 minute2")
+    time.sleep(120)
     # Cleanup by deleting the pod that was creatd
     logger.info("Deleting test pod fixture...")
     result = subprocess.run(["kubectl", "delete", "pod", pod_name], check=True)
