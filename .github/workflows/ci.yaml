@@ -97,7 +97,7 @@ jobs:
         # TODO: Replace with custom image on self-hosted runner
         uses: charmed-kubernetes/actions-operator@main
         with:
-          juju-channel: 3/stable
+          juju-channel: 3.4/stable
           provider: microk8s
           channel: 1.28-strict/stable
           microk8s-group: snap_microk8s
@@ -129,8 +129,6 @@ jobs:
             echo Skipping unstable tests
             echo "mark_expression=not unstable" >> $GITHUB_OUTPUT
           fi
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       - name: Run integration tests
         run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}'
         env:
