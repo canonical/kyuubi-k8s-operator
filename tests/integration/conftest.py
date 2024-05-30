@@ -166,16 +166,24 @@ def test_pod():
     # Create test pod by applying pod spec
     result = subprocess.run(["kubectl", "apply", "-f", TEST_POD_SPEC_FILE], check=True)
     assert result.returncode == 0
+
     spec = yaml.safe_load(Path(TEST_POD_SPEC_FILE).read_text())
     pod_name = spec["metadata"]["name"]
+    
+    # Wait until the pod is in ready state
+    result = subprocess.run([
+        "kubectl",
+        "wait",
+        "--for",
+        "condition=Ready",
+        f"pod/{pod_name}",
+        "--timeout",
+        "60s"
+    ])
 
     # Yield the name of created pod
     yield pod_name
 
-    import time
-
-    logger.info("sleeping for 2 minute2")
-    time.sleep(120)
     # Cleanup by deleting the pod that was creatd
     logger.info("Deleting test pod fixture...")
     result = subprocess.run(["kubectl", "delete", "pod", pod_name], check=True)
