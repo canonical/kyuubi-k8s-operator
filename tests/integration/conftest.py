@@ -169,17 +169,11 @@ def test_pod():
 
     spec = yaml.safe_load(Path(TEST_POD_SPEC_FILE).read_text())
     pod_name = spec["metadata"]["name"]
-    
+
     # Wait until the pod is in ready state
-    wait_result = subprocess.run([
-        "kubectl",
-        "wait",
-        "--for",
-        "condition=Ready",
-        f"pod/{pod_name}",
-        "--timeout",
-        "60s"
-    ])
+    wait_result = subprocess.run(
+        ["kubectl", "wait", "--for", "condition=Ready", f"pod/{pod_name}", "--timeout", "60s"]
+    )
     assert wait_result.returncode == 0
 
     # Yield the name of created pod
