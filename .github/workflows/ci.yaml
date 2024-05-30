@@ -107,6 +107,17 @@ jobs:
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
+      - id: cache-image
+        name: Cache Spark Image Locally
+        run: |
+          # Download image for avoiding time out
+          IMAGE="ghcr.io/canonical/charmed-spark:3.4-22.04_edge"
+          
+          docker pull $IMAGE 
+          docker save $IMAGE -o image.tar
+          sudo microk8s ctr images import --base-name $IMAGE image.tar
+          docker rmi $IMAGE
+          rm image.tar
       - name: Select tests
         id: select-tests
         run: |
