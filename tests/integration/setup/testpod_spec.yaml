@@ -7,5 +7,5 @@ metadata:
   name: testpod
 spec:
   containers:
-  - image: ghcr.io/canonical/charmed-spark:3.4-22.04_edge
+  - image: ghcr.io/canonical/charmed-spark:3.4-22.04_edge@sha256:90a1f26a33d7524b00b5b0692f03ed96919ea89ded571943d2b5aa7802389f87
     name: kyuubi
