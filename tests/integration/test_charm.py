@@ -4,6 +4,7 @@
 
 import logging
 import subprocess
+import time
 import uuid
 from pathlib import Path
 
@@ -272,6 +273,9 @@ async def test_jdbc_endpoint_after_removing_postgresql_metastore(
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
     )
+
+    logger.info("Waiting for extra 30 seconds as cool-down period before proceeding with the test...")
+    time.sleep(30)
 
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
