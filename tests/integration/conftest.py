@@ -5,6 +5,7 @@
 import logging
 import subprocess
 from pathlib import Path
+from string import Template
 from typing import Optional
 
 import boto3
@@ -16,10 +17,11 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 TEST_BUCKET_NAME = "kyuubi-test"
 TEST_NAMESPACE = "kyuubi-test"
 TEST_SERVICE_ACCOUNT = "kyuubi-test"
-TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml"
+TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
 
 
 class TestCharm(BaseModel):
@@ -163,12 +165,19 @@ def service_account():
 def test_pod():
     logger.info("Preparing test pod fixture...")
 
+    kyuubi_image = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+
+    with open(TEST_POD_SPEC_FILE) as tf:
+        template = Template(tf.read())
+        pod_spec = template.substitute(kyuubi_image=kyuubi_image)
+
     # Create test pod by applying pod spec
-    apply_result = subprocess.run(["kubectl", "apply", "-f", TEST_POD_SPEC_FILE], check=True)
+    apply_result = subprocess.run(
+        ["kubectl", "apply", "-f", "-"], check=True, input=pod_spec.encode()
+    )
     assert apply_result.returncode == 0
 
-    spec = yaml.safe_load(Path(TEST_POD_SPEC_FILE).read_text())
-    pod_name = spec["metadata"]["name"]
+    pod_name = yaml.safe_load(pod_spec)["metadata"]["name"]
 
     # Wait until the pod is in ready state
     wait_result = subprocess.run(
