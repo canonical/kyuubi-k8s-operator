@@ -4,6 +4,7 @@ The Kyuubi K8s Operator is a Kubernetes charm for Apache Kyuubi, a distributed a
 
 This operator charm deploys and operates Apache Kyuubi in Kubernetes environment and provides users with a JDBC compliant endpoint which can be used by JDBC compliant tools and analytics platforms to execute SQL queries on the Charmed Spark cluster.
 
+The Kyuubi charm can be found on [Charmhub](https://charmhub.io/kyuubi-k8s). 
 
 ## Other resources
 
