@@ -45,3 +45,4 @@ requires:
 provides:
   jdbc:
     interface: kyuubi_client
+
