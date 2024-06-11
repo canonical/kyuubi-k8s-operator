@@ -23,7 +23,7 @@ from core.domain import (
     SparkServiceAccount
 )
 from utils.logging import WithLogging
-from common.relation.spark_sa import IntegrationHubRequirerData
+from common.relation.spark_sa import RequirerData
 
 
 class Context(WithLogging):
@@ -91,13 +91,8 @@ class Context(WithLogging):
     @property
     def service_account(self) -> SparkServiceAccount | None:
         """The state of service account information."""
-        requested_account = ServiceAccountInfo(
-            charm_config=self.charm_config
-        )
-
-        data_interface = IntegrationHubRequirerData(
-            self.model, SPARK_SERVICE_ACCOUNT_REL,
-            requested_account.service_account, requested_account.namespace
+        data_interface = RequirerData(
+            self.model, SPARK_SERVICE_ACCOUNT_REL
         )
 
         if (account := SparkServiceAccount(
