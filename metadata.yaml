@@ -41,6 +41,10 @@ requires:
   auth-db:
     interface: postgresql_client
     limit: 1
+  spark-service-account:
+    interface: spark_service_account
+    limit: 1
+
 
 provides:
   jdbc:

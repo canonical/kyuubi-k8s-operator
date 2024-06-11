@@ -9,7 +9,7 @@ from typing import Callable
 
 from ops import CharmBase, EventBase, Object, StatusBase
 
-from core.domain import S3ConnectionInfo, ServiceAccountInfo, Status
+from core.domain import S3ConnectionInfo, SparkServiceAccount, Status
 from core.workload.kyuubi import KyuubiWorkload
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
@@ -25,7 +25,7 @@ class BaseEventHandler(Object, WithLogging):
     def get_app_status(
         self,
         s3_info: S3ConnectionInfo | None,
-        service_account_info: ServiceAccountInfo | None,
+        service_account: SparkServiceAccount | None,
     ) -> StatusBase:
         """Return the status of the charm."""
         if not self.workload.ready():
@@ -38,7 +38,11 @@ class BaseEventHandler(Object, WithLogging):
         if not s3_manager.verify():
             return Status.INVALID_CREDENTIALS.value
 
-        k8s_manager = K8sManager(service_account_info=service_account_info)
+        if not service_account:
+            return Status.MISSING_INTEGRATION_HUB.value
+
+        k8s_manager = K8sManager(service_account_info=service_account)
+
         if not k8s_manager.is_namespace_valid():
             return Status.INVALID_NAMESPACE.value
 

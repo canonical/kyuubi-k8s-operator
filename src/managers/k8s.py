@@ -9,14 +9,14 @@ from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.core_v1 import Namespace, ServiceAccount
 
-from core.domain import ServiceAccountInfo
+from core.domain import SparkServiceAccount
 from utils.logging import WithLogging
 
 
 class K8sManager(WithLogging):
     """Class that encapsulates various utilities related to K8s."""
 
-    def __init__(self, service_account_info: ServiceAccountInfo):
+    def __init__(self, service_account_info: SparkServiceAccount):
         self.namespace = service_account_info.namespace
         self.service_account = service_account_info.service_account
 

@@ -13,6 +13,9 @@ from typing import List, MutableMapping
 from ops import Application, ConfigData, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
+from charms.data_platform_libs.v0.data_interfaces import Data
+from common.relation.domain import RelationState
+
 from constants import (
     NAMESPACE_CONFIG_NAME,
     SERVICE_ACCOUNT_CONFIG_NAME,
@@ -33,12 +36,15 @@ class Status(Enum):
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
     MISSING_S3_RELATION = BlockedStatus("Missing S3 relation")
     INVALID_CREDENTIALS = BlockedStatus("Invalid S3 credentials")
+    MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
 
     ACTIVE = ActiveStatus("")
 
-
+# The StateBase class should be deprecated in favor of a RelationBase class
+# when secrets are enabled on S3 relation, and S3 classes have a similar
+# structure with respect to the other data-platform interfaces.
 class StateBase:
     """Base state object."""
 
@@ -144,3 +150,32 @@ class ServiceAccountInfo:
     def service_account(self) -> str | None:
         """Return the name of service account."""
         return self.charm_config[SERVICE_ACCOUNT_CONFIG_NAME]
+
+
+class SparkServiceAccount(RelationState):
+    """Requirer-side of the Integration Hub relation."""
+
+    def __init__(
+        self,
+        relation: Relation | None,
+        data_interface: Data,
+        component: Application,
+    ):
+        super().__init__(relation, data_interface, component)
+        self.data_interface = data_interface
+        self.app = component
+
+    def __bool__(self):
+        return super().__bool__() and "service-account" in self.relation_data.keys()
+
+    @property
+    def service_account(self):
+        """Service account used for Spark."""
+        return self.relation_data["service-account"]
+
+    @property
+    def namespace(self):
+        """Namespace used for running Spark jobs."""
+        return self.relation_data["namespace"]
+
+

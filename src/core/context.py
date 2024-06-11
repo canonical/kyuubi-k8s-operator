@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Charm Context definition and parsing logic."""
+from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
 from ops import ConfigData, Model, Relation
@@ -13,9 +14,16 @@ from constants import (
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
+    SPARK_SERVICE_ACCOUNT_REL
 )
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, ServiceAccountInfo
+from core.domain import (
+    DatabaseConnectionInfo,
+    S3ConnectionInfo,
+    ServiceAccountInfo,
+    SparkServiceAccount
+)
 from utils.logging import WithLogging
+from common.relation.spark_sa import IntegrationHubRequirerData
 
 
 class Context(WithLogging):
@@ -39,6 +47,12 @@ class Context(WithLogging):
         """The S3 relation."""
         return self.model.get_relation(S3_INTEGRATOR_REL)
 
+    @property
+    def _spark_account_relation(self) -> Relation | None:
+        """The S3 relation."""
+        return self.model.get_relation(SPARK_SERVICE_ACCOUNT_REL)
+
+
     # --- DOMAIN OBJECTS ---
 
     @property
@@ -47,7 +61,7 @@ class Context(WithLogging):
         return S3ConnectionInfo(rel, rel.app) if (rel := self._s3_relation) else None
 
     @property
-    def metastore_db(self):
+    def metastore_db(self) -> DatabaseConnectionInfo | None:
         """The state of metastore DB connection."""
         for data in self.metastore_db_requirer.fetch_relation_data().values():
             if any(key not in data for key in ["endpoints", "username", "password"]):
@@ -61,7 +75,7 @@ class Context(WithLogging):
         return None
 
     @property
-    def auth_db(self):
+    def auth_db(self) -> DatabaseConnectionInfo | None:
         """The state of authentication DB connection."""
         for data in self.auth_db_requirer.fetch_relation_data().values():
             if any(key not in data for key in ["endpoints", "username", "password"]):
@@ -75,9 +89,22 @@ class Context(WithLogging):
         return None
 
     @property
-    def service_account(self):
+    def service_account(self) -> SparkServiceAccount | None:
         """The state of service account information."""
-        return ServiceAccountInfo(charm_config=self.charm_config)
+        requested_account = ServiceAccountInfo(
+            charm_config=self.charm_config
+        )
+
+        data_interface = IntegrationHubRequirerData(
+            self.model, SPARK_SERVICE_ACCOUNT_REL,
+            requested_account.service_account, requested_account.namespace
+        )
+
+        if (account := SparkServiceAccount(
+            self._spark_account_relation, data_interface, self.model.app
+        )):
+            return account
+
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""

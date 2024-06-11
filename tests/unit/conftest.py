@@ -7,7 +7,9 @@ from scenario import Container, Context, Model, Mount, Relation
 from scenario.state import next_relation_id
 
 from charm import KyuubiCharm
-from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL
+from constants import (
+    KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL, SPARK_SERVICE_ACCOUNT_REL
+)
 
 
 @pytest.fixture
@@ -76,5 +78,25 @@ def s3_relation():
             "endpoint": "https://s3.endpoint",
             "path": "spark-events",
             "secret-key": "secret-key",
+        },
+    )
+
+@pytest.fixture
+def spark_service_account_relation():
+    """Provide fixture for the S3 relation."""
+    relation_id = next_relation_id(update=True)
+
+    return Relation(
+        endpoint=SPARK_SERVICE_ACCOUNT_REL,
+        interface="spark-service-account",
+        remote_app_name="integration-hub",
+        relation_id=relation_id,
+        local_app_data={
+            "service-account": f"kyuubi",
+            "namespace": "spark"
+        },
+        remote_app_data={
+            "service-account": f"kyuubi",
+            "namespace": "spark"
         },
     )
