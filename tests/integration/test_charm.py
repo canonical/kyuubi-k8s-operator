@@ -138,6 +138,11 @@ async def test_integration_with_integration_hub(
     logger.info("Deploying integration-hub charm...")
     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
 
+    logger.info("Waiting for s3-integrator app to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.integration_hub.application_name], timeout=1000
+    )
+
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
 
