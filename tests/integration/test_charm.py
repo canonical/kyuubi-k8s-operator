@@ -28,7 +28,7 @@ TEST_CHARM_NAME = "application"
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, service_account):
+async def test_build_and_deploy(ops_test: OpsTest):
     """Test building and deploying the charm without relation with any other charm."""
     # Build and deploy charm from local source folder
     logger.info("Building charm...")
@@ -57,9 +57,19 @@ async def test_build_and_deploy(ops_test: OpsTest, service_account):
     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
 
     logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace, username = service_account
+    namespace = ops_test.model
+    username = "kyuubi-spark-engines"
     await ops_test.model.applications[APP_NAME].set_config(
         {"namespace": namespace, "service-account": username}
+    )
+
+    await ops_test.model.deploy(
+        charm,
+        resources=resources,
+        application_name=APP_NAME,
+        num_units=1,
+        series="jammy",
+        trust=True,
     )
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
@@ -124,8 +134,33 @@ async def test_integration_with_s3_integrator(
     )
 
     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert ops_test.model.applications[APP_NAME].status == "blocked"
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+
+@pytest.mark.abort_on_fail
+async def test_integration_with_integration_hub(
+    ops_test: OpsTest, charm_versions, s3_bucket_and_creds
+):
+    """Test the charm by integrating it with s3-integrator."""
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying integration-hub charm...")
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
+
+    logger.info("Integrating kyuubi charm with integration-hub charm...")
+    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
+
+    logger.info("Waiting for s3-integrator and kyuubi charms to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.integration_hub.application_name], timeout=1000
+    )
+
+    # Assert that both kyuubi-k8s and s3-integrator charms are in active state
+    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert (
+        ops_test.model.applications[charm_versions.integration_hub.application_name].status
+        == "active"
+    )
 
 
 @pytest.mark.abort_on_fail

@@ -41,7 +41,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             return
         if (
             not self.get_app_status(
-                s3_info=self.context.s3, service_account_info=self.context.service_account
+                s3_info=self.context.s3, service_account=self.context.service_account
             )
             != Status.ACTIVE
         ):
@@ -63,7 +63,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             return
         if (
             not self.get_app_status(
-                s3_info=self.context.s3, service_account_info=self.context.service_account
+                s3_info=self.context.s3, service_account=self.context.service_account
             )
             != Status.ACTIVE
         ):
@@ -91,7 +91,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             return
         if (
             not self.get_app_status(
-                s3_info=self.context.s3, service_account_info=self.context.service_account
+                s3_info=self.context.s3, service_account=self.context.service_account
             )
             != Status.ACTIVE
         ):

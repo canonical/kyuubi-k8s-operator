@@ -9,4 +9,4 @@ options:
   service-account:
     type: string
     description: The service account to be used by driver to create executor pods.
-    default: 'kyuubi'
+    default: 'kyuubi-spark-engines'

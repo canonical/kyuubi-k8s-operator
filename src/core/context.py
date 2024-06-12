@@ -3,27 +3,21 @@
 # See LICENSE file for licensing details.
 
 """Charm Context definition and parsing logic."""
-from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
 from ops import ConfigData, Model, Relation
 
+from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
-    SPARK_SERVICE_ACCOUNT_REL
+    SPARK_SERVICE_ACCOUNT_REL,
 )
-from core.domain import (
-    DatabaseConnectionInfo,
-    S3ConnectionInfo,
-    ServiceAccountInfo,
-    SparkServiceAccount
-)
+from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccount
 from utils.logging import WithLogging
-from common.relation.spark_sa import RequirerData
 
 
 class Context(WithLogging):
@@ -51,7 +45,6 @@ class Context(WithLogging):
     def _spark_account_relation(self) -> Relation | None:
         """The S3 relation."""
         return self.model.get_relation(SPARK_SERVICE_ACCOUNT_REL)
-
 
     # --- DOMAIN OBJECTS ---
 
@@ -91,15 +84,12 @@ class Context(WithLogging):
     @property
     def service_account(self) -> SparkServiceAccount | None:
         """The state of service account information."""
-        data_interface = RequirerData(
-            self.model, SPARK_SERVICE_ACCOUNT_REL
-        )
+        data_interface = RequirerData(self.model, SPARK_SERVICE_ACCOUNT_REL)
 
-        if (account := SparkServiceAccount(
+        if account := SparkServiceAccount(
             self._spark_account_relation, data_interface, self.model.app
-        )):
+        ):
             return account
-
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""

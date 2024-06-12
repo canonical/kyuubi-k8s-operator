@@ -10,12 +10,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, MutableMapping
 
+from charms.data_platform_libs.v0.data_interfaces import Data
 from ops import Application, ConfigData, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
-from charms.data_platform_libs.v0.data_interfaces import Data
 from common.relation.domain import RelationState
-
 from constants import (
     NAMESPACE_CONFIG_NAME,
     SERVICE_ACCOUNT_CONFIG_NAME,
@@ -41,6 +40,7 @@ class Status(Enum):
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
 
     ACTIVE = ActiveStatus("")
+
 
 # The StateBase class should be deprecated in favor of a RelationBase class
 # when secrets are enabled on S3 relation, and S3 classes have a similar
@@ -166,6 +166,7 @@ class SparkServiceAccount(RelationState):
         self.app = component
 
     def __bool__(self):
+        """Return flag of whether the class is ready to be used."""
         return super().__bool__() and "service-account" in self.relation_data.keys()
 
     @property
@@ -177,5 +178,3 @@ class SparkServiceAccount(RelationState):
     def namespace(self):
         """Namespace used for running Spark jobs."""
         return self.relation_data["namespace"]
-
-

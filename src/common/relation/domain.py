@@ -1,16 +1,16 @@
-from ops import Relation, Unit, Application
+"""Common domain objects."""
+
 from charms.data_platform_libs.v0.data_interfaces import Data
+from ops import Application, Relation, Unit
 
 
 class RelationState:
     """Relation state object."""
 
     def __init__(
-        self,
-        relation: Relation | None,
-        data_interface: Data,
-        component: Unit | Application | None
+        self, relation: Relation | None, data_interface: Data, component: Unit | Application | None
     ):
+        """Initialize class for relation data."""
         self.relation = relation
         self.data_interface = data_interface
         self.component = (

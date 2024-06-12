@@ -24,10 +24,8 @@ class SparkConfig(WithLogging):
         service_account_info: Optional[SparkServiceAccount],
     ):
         self.s3_info = s3_info
-        self.namespace = service_account_info.namespace \
-            if service_account_info else ""
-        self.service_account = service_account_info.service_account \
-            if service_account_info else ""
+        self.namespace = service_account_info.namespace if service_account_info else ""
+        self.service_account = service_account_info.service_account if service_account_info else ""
 
     def _get_upload_path(self) -> str:
         bucket_name = self.s3_info.bucket or "kyuubi"
@@ -56,8 +54,12 @@ class SparkConfig(WithLogging):
         """Spark configurations read from Spark8t."""
         interface = LightKube(None, None)
         registry = K8sServiceAccountRegistry(interface)
+        if not self.namespace or not self.service_account:
+            return {}
+
         if sa := registry.get(f"{self.namespace}:{self.service_account}"):
             return sa.configurations.props
+
         return {}
 
     def _user_conf(self):

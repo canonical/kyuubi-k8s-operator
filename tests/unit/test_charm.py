@@ -39,8 +39,7 @@ def test_start_kyuubi(kyuubi_context):
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_pebble_ready(
-    mock_sa_conf, mock_get_master, mock_valid_sa, mock_valid_ns,
-    kyuubi_context, kyuubi_container
+    mock_sa_conf, mock_get_master, mock_valid_sa, mock_valid_ns, kyuubi_context, kyuubi_container
 ):
     state = State(
         containers=[kyuubi_container],
@@ -111,7 +110,7 @@ def test_valid_on_s3(
     kyuubi_context,
     kyuubi_container,
     s3_relation,
-    spark_service_account_relation
+    spark_service_account_relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation],
@@ -131,6 +130,7 @@ def test_valid_on_s3(
         spark_properties["spark.hadoop.fs.s3a.endpoint"] == s3_relation.remote_app_data["endpoint"]
     )
 
+
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
@@ -146,7 +146,7 @@ def test_valid_on_service_account(
     kyuubi_context,
     kyuubi_container,
     s3_relation,
-    spark_service_account_relation
+    spark_service_account_relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation],
@@ -167,7 +167,6 @@ def test_valid_on_service_account(
     )
 
 
-
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
@@ -182,7 +181,7 @@ def test_s3_relation_broken(
     kyuubi_context,
     kyuubi_container,
     s3_relation,
-    spark_service_account_relation
+    spark_service_account_relation,
 ):
     initial_state = State(
         relations=[s3_relation, spark_service_account_relation],
@@ -211,14 +210,16 @@ def test_spark_service_account_broken(
     kyuubi_context,
     kyuubi_container,
     s3_relation,
-    spark_service_account_relation
+    spark_service_account_relation,
 ):
     initial_state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
 
-    state_after_relation_changed = kyuubi_context.run(spark_service_account_relation.changed_event, initial_state)
+    state_after_relation_changed = kyuubi_context.run(
+        spark_service_account_relation.changed_event, initial_state
+    )
     state_after_relation_broken = kyuubi_context.run(
         spark_service_account_relation.broken_event, state_after_relation_changed
     )
@@ -240,7 +241,7 @@ def test_invalid_namespace(
     kyuubi_context,
     kyuubi_container,
     s3_relation,
-    spark_service_account_relation
+    spark_service_account_relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation],
@@ -264,7 +265,7 @@ def test_invalid_service_account(
     kyuubi_context,
     kyuubi_container,
     s3_relation,
-    spark_service_account_relation
+    spark_service_account_relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation],

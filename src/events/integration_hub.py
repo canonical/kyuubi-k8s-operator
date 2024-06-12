@@ -4,19 +4,16 @@
 
 """S3 Integration related event handlers."""
 
-from charms.data_platform_libs.v0.s3 import (
-    CredentialsChangedEvent,
-    CredentialsGoneEvent,
-    S3Requirer,
-)
-from common.relation.spark_sa import (
-    IntegrationHubRequirer, ServiceAccountGrantedEvent, ServiceAccountGoneEvent
-)
 from ops import CharmBase
 
+from common.relation.spark_sa import (
+    IntegrationHubRequirer,
+    ServiceAccountGoneEvent,
+    ServiceAccountGrantedEvent,
+)
 from constants import SPARK_SERVICE_ACCOUNT_REL
-from core.domain import ServiceAccountInfo
 from core.context import Context
+from core.domain import ServiceAccountInfo
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
@@ -37,17 +34,14 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         requested_account = ServiceAccountInfo(charm_config=self.charm.config)
 
         self.requirer = IntegrationHubRequirer(
-            self.charm, SPARK_SERVICE_ACCOUNT_REL,
-            requested_account.service_account, requested_account.namespace
+            self.charm,
+            SPARK_SERVICE_ACCOUNT_REL,
+            requested_account.service_account,
+            requested_account.namespace,
         )
 
-        self.framework.observe(
-            self.requirer.on.account_granted, self._on_account_granted
-        )
-        self.framework.observe(
-            self.requirer.on.account_gone, self._on_account_gone
-        )
-
+        self.framework.observe(self.requirer.on.account_granted, self._on_account_granted)
+        self.framework.observe(self.requirer.on.account_gone, self._on_account_gone)
 
     @compute_status
     def _on_account_granted(self, _: ServiceAccountGrantedEvent):
