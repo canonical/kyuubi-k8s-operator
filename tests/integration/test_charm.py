@@ -57,19 +57,10 @@ async def test_build_and_deploy(ops_test: OpsTest):
     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
 
     logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace = ops_test.model
+    namespace = ops_test.model.name
     username = "kyuubi-spark-engines"
     await ops_test.model.applications[APP_NAME].set_config(
         {"namespace": namespace, "service-account": username}
-    )
-
-    await ops_test.model.deploy(
-        charm,
-        resources=resources,
-        application_name=APP_NAME,
-        num_units=1,
-        series="jammy",
-        trust=True,
     )
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
