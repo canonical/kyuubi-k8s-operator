@@ -81,7 +81,7 @@ def charm_versions() -> IntegrationTestsCharms:
         ),
         integration_hub=TestCharm(
             **{
-                "name": "spark-interation-hub-k8s",
+                "name": "spark-integration-hub-k8s",
                 "channel": "latest/edge",
                 "series": "jammy",
                 "alias": "integration-hub",
