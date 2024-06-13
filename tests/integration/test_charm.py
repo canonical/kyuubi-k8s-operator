@@ -138,15 +138,25 @@ async def test_integration_with_integration_hub(
     logger.info("Deploying integration-hub charm...")
     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
 
-    logger.info("Waiting for s3-integrator app to be idle...")
+    logger.info("Waiting for integration_hub app to be idle...")
     await ops_test.model.wait_for_idle(
         apps=[charm_versions.integration_hub.application_name], timeout=1000
     )
 
+    # Add configuration key
+    unit = ops_test.model.applications[
+        charm_versions.integration_hub.application_name
+    ].units[0]
+    action = await unit.run_action(
+        action_name="add-config",
+        conf="spark.kubernetes.executor.request.cores=0.1"
+    )
+    _ = await action.wait()
+
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
 
-    logger.info("Waiting for s3-integrator and kyuubi charms to be idle...")
+    logger.info("Waiting for integration_hub and kyuubi charms to be idle...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.integration_hub.application_name], timeout=1000
     )
