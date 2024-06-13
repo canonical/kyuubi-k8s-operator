@@ -144,12 +144,9 @@ async def test_integration_with_integration_hub(
     )
 
     # Add configuration key
-    unit = ops_test.model.applications[
-        charm_versions.integration_hub.application_name
-    ].units[0]
+    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
     action = await unit.run_action(
-        action_name="add-config",
-        conf="spark.kubernetes.executor.request.cores=0.1"
+        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
     )
     _ = await action.wait()
 
