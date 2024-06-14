@@ -1882,7 +1882,7 @@ files = [
 
 [[package]]
 name = "spark8t"
-version = "0.0.8"
+version = "0.0.7"
 description = "This project provides some utilities function and CLI commands to run Spark on K8s."
 optional = false
 python-versions = ">3.8,<4.0"
@@ -1897,8 +1897,8 @@ lightkube = ">=0.11"
 [package.source]
 type = "git"
 url = "https://github.com/canonical/spark-k8s-toolkit-py.git"
-reference = "v0.0.8"
-resolved_reference = "bc7c422972b8a7c87b5d3dd693e5ff1fddc5c183"
+reference = "v0.0.7"
+resolved_reference = "cf96fd007934c9aa7b8d8ff453c4185de9cc6ff4"
 
 [[package]]
 name = "stack-data"
@@ -2155,4 +2155,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4.0"
-content-hash = "a723a4c9153bd5a374c9830ce8255d3e094f6cea74f370adf7a39c8b25c57215"
+content-hash = "25ff851875c683763c529041dc9d47a7bdb9668e65c18246a989d080b1b3a422"
