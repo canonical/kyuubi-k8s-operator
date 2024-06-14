@@ -691,9 +691,6 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
     print(process.stderr.decode())
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
 
-    while not (Path("./tests/integration/go_ahead.txt")).exists():
-        time.sleep(30.0)
-
     assert process.returncode == 0
 
 
