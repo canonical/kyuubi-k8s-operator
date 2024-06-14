@@ -829,9 +829,9 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
 
 
 @pytest.mark.abort_on_fail
-async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, service_account):
+async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
     """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi."""
-    namespace, _ = service_account
+    namespace = ops_test.model.name
     sa_name = "custom-sa"
 
     # Adding a custom property via Spark8t to the service account
