@@ -34,7 +34,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.requirer = IntegrationHubRequirer(
             self.charm,
             SPARK_SERVICE_ACCOUNT_REL,
-            self.charm.config["service_account"],   # TODO: We should introduce structured config
+            self.charm.config["service_account"],  # TODO: We should introduce structured config
             self.charm.config["namespace"],  # TODO: We should introduce structured config
         )
 

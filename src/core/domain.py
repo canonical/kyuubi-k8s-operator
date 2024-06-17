@@ -11,14 +11,10 @@ from enum import Enum
 from typing import List, MutableMapping
 
 from charms.data_platform_libs.v0.data_interfaces import Data
-from ops import Application, ConfigData, Relation, Unit
+from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 from common.relation.domain import RelationState
-from constants import (
-    NAMESPACE_CONFIG_NAME,
-    SERVICE_ACCOUNT_CONFIG_NAME,
-)
 
 
 @dataclass
@@ -128,6 +124,7 @@ class DatabaseConnectionInfo:
     username: str
     password: str
     dbname: str
+
 
 class SparkServiceAccount(RelationState):
     """Requirer-side of the Integration Hub relation."""
