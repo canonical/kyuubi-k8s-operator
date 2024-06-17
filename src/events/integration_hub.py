@@ -13,7 +13,6 @@ from common.relation.spark_sa import (
 )
 from constants import SPARK_SERVICE_ACCOUNT_REL
 from core.context import Context
-from core.domain import ServiceAccountInfo
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
@@ -31,13 +30,12 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload)
-        requested_account = ServiceAccountInfo(charm_config=self.charm.config)
 
         self.requirer = IntegrationHubRequirer(
             self.charm,
             SPARK_SERVICE_ACCOUNT_REL,
-            requested_account.service_account,
-            requested_account.namespace,
+            self.charm.config["service_account"],   # TODO: We should introduce structured config
+            self.charm.config["namespace"],  # TODO: We should introduce structured config
         )
 
         self.framework.observe(self.requirer.on.account_granted, self._on_account_granted)

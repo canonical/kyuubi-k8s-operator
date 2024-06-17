@@ -129,29 +129,6 @@ class DatabaseConnectionInfo:
     password: str
     dbname: str
 
-
-class ServiceAccountInfo:
-    """Class representing service account and namespace to be used by Kyuubi.
-
-    For the time being, this is being read from the config options. However, when Kyuubi
-    is fully integrated with the integration hub, this will be read from the integration hub
-    relation in a pattern similar to S3ConnectionInfo and DatabaseConnectionInfo.
-    """
-
-    def __init__(self, charm_config: ConfigData):
-        self.charm_config = charm_config
-
-    @property
-    def namespace(self) -> str | None:
-        """Return the namespace."""
-        return self.charm_config[NAMESPACE_CONFIG_NAME]
-
-    @property
-    def service_account(self) -> str | None:
-        """Return the name of service account."""
-        return self.charm_config[SERVICE_ACCOUNT_CONFIG_NAME]
-
-
 class SparkServiceAccount(RelationState):
     """Requirer-side of the Integration Hub relation."""
 
