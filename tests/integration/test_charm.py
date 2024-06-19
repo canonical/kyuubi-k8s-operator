@@ -58,7 +58,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     logger.info("Setting configuration for kyuubi-k8s charm...")
     namespace = ops_test.model.name
-    username = "kyuubi-spark-engines"
+    username = "kyuubi-spark-engine"
     await ops_test.model.applications[APP_NAME].set_config(
         {"namespace": namespace, "service-account": username}
     )

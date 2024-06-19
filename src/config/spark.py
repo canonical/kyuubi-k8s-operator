@@ -59,11 +59,8 @@ class SparkConfig(WithLogging):
             [self.service_account_info.namespace, self.service_account_info.service_account]
         )
 
-        if sa := registry.get(account_id):
-            return {
-                "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account_info.service_account,
-                "spark.kubernetes.namespace": self.service_account_info.namespace,
-            } | sa.configurations.props
+        if service_account := registry.get(account_id):
+            return service_account.configurations.props
 
         self.logger.warning(f"Account {account_id} does not exist")
 
