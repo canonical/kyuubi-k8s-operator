@@ -2,7 +2,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""S3 Integration related event handlers."""
+"""Integration Hub related event handlers."""
 
 from ops import CharmBase
 
@@ -24,10 +24,10 @@ from utils.logging import WithLogging
 
 
 class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
-    """Class implementing S3 Integration event hooks."""
+    """Class implementing Integration Hub event hooks."""
 
     def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
-        super().__init__(charm, "s3")
+        super().__init__(charm, "integration-hub")
 
         self.charm = charm
         self.context = context
@@ -51,7 +51,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     def _on_account_granted(self, _: ServiceAccountGrantedEvent):
-        """Handle the `CredentialsChangedEvent` event from S3 integrator."""
+        """Handle the `ServiceAccountGrantedEvent` event from integration hub."""
         self.logger.info("Service account received")
         self.kyuubi.update(
             s3_info=self.context.s3,
@@ -62,8 +62,8 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     def _on_account_gone(self, _: ServiceAccountGoneEvent):
-        """Handle the `CredentialsGoneEvent` event for S3 integrator."""
-        self.logger.info("S3 Credentials gone")
+        """Handle the `ServiceAccountGoneEvent` event from integration hub."""
+        self.logger.info("Service account deleted")
         self.logger.info(self.context.s3)
         self.kyuubi.update(
             s3_info=self.context.s3,

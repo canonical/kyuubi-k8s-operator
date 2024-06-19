@@ -43,7 +43,7 @@ class Context(WithLogging):
 
     @property
     def _spark_account_relation(self) -> Relation | None:
-        """The S3 relation."""
+        """The integration hub relation."""
         return self.model.get_relation(SPARK_SERVICE_ACCOUNT_REL)
 
     # --- DOMAIN OBJECTS ---

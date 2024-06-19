@@ -9,8 +9,9 @@ from typing import Callable
 
 from ops import CharmBase, EventBase, Object, StatusBase
 
+from core.context import Context
 from core.domain import S3ConnectionInfo, SparkServiceAccount, Status
-from core.workload.kyuubi import KyuubiWorkload
+from core.workload import KyuubiWorkloadBase
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
 from utils.logging import WithLogging
@@ -19,8 +20,9 @@ from utils.logging import WithLogging
 class BaseEventHandler(Object, WithLogging):
     """Base class for all Event Handler classes in the Spark Integration Hub."""
 
-    workload: KyuubiWorkload
+    workload: KyuubiWorkloadBase
     charm: CharmBase
+    context: Context
 
     def get_app_status(
         self,

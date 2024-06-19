@@ -130,10 +130,8 @@ async def test_integration_with_s3_integrator(
 
 
 @pytest.mark.abort_on_fail
-async def test_integration_with_integration_hub(
-    ops_test: OpsTest, charm_versions, s3_bucket_and_creds
-):
-    """Test the charm by integrating it with s3-integrator."""
+async def test_integration_with_integration_hub(ops_test: OpsTest, charm_versions):
+    """Test the integration with integration hub."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
