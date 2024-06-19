@@ -24,8 +24,7 @@ class SparkConfig(WithLogging):
         service_account_info: Optional[SparkServiceAccountInfo],
     ):
         self.s3_info = s3_info
-        self.namespace = service_account_info.namespace if service_account_info else ""
-        self.service_account = service_account_info.service_account if service_account_info else ""
+        self.service_account_info = service_account_info
 
     def _get_upload_path(self) -> str:
         bucket_name = self.s3_info.bucket or "kyuubi"
@@ -45,20 +44,28 @@ class SparkConfig(WithLogging):
         return {
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
-            "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account,
-            "spark.kubernetes.namespace": self.namespace,
             "spark.submit.deployMode": "cluster",
         }
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""
-        interface = LightKube(None, None)
-        registry = K8sServiceAccountRegistry(interface)
-        if not self.namespace or not self.service_account:
+        if not self.service_account_info:
             return {}
 
-        if sa := registry.get(f"{self.namespace}:{self.service_account}"):
-            return sa.configurations.props
+        interface = LightKube(None, None)
+        registry = K8sServiceAccountRegistry(interface)
+
+        account_id = ":".join(
+            [self.service_account_info.namespace, self.service_account_info.service_account]
+        )
+
+        if sa := registry.get(account_id):
+            return {
+                "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account_info.service_account,
+                "spark.kubernetes.namespace": self.service_account_info.namespace,
+            } | sa.configurations.props
+
+        self.logger.warning(f"Account {account_id} does not exist")
 
         return {}
 
