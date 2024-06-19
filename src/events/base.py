@@ -10,7 +10,7 @@ from typing import Callable
 from ops import CharmBase, EventBase, Object, StatusBase
 
 from core.context import Context
-from core.domain import S3ConnectionInfo, SparkServiceAccount, Status
+from core.domain import S3ConnectionInfo, SparkServiceAccountInfo, Status
 from core.workload import KyuubiWorkloadBase
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
@@ -27,7 +27,7 @@ class BaseEventHandler(Object, WithLogging):
     def get_app_status(
         self,
         s3_info: S3ConnectionInfo | None,
-        service_account: SparkServiceAccount | None,
+        service_account: SparkServiceAccountInfo | None,
     ) -> StatusBase:
         """Return the status of the charm."""
         if not self.workload.ready():

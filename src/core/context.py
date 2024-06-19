@@ -16,7 +16,7 @@ from constants import (
     S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
 )
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccount
+from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
 
 
@@ -82,11 +82,11 @@ class Context(WithLogging):
         return None
 
     @property
-    def service_account(self) -> SparkServiceAccount | None:
+    def service_account(self) -> SparkServiceAccountInfo | None:
         """The state of service account information."""
         data_interface = RequirerData(self.model, SPARK_SERVICE_ACCOUNT_REL)
 
-        if account := SparkServiceAccount(
+        if account := SparkServiceAccountInfo(
             self._spark_account_relation, data_interface, self.model.app
         ):
             return account

@@ -7,7 +7,7 @@
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccount
+from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo
 from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
@@ -23,7 +23,7 @@ class KyuubiManager(WithLogging):
         s3_info: S3ConnectionInfo | None,
         metastore_db_info: DatabaseConnectionInfo | None,
         auth_db_info: DatabaseConnectionInfo | None,
-        service_account_info: SparkServiceAccount | None,
+        service_account_info: SparkServiceAccountInfo | None,
     ):
         """Update Kyuubi service and restart it."""
         spark_config = SparkConfig(

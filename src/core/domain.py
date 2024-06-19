@@ -126,7 +126,7 @@ class DatabaseConnectionInfo:
     dbname: str
 
 
-class SparkServiceAccount(RelationState):
+class SparkServiceAccountInfo(RelationState):
     """Requirer-side of the Integration Hub relation."""
 
     def __init__(

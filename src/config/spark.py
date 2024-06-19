@@ -11,7 +11,7 @@ from lightkube import Client
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
-from core.domain import S3ConnectionInfo, SparkServiceAccount
+from core.domain import S3ConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
 
 
@@ -21,7 +21,7 @@ class SparkConfig(WithLogging):
     def __init__(
         self,
         s3_info: Optional[S3ConnectionInfo],
-        service_account_info: Optional[SparkServiceAccount],
+        service_account_info: Optional[SparkServiceAccountInfo],
     ):
         self.s3_info = s3_info
         self.namespace = service_account_info.namespace if service_account_info else ""
