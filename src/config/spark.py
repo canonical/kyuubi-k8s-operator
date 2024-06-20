@@ -11,7 +11,7 @@ from lightkube import Client
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
-from core.domain import S3ConnectionInfo, ServiceAccountInfo
+from core.domain import S3ConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
 
 
@@ -21,11 +21,10 @@ class SparkConfig(WithLogging):
     def __init__(
         self,
         s3_info: Optional[S3ConnectionInfo],
-        service_account_info: Optional[ServiceAccountInfo],
+        service_account_info: Optional[SparkServiceAccountInfo],
     ):
         self.s3_info = s3_info
-        self.namespace = service_account_info.namespace
-        self.service_account = service_account_info.service_account
+        self.service_account_info = service_account_info
 
     def _get_upload_path(self) -> str:
         bucket_name = self.s3_info.bucket or "kyuubi"
@@ -45,17 +44,26 @@ class SparkConfig(WithLogging):
         return {
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
-            "spark.kubernetes.authenticate.driver.serviceAccountName": self.service_account,
-            "spark.kubernetes.namespace": self.namespace,
             "spark.submit.deployMode": "cluster",
         }
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""
+        if not self.service_account_info:
+            return {}
+
         interface = LightKube(None, None)
         registry = K8sServiceAccountRegistry(interface)
-        if sa := registry.get(f"{self.namespace}:{self.service_account}"):
-            return sa.configurations.props
+
+        account_id = ":".join(
+            [self.service_account_info.namespace, self.service_account_info.service_account]
+        )
+
+        if service_account := registry.get(account_id):
+            return service_account.configurations.props
+
+        self.logger.warning(f"Account {account_id} does not exist")
+
         return {}
 
     def _user_conf(self):

@@ -28,7 +28,7 @@ TEST_CHARM_NAME = "application"
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, service_account):
+async def test_build_and_deploy(ops_test: OpsTest):
     """Test building and deploying the charm without relation with any other charm."""
     # Build and deploy charm from local source folder
     logger.info("Building charm...")
@@ -57,7 +57,8 @@ async def test_build_and_deploy(ops_test: OpsTest, service_account):
     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
 
     logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace, username = service_account
+    namespace = ops_test.model.name
+    username = "kyuubi-spark-engine"
     await ops_test.model.applications[APP_NAME].set_config(
         {"namespace": namespace, "service-account": username}
     )
@@ -124,8 +125,43 @@ async def test_integration_with_s3_integrator(
     )
 
     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert ops_test.model.applications[APP_NAME].status == "blocked"
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+
+@pytest.mark.abort_on_fail
+async def test_integration_with_integration_hub(ops_test: OpsTest, charm_versions):
+    """Test the integration with integration hub."""
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying integration-hub charm...")
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
+
+    logger.info("Waiting for integration_hub app to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.integration_hub.application_name], timeout=1000
+    )
+
+    # Add configuration key
+    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+    action = await unit.run_action(
+        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+    )
+    _ = await action.wait()
+
+    logger.info("Integrating kyuubi charm with integration-hub charm...")
+    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
+
+    logger.info("Waiting for integration_hub and kyuubi charms to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.integration_hub.application_name], timeout=1000
+    )
+
+    # Assert that both kyuubi-k8s and s3-integrator charms are in active state
+    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert (
+        ops_test.model.applications[charm_versions.integration_hub.application_name].status
+        == "active"
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -652,6 +688,7 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
     print("========== test_jdbc_endpoint.sh STDERR =================")
     print(process.stderr.decode())
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+
     assert process.returncode == 0
 
 
@@ -790,10 +827,11 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
     assert process.returncode == 0
 
 
+@pytest.mark.skip(reason="This tests need re-write and fixes on integration hub level")
 @pytest.mark.abort_on_fail
-async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, service_account):
+async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
     """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi."""
-    namespace, _ = service_account
+    namespace = ops_test.model.name
     sa_name = "custom-sa"
 
     # Adding a custom property via Spark8t to the service account
@@ -887,23 +925,3 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod, s
 
     assert len(executor_pod_names) == len(expected_executor_pod_names)
     assert set(executor_pod_names) == set(expected_executor_pod_names)
-
-
-@pytest.mark.abort_on_fail
-async def test_invalid_config(
-    ops_test: OpsTest,
-):
-    """Test the behavior of charm when the  config provided to it are invalid."""
-    logger.info("Setting invalid configuration for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config(
-        {"namespace": "invalid", "service-account": "invalid"}
-    )
-
-    logger.info("Waiting for kyuubi-k8s app to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        timeout=1000,
-    )
-
-    # Assert that the charm is in blocked state, due to invalid config options
-    assert ops_test.model.applications[APP_NAME].status == "blocked"

@@ -61,6 +61,7 @@ class TestCharm(BaseModel):
 class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
     postgres: TestCharm
+    integration_hub: TestCharm
 
 
 @pytest.fixture(scope="module")
@@ -75,6 +76,15 @@ def charm_versions() -> IntegrationTestsCharms:
                 "channel": "14/stable",
                 "series": "jammy",
                 "alias": "postgresql",
+                "trust": True,
+            }
+        ),
+        integration_hub=TestCharm(
+            **{
+                "name": "spark-integration-hub-k8s",
+                "channel": "latest/edge",
+                "series": "jammy",
+                "alias": "integration-hub",
                 "trust": True,
             }
         ),
@@ -128,37 +138,6 @@ def s3_bucket_and_creds():
     logger.info("Tearing down test bucket...")
     test_bucket.objects.all().delete()
     test_bucket.delete()
-
-
-@pytest.fixture(scope="module")
-def service_account():
-    logger.info("Preparing service account fixture...")
-    assert (
-        subprocess.run(
-            [
-                "./tests/integration/setup/setup_service_account.sh",
-                TEST_NAMESPACE,
-                TEST_SERVICE_ACCOUNT,
-            ],
-            check=True,
-        ).returncode
-        == 0
-    )
-    yield TEST_NAMESPACE, TEST_SERVICE_ACCOUNT
-
-    logger.info(f"Clean up {TEST_NAMESPACE} namespace...")
-    assert (
-        subprocess.run(
-            [
-                "kubectl",
-                "delete",
-                "namespace",
-                TEST_NAMESPACE,
-            ],
-            check=True,
-        ).returncode
-        == 0
-    )
 
 
 @pytest.fixture(scope="module")
