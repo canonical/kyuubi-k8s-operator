@@ -11,6 +11,9 @@ from pathlib import Path
 import psycopg2
 import pytest
 import yaml
+from juju.application import Application
+from juju.unit import Unit
+from ops import StatusBase
 from pytest_operator.plugin import OpsTest
 
 from constants import (
@@ -18,6 +21,7 @@ from constants import (
     KYUUBI_CLIENT_RELATION_NAME,
     METASTORE_DATABASE_NAME,
 )
+from core.domain import Status
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,18 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
+
+
+def check_status(entity: Application | Unit, status: StatusBase):
+    if isinstance(entity, Application):
+        return entity.status == status.name and entity.status_message == status.message
+    elif isinstance(entity, Unit):
+        return (
+            entity.workload_status == status.name
+            and entity.workload_status_message == status.message
+        )
+    else:
+        raise ValueError(f"entity type {type(entity)} is not allowed")
 
 
 @pytest.mark.abort_on_fail
@@ -71,7 +87,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     )
 
     # Assert that the charm is in blocked state, waiting for S3 relation
-    assert ops_test.model.applications[APP_NAME].status == "blocked"
+    assert check_status(ops_test.model.applications[APP_NAME], Status.MISSING_S3_RELATION.value)
 
 
 @pytest.mark.abort_on_fail
@@ -125,7 +141,10 @@ async def test_integration_with_s3_integrator(
     )
 
     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert ops_test.model.applications[APP_NAME].status == "blocked"
+    assert check_status(
+        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
+    )
+
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
@@ -157,7 +176,8 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     )
 
     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+
     assert (
         ops_test.model.applications[charm_versions.integration_hub.application_name].status
         == "active"
@@ -221,7 +241,7 @@ async def test_integration_with_postgresql_over_metastore_db(ops_test: OpsTest, 
     )
 
     # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
     assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
 
 
@@ -402,7 +422,8 @@ async def test_enable_authentication(ops_test: OpsTest, charm_versions):
     )
 
     # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert ops_test.model.applications[APP_NAME].status == "active"
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+
     assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
 
 
