@@ -75,7 +75,7 @@ def compute_status(
     return wrapper_hook
 
 
-def defer_when_not_read(
+def defer_when_not_ready(
     hook: Callable[[BaseEventHandler, EventBase], None]
 ) -> Callable[[BaseEventHandler, EventBase], None]:
     """Decorator to automatically compute statuses at the end of the hook."""

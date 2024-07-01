@@ -10,7 +10,7 @@ from ops import CharmBase
 from constants import KYUUBI_CLIENT_RELATION_NAME
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status, defer_when_not_read
+from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from providers import KyuubiClientProvider
 from utils.logging import WithLogging
@@ -39,7 +39,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """Handle the `on_install` event."""
 
     @compute_status
-    @defer_when_not_read
+    @defer_when_not_ready
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
         if not self.charm.unit.is_leader():
@@ -58,7 +58,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         pass
 
     @compute_status
-    @defer_when_not_read
+    @defer_when_not_ready
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")

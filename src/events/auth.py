@@ -12,7 +12,7 @@ from ops import CharmBase
 
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status, defer_when_not_read
+from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
@@ -45,7 +45,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         )
 
     @compute_status
-    @defer_when_not_read
+    @defer_when_not_ready
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the event when authentication database is created."""
         self.logger.info("Authentication database created...")
