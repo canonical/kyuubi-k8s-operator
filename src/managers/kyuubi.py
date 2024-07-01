@@ -26,6 +26,9 @@ class KyuubiManager(WithLogging):
         service_account_info: SparkServiceAccountInfo | None,
     ):
         """Update Kyuubi service and restart it."""
+        if not self.workload.ready():
+            return
+
         spark_config = SparkConfig(
             s3_info=s3_info, service_account_info=service_account_info
         ).contents
