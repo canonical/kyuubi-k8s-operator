@@ -14,7 +14,7 @@ from ops import CharmBase
 from constants import S3_INTEGRATOR_REL
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
+from events.base import BaseEventHandler, compute_status, defer_when_not_read
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
@@ -38,6 +38,7 @@ class S3Events(BaseEventHandler, WithLogging):
         self.framework.observe(self.s3_requires.on.credentials_gone, self._on_s3_credential_gone)
 
     @compute_status
+    @defer_when_not_read
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
         self.logger.info("S3 Credentials changed")

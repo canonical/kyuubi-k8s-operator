@@ -73,3 +73,18 @@ def compute_status(
         return res
 
     return wrapper_hook
+
+
+def defer_when_not_read(
+    hook: Callable[[BaseEventHandler, EventBase], None]
+) -> Callable[[BaseEventHandler, EventBase], None]:
+    """Decorator to automatically compute statuses at the end of the hook."""
+
+    @wraps(hook)
+    def wrapper_hook(event_handler: BaseEventHandler, event: EventBase):
+        """Return output after resetting statuses."""
+        if not event_handler.workload.ready():
+            event.defer()
+        return hook(event_handler, event)
+
+    return wrapper_hook

@@ -12,7 +12,7 @@ from ops import CharmBase
 
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
+from events.base import BaseEventHandler, compute_status, defer_when_not_read
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
@@ -43,6 +43,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         )
 
     @compute_status
+    @defer_when_not_read
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle event when metastore database is created."""
         self.logger.info("Metastore database created...")
