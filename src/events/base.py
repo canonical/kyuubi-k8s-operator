@@ -85,6 +85,8 @@ def defer_when_not_ready(
         """Return output after resetting statuses."""
         if not event_handler.workload.ready():
             event.defer()
+            return None
+
         return hook(event_handler, event)
 
     return wrapper_hook
