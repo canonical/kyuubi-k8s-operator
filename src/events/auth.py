@@ -12,7 +12,7 @@ from ops import CharmBase
 
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler
+from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
@@ -44,6 +44,8 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             self.charm.on.auth_db_relation_departed, self._on_auth_db_relation_departed
         )
 
+    @compute_status
+    @defer_when_not_ready
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the event when authentication database is created."""
         self.logger.info("Authentication database created...")
@@ -56,6 +58,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
         )
 
+    @compute_status
     def _on_auth_db_endpoints_changed(self, event) -> None:
         """Handle the event when authentication database endpoints are changed."""
         self.logger.info("Authentication database endpoints changed...")
@@ -66,6 +69,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
         )
 
+    @compute_status
     def _on_auth_db_relation_removed(self, event) -> None:
         """Handle the event when authentication database relation is removed."""
         self.logger.info("Authentication database relation removed")
@@ -76,6 +80,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
         )
 
+    @compute_status
     def _on_auth_db_relation_departed(self, event) -> None:
         """Handle the event when the authentication database relation is departed.
 

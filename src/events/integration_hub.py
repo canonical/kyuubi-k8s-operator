@@ -18,7 +18,7 @@ from constants import (
 )
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
+from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
@@ -50,6 +50,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.requirer.on.account_gone, self._on_account_gone)
 
     @compute_status
+    @defer_when_not_ready
     def _on_account_granted(self, _: ServiceAccountGrantedEvent):
         """Handle the `ServiceAccountGrantedEvent` event from integration hub."""
         self.logger.info("Service account received")
