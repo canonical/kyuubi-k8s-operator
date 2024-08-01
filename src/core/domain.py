@@ -29,7 +29,7 @@ class Status(Enum):
     """Class bundling all statuses that the charm may fall into."""
 
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
-    MISSING_S3_RELATION = BlockedStatus("Missing S3 relation")
+    MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     INVALID_CREDENTIALS = BlockedStatus("Invalid S3 credentials")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")

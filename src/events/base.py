@@ -33,17 +33,22 @@ class BaseEventHandler(Object, WithLogging):
         if not self.workload.ready():
             return Status.WAITING_PEBBLE.value
 
-        if not s3_info:
-            return Status.MISSING_S3_RELATION.value
+        # if not s3_info:
+        #     return Status.MISSING_S3_RELATION.value
 
-        s3_manager = S3Manager(s3_info=s3_info)
-        if not s3_manager.verify():
-            return Status.INVALID_CREDENTIALS.value
+        # s3_manager = S3Manager(s3_info=s3_info)
+        # if not s3_manager.verify():
+        #     return Status.INVALID_CREDENTIALS.value
 
         if not service_account:
             return Status.MISSING_INTEGRATION_HUB.value
 
-        k8s_manager = K8sManager(service_account_info=service_account)
+        k8s_manager = K8sManager(service_account_info=service_account, workload=self.workload)
+
+        if not k8s_manager.is_s3_configured() and not k8s_manager.is_azure_configured():
+            return Status.MISSING_OBJECT_STORAGE_BACKEND.value
+
+        self.logger.warning(k8s_manager.get_properties())
 
         if not k8s_manager.is_namespace_valid():
             return Status.INVALID_NAMESPACE.value
