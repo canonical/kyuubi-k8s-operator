@@ -669,6 +669,11 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
         apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
     )
 
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
+    )
+    time.sleep(30)
+
     # Fetch number of users excluding the default admin user
     with connection.cursor() as cursor:
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
@@ -767,6 +772,11 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
         apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
     )
 
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
+    )
+    time.sleep(30)
+
     # Fetch number of users excluding the default admin user
     with connection.cursor() as cursor:
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
@@ -824,6 +834,12 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
     )
+
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
+    )
+    time.sleep(30)
+
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
