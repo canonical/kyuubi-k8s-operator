@@ -39,3 +39,4 @@ class K8sManager(WithLogging):
     def verify(self) -> bool:
         """Verify service account information."""
         return self.is_namespace_valid() and self.is_service_account_valid()
+
