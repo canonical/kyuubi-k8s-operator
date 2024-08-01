@@ -45,7 +45,7 @@ def test_pebble_ready(
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
-    assert out.unit_status == Status.MISSING_S3_RELATION.value
+    assert out.unit_status == Status.MISSING_INTEGRATION_HUB.value
 
 
 @patch("managers.s3.S3Manager.verify", return_value=False)
@@ -98,11 +98,13 @@ def test_missing_integration_hub(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_s3(
     mock_sa_conf,
     mock_get_master,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -134,11 +136,13 @@ def test_valid_on_s3(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_service_account(
     mock_sa_conf,
     mock_get_master,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -170,11 +174,15 @@ def test_valid_on_service_account(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=False)
+@patch("managers.k8s.K8sManager.is_azure_storage_configured", return_value=False)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
-def test_s3_relation_broken(
+def test_object_storage_backend_removed(
     mock_sa_conf,
     mock_get_master,
+    mock_azure_configured,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -193,17 +201,19 @@ def test_s3_relation_broken(
         s3_relation.broken_event, state_after_relation_changed
     )
 
-    assert state_after_relation_broken.unit_status == Status.MISSING_S3_RELATION.value
+    assert state_after_relation_broken.unit_status == Status.MISSING_OBJECT_STORAGE_BACKEND.value
 
 
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_spark_service_account_broken(
     mock_sa_conf,
     mock_get_master,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -230,11 +240,13 @@ def test_spark_service_account_broken(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=False)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_invalid_namespace(
     mock_sa_conf,
     mock_get_master,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -254,11 +266,13 @@ def test_invalid_namespace(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=False)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_invalid_service_account(
     mock_sa_conf,
     mock_get_master,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -278,6 +292,7 @@ def test_invalid_service_account(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch(
     "config.spark.SparkConfig._sa_conf",
@@ -290,6 +305,7 @@ def test_invalid_service_account(
 def test_spark_property_priorities(
     mock_sa_conf,
     mock_get_master,
+    mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,

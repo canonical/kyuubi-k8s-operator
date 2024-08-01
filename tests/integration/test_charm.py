@@ -87,7 +87,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     )
 
     # Assert that the charm is in blocked state, waiting for S3 relation
-    assert check_status(ops_test.model.applications[APP_NAME], Status.MISSING_S3_RELATION.value)
+    assert check_status(ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value)
 
 
 @pytest.mark.abort_on_fail
@@ -155,9 +155,11 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     logger.info("Deploying integration-hub charm...")
     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
 
-    logger.info("Waiting for integration_hub app to be idle...")
+    logger.info("Waiting for integration_hub app to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name], timeout=1000
+        apps=[charm_versions.integration_hub.application_name], 
+        timeout=1000, 
+        status="active"
     )
 
     # Add configuration key
@@ -170,9 +172,12 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
 
-    logger.info("Waiting for integration_hub and kyuubi charms to be idle...")
+    logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.integration_hub.application_name], timeout=1000
+        apps=[APP_NAME, charm_versions.integration_hub.application_name], 
+        timeout=1000, 
+        status="active",
+        idle_period=20
     )
 
     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
