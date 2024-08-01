@@ -46,8 +46,7 @@ class BaseEventHandler(Object, WithLogging):
 
         k8s_manager = K8sManager(service_account_info=service_account, workload=self.workload)
 
-
-        # Check whether any one of object storage backend has been configured 
+        # Check whether any one of object storage backend has been configured
         # Currently, we do this check on the basis of presence of Spark properties
         # TODO: Rethink on this approach with a more sturdy solution
         if not k8s_manager.is_s3_configured() and not k8s_manager.is_azure_storage_configured():
