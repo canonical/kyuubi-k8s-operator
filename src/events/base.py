@@ -33,9 +33,6 @@ class BaseEventHandler(Object, WithLogging):
         if not self.workload.ready():
             return Status.WAITING_PEBBLE.value
 
-        # if not s3_info:
-        #     return Status.MISSING_S3_RELATION.value
-
         if s3_info:
             s3_manager = S3Manager(s3_info=s3_info)
             if not s3_manager.verify():
