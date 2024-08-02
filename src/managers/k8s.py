@@ -66,11 +66,9 @@ class K8sManager(WithLogging):
     def is_s3_configured(self) -> bool:
         """Return whether S3 object storage backend has been configured."""
         pattern = r"spark\.hadoop\.fs\.s3a\.secret\.key=.*"
-        self.logger.warning(self.get_properties())
         return any(re.match(pattern, prop) for prop in self.get_properties())
 
     def is_azure_storage_configured(self) -> bool:
         """Return whether Azure object storage backend has been configured."""
         pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net=.*"
-        self.logger.warning(self.get_properties())
         return any(re.match(pattern, prop) for prop in self.get_properties())
