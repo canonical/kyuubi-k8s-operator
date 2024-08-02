@@ -87,7 +87,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     )
 
     # Assert that the charm is in blocked state, waiting for S3 relation
-    assert check_status(ops_test.model.applications[APP_NAME], Status.MISSING_S3_RELATION.value)
+    assert check_status(
+        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -155,9 +157,9 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     logger.info("Deploying integration-hub charm...")
     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
 
-    logger.info("Waiting for integration_hub app to be idle...")
+    logger.info("Waiting for integration_hub app to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name], timeout=1000
+        apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
     )
 
     # Add configuration key
@@ -170,9 +172,12 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
 
-    logger.info("Waiting for integration_hub and kyuubi charms to be idle...")
+    logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.integration_hub.application_name], timeout=1000
+        apps=[APP_NAME, charm_versions.integration_hub.application_name],
+        timeout=1000,
+        status="active",
+        idle_period=20,
     )
 
     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
@@ -664,6 +669,11 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
         apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
     )
 
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
+    )
+    time.sleep(30)
+
     # Fetch number of users excluding the default admin user
     with connection.cursor() as cursor:
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
@@ -762,6 +772,11 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
         apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
     )
 
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
+    )
+    time.sleep(30)
+
     # Fetch number of users excluding the default admin user
     with connection.cursor() as cursor:
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
@@ -819,6 +834,12 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
     )
+
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
+    )
+    time.sleep(30)
+
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
