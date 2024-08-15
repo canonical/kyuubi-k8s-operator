@@ -15,8 +15,9 @@ from constants import (
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
+    ZOOKEEPER_REL
 )
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo
+from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo, ZookeeperInfo
 from utils.logging import WithLogging
 
 
@@ -31,9 +32,12 @@ class Context(WithLogging):
         )
         self.auth_db_requirer = DatabaseRequirerData(
             self.model,
-            POSTGRESQL_AUTH_DB_REL,
+            POSTGRESQL_AUTH_DB_REL, 
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
+        )
+        self.zookeeper_requirer_data = DatabaseRequirerData(
+            self.model, ZOOKEEPER_REL, database_name="/kyuubi"
         )
 
     @property
@@ -45,6 +49,11 @@ class Context(WithLogging):
     def _spark_account_relation(self) -> Relation | None:
         """The integration hub relation."""
         return self.model.get_relation(SPARK_SERVICE_ACCOUNT_REL)
+
+    @property
+    def _zookeeper_relation(self) -> Relation | None:
+        """The zookeeper relation"""
+        return self.model.get_relation(ZOOKEEPER_REL)
 
     # --- DOMAIN OBJECTS ---
 
@@ -90,6 +99,12 @@ class Context(WithLogging):
             self._spark_account_relation, data_interface, self.model.app
         ):
             return account
+
+    @property
+    def zookeeper(self) -> ZookeeperInfo | None:
+        """The state of the Zookeeper information."""
+        return ZookeeperInfo(rel, self.zookeeper_requirer_data, rel.app) if (rel := self._zookeeper_relation) else None
+
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""

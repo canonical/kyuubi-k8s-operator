@@ -14,6 +14,7 @@ S3_INTEGRATOR_REL = "s3-credentials"
 POSTGRESQL_METASTORE_DB_REL = "metastore-db"
 POSTGRESQL_AUTH_DB_REL = "auth-db"
 SPARK_SERVICE_ACCOUNT_REL = "spark-service-account"
+ZOOKEEPER_REL = "zookeeper"
 
 NAMESPACE_CONFIG_NAME = "namespace"
 SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
