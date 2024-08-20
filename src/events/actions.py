@@ -7,7 +7,7 @@
 from ops import CharmBase
 from ops.charm import ActionEvent
 
-from constants import DEFAULT_ADMIN_USERNAME
+from constants import DEFAULT_ADMIN_USERNAME, JDBC_PORT
 from core.context import Context
 from core.domain import Status
 from core.workload import KyuubiWorkloadBase
@@ -40,14 +40,21 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the workload is not ready yet.")
             return
         if (
-            not self.get_app_status(
-                s3_info=self.context.s3, service_account=self.context.service_account
-            )
-            != Status.ACTIVE
+            self.get_app_status() != Status.ACTIVE.value
         ):
             event.fail("The action failed because the charm is not in active state.")
             return
-        result = {"endpoint": self.workload.get_jdbc_endpoint()}
+
+        if self.context.is_ha_enabled():
+            address = self.context.zookeeper.uris
+            namespace = self.context.zookeeper.namespace
+            if not address.endswith("/"):
+                address += "/"
+            endpoint = f"jdbc:hive2://{address};serviceDiscoveryMode=zooKeeper;zooKeeperNamespace={namespace}"
+        else:
+            address = self.workload.get_ip_address()
+            endpoint = f"jdbc:hive2://{address}:{JDBC_PORT}/"
+        result = {"endpoint": endpoint}
         event.set_results(result)
 
     def _on_get_password(self, event: ActionEvent) -> None:
@@ -62,10 +69,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the workload is not ready yet.")
             return
         if (
-            not self.get_app_status(
-                s3_info=self.context.s3, service_account=self.context.service_account
-            )
-            != Status.ACTIVE
+            self.get_app_status() != Status.ACTIVE.value
         ):
             event.fail("The action failed because the charm is not in active state.")
             return
@@ -90,10 +94,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the workload is not ready yet.")
             return
         if (
-            not self.get_app_status(
-                s3_info=self.context.s3, service_account=self.context.service_account
-            )
-            != Status.ACTIVE
+            self.get_app_status() != Status.ACTIVE.value
         ):
             event.fail("The action failed because the charm is not in active state.")
             return

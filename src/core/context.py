@@ -15,7 +15,8 @@ from constants import (
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
-    ZOOKEEPER_REL
+    ZOOKEEPER_REL,
+    HA_ZNODE_NAME
 )
 from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo, ZookeeperInfo
 from utils.logging import WithLogging
@@ -37,7 +38,7 @@ class Context(WithLogging):
             extra_user_roles="superuser",
         )
         self.zookeeper_requirer_data = DatabaseRequirerData(
-            self.model, ZOOKEEPER_REL, database_name="kyuubist"
+            self.model, ZOOKEEPER_REL, database_name=HA_ZNODE_NAME
         )
 
     @property
@@ -109,3 +110,7 @@ class Context(WithLogging):
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
         return bool(self.auth_db)
+
+    def is_ha_enabled(self) -> bool:
+        """Returns whether HA has been enabled in the Kyuubi charm."""
+        return bool(self.zookeeper)
