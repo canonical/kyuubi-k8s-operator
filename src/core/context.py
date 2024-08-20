@@ -37,7 +37,7 @@ class Context(WithLogging):
             extra_user_roles="superuser",
         )
         self.zookeeper_requirer_data = DatabaseRequirerData(
-            self.model, ZOOKEEPER_REL, database_name="/kyuubi"
+            self.model, ZOOKEEPER_REL, database_name="kyuubist"
         )
 
     @property

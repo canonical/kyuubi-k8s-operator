@@ -22,23 +22,30 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
         self.kyuubi = KyuubiManager(self.workload)
         self.zookeeper_handler = DatabaseRequirerEventHandlers(self.charm, self.context.zookeeper_requirer_data)
 
-        # self.framework.observe(self.charm.on[ZOOKEEPER_REL].relation_created, self._on_zookeeper_created)
-        # self.framework.observe(self.charm.on[ZOOKEEPER_REL].relation_joined, self._on_zookeeper_joined)
+        self.framework.observe(self.charm.on[ZOOKEEPER_REL].relation_created, self._on_zookeeper_created)
+        self.framework.observe(self.charm.on[ZOOKEEPER_REL].relation_joined, self._on_zookeeper_joined)
         self.framework.observe(self.charm.on[ZOOKEEPER_REL].relation_changed, self._on_zookeeper_changed)
         self.framework.observe(self.charm.on[ZOOKEEPER_REL].relation_broken, self._on_zookeeper_broken)
 
 
-    # def _on_zookeeper_created(self, _):
-    #     self.logger.warning("Zookeeper created...")
-    #     self.logger.warning(self.context.zookeeper.endpoints)
+    def _on_zookeeper_created(self, _):
+        self.logger.warning("Zookeeper created...")
+        self.logger.warning(self.context._zookeeper_relation.data)
 
 
-    # def _on_zookeeper_joined(self, _):
-    #     self.logger.warning("Zookeeper joined...")
+    def _on_zookeeper_joined(self, _):
+        self.logger.warning("Zookeeper joined...")
+        self.logger.warning(self.context._zookeeper_relation.data)
+
 
     @compute_status
     def _on_zookeeper_changed(self, _):
-        self.logger.info("Zookeeper relation changed...")
+        self.logger.info("Zookeeper relation changed new...")
+        self.logger.info(self.context.zookeeper.uris)
+        self.logger.info(self.context.zookeeper.username)
+        self.logger.info(self.context.zookeeper.password)
+        self.logger.info(self.context.zookeeper.namespace)
+        self.logger.info(self.context._zookeeper_relation.data)
         self.kyuubi.update(
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
