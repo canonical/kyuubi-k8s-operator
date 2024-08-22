@@ -822,11 +822,8 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
     assert "Error validating the login" in process.stderr.decode()
 
 
-
 @pytest.mark.abort_on_fail
-async def test_integration_with_zookeeper(
-    ops_test: OpsTest, charm_versions
-):
+async def test_integration_with_zookeeper(ops_test: OpsTest, charm_versions):
     """Test the charm by integrating it with Zookeeper."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying zookeeper-k8s charm...")
@@ -846,16 +843,15 @@ async def test_integration_with_zookeeper(
     )
 
     # Assert that both kyuubi-k8s and zookeeper-k8s charms are in active state
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.ACTIVE.value
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    assert (
+        ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
     )
-    assert ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
 async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_versions):
     """Test the charm after the zookeeper relation has been broken."""
-
     logger.info("Removing relation between zookeeper-k8s and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
         f"{APP_NAME}:zookeeper", f"{charm_versions.zookeeper.application_name}:zookeeper"
@@ -867,10 +863,10 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_vers
     )
 
     # Assert that both kyuubi-k8s and zookeeper-k8s charms are in active state
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.ACTIVE.value
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    assert (
+        ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
     )
-    assert ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
 
     logger.info(
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
@@ -904,8 +900,6 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_vers
     print(process.stderr.decode())
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
     assert process.returncode == 0
-
-
 
 
 @pytest.mark.abort_on_fail

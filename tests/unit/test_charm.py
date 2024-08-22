@@ -24,6 +24,7 @@ def parse_spark_properties(tmp_path: Path) -> dict[str, str]:
             row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
         )
 
+
 def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
     """Parse and return Kyuubi configurations from the conf file in the container."""
     file_path = tmp_path / Path(KyuubiWorkload.KYUUBI_CONFIGURATION_FILE).relative_to("/opt")
@@ -230,7 +231,7 @@ def test_zookeeper_relation_joined(
     kyuubi_container,
     s3_relation,
     spark_service_account_relation,
-    zookeeper_relation
+    zookeeper_relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation, zookeeper_relation],
@@ -240,15 +241,20 @@ def test_zookeeper_relation_joined(
     assert out.unit_status == Status.ACTIVE.value
 
     kyuubi_configurations = parse_kyuubi_configurations(tmp_path)
-    logger.info(kyuubi_configurations)
-    print(kyuubi_configurations)
-    print(tmp_path)
 
     # Assert some of the keys
-    assert kyuubi_configurations["kyuubi.ha.namespace"] == zookeeper_relation.remote_app_data["database"]
-    assert kyuubi_configurations["kyuubi.ha.addresses"] == zookeeper_relation.remote_app_data["uris"]
+    assert (
+        kyuubi_configurations["kyuubi.ha.namespace"]
+        == zookeeper_relation.remote_app_data["database"]
+    )
+    assert (
+        kyuubi_configurations["kyuubi.ha.addresses"] == zookeeper_relation.remote_app_data["uris"]
+    )
     assert kyuubi_configurations["kyuubi.ha.zookeeper.auth.type"] == "DIGEST"
-    assert kyuubi_configurations["kyuubi.ha.zookeeper.auth.digest"] == f"{zookeeper_relation.remote_app_data['username']}:{zookeeper_relation.remote_app_data['password']}"
+    assert (
+        kyuubi_configurations["kyuubi.ha.zookeeper.auth.digest"]
+        == f"{zookeeper_relation.remote_app_data['username']}:{zookeeper_relation.remote_app_data['password']}"
+    )
 
 
 @patch("managers.s3.S3Manager.verify", return_value=True)
@@ -269,14 +275,16 @@ def test_zookeeper_relation_broken(
     kyuubi_container,
     s3_relation,
     spark_service_account_relation,
-    zookeeper_relation
+    zookeeper_relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     state_after_relation_changed = kyuubi_context.run(zookeeper_relation.changed_event, state)
-    state_after_relation_broken = kyuubi_context.run(zookeeper_relation.broken_event, state_after_relation_changed)
+    state_after_relation_broken = kyuubi_context.run(
+        zookeeper_relation.broken_event, state_after_relation_changed
+    )
     assert state_after_relation_broken.unit_status == Status.ACTIVE.value
 
     kyuubi_configurations = parse_kyuubi_configurations(tmp_path)

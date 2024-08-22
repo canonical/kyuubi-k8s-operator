@@ -7,7 +7,12 @@ from scenario import Container, Context, Model, Mount, Relation
 from scenario.state import next_relation_id
 
 from charm import KyuubiCharm
-from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL, SPARK_SERVICE_ACCOUNT_REL, ZOOKEEPER_REL
+from constants import (
+    KYUUBI_CONTAINER_NAME,
+    S3_INTEGRATOR_REL,
+    SPARK_SERVICE_ACCOUNT_REL,
+    ZOOKEEPER_REL,
+)
 
 
 @pytest.fixture
@@ -105,7 +110,7 @@ def zookeeper_relation():
         interface="zookeeper",
         remote_app_name="zookeeper-k8s",
         relation_id=relation_id,
-        local_app_data={"database": f"/kyuubi"},
+        local_app_data={"database": "/kyuubi"},
         remote_app_data={
             "uris": "host1:2181,host2:2181,host3:2181",
             "username": "foobar",

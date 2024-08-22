@@ -96,7 +96,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "series": "jammy",
                 "alias": "zookeeper",
             }
-        )
+        ),
     )
 
 
