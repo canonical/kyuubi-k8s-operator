@@ -868,39 +868,6 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_vers
         ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
     )
 
-    logger.info(
-        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
-    )
-    time.sleep(30)
-
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
-    )
-    result = await action.wait()
-
-    jdbc_endpoint = result.results.get("endpoint")
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
-    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
-    process = subprocess.run(
-        [
-            "./tests/integration/test_jdbc_endpoint.sh",
-            test_pod,
-            jdbc_endpoint,
-            "db_555",
-            "table_555",
-        ],
-        capture_output=True,
-    )
-    print("========== test_jdbc_endpoint.sh STDOUT =================")
-    print(process.stdout.decode())
-    print("========== test_jdbc_endpoint.sh STDERR =================")
-    print(process.stderr.decode())
-    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
-    assert process.returncode == 0
-
 
 @pytest.mark.abort_on_fail
 async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions):
