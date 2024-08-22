@@ -21,8 +21,8 @@ from events.auth import AuthenticationEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
-from events.zookeeper import ZookeeperEvents
 from events.s3 import S3Events
+from events.zookeeper import ZookeeperEvents
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)

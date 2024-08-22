@@ -15,7 +15,9 @@ from utils.logging import WithLogging
 class KyuubiConfig(WithLogging):
     """Kyuubi Configurations."""
 
-    def __init__(self, db_info: Optional[DatabaseConnectionInfo], zookeeper_info: Optional[ZookeeperInfo]):
+    def __init__(
+        self, db_info: Optional[DatabaseConnectionInfo], zookeeper_info: Optional[ZookeeperInfo]
+    ):
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
 
@@ -36,7 +38,6 @@ class KyuubiConfig(WithLogging):
         password = self.zookeeper_info.password
         return f"{username}:{password}"
 
-
     @property
     def _auth_conf(self) -> dict[str, str]:
         if not self.db_info:
@@ -56,7 +57,7 @@ class KyuubiConfig(WithLogging):
             return {}
         return {
             "kyuubi.ha.addresses": self.zookeeper_info.uris,
-            "kyuubi.ha.namespace": self.zookeeper_info.namespace,
+            "kyuubi.ha.namespace": self.zookeeper_info.database,
             "kyuubi.ha.zookeeper.auth.type": "DIGEST",
             "kyuubi.ha.zookeeper.auth.digest": self._get_zookeeper_auth_digest(),
         }

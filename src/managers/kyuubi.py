@@ -7,7 +7,12 @@
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo, ZookeeperInfo
+from core.domain import (
+    DatabaseConnectionInfo,
+    S3ConnectionInfo,
+    SparkServiceAccountInfo,
+    ZookeeperInfo,
+)
 from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
 

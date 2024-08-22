@@ -39,9 +39,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return
-        if (
-            self.get_app_status() != Status.ACTIVE.value
-        ):
+        if self.get_app_status() != Status.ACTIVE.value:
             event.fail("The action failed because the charm is not in active state.")
             return
 
@@ -68,9 +66,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return
-        if (
-            self.get_app_status() != Status.ACTIVE.value
-        ):
+        if self.get_app_status() != Status.ACTIVE.value:
             event.fail("The action failed because the charm is not in active state.")
             return
         password = self.auth.get_password(DEFAULT_ADMIN_USERNAME)
@@ -93,9 +89,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         if not self.workload.ready():
             event.fail("The action failed because the workload is not ready yet.")
             return
-        if (
-            self.get_app_status() != Status.ACTIVE.value
-        ):
+        if self.get_app_status() != Status.ACTIVE.value:
             event.fail("The action failed because the charm is not in active state.")
             return
 

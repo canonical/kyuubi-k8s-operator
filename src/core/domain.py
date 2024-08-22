@@ -32,10 +32,8 @@ class Status(Enum):
     MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     INVALID_CREDENTIALS = BlockedStatus("Invalid S3 credentials")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
-    MISSING_ZOOKEEPER = BlockedStatus("Missing zookeeper relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
-
     ACTIVE = ActiveStatus("")
 
 
@@ -208,7 +206,7 @@ class ZookeeperInfo(RelationState):
 
     @property
     def database(self) -> str:
-        """Path allocated for Kafka on ZooKeeper."""
+        """Path allocated for Kyuubi on ZooKeeper."""
         if not self.relation:
             return ""
 
@@ -216,12 +214,12 @@ class ZookeeperInfo(RelationState):
             self.data_interface.fetch_relation_field(
                 relation_id=self.relation.id, field="database"
             )
-            or self.chroot
+            or ""
         )
 
     @property
     def uris(self) -> str:
-        """Comma separated connection string, containing endpoints"""
+        """Comma separated connection string, containing endpoints."""
         if not self.relation:
             return ""
 
@@ -234,19 +232,7 @@ class ZookeeperInfo(RelationState):
                     or ""
                 ).split(",")
             )
-        ).replace(self.namespace, "")
-
-    @property
-    def namespace(self) -> str:
-        """Path allocated for Kyuubi on ZooKeeper."""
-        if not self.relation:
-            return ""
-
-        return (
-            self.data_interface.fetch_relation_field(relation_id=self.relation.id, field="chroot")
-            or ""
-        )
-
+        ).replace(self.database, "")
 
     @property
     def zookeeper_connected(self) -> bool:
@@ -256,7 +242,11 @@ class ZookeeperInfo(RelationState):
             True if ZooKeeper is currently related with sufficient relation data
                 for a broker to connect with. Otherwise False
         """
-        if not all([self.username, self.password, self.endpoints, self.database, self.uris]):
+        if not all([self.username, self.password, self.database, self.uris]):
             return False
 
         return True
+
+    def __bool__(self) -> bool:
+        """Return whether this class object has sufficient information."""
+        return self.zookeeper_connected

@@ -29,7 +29,7 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         self.user = user
 
     def get_ip_address(self) -> str:
-        """Return the IP address of the unit running the workload"""
+        """Return the IP address of the unit running the workload."""
         hostname = socket.getfqdn()
         ip_address = socket.gethostbyname(hostname)
         return ip_address

@@ -39,7 +39,9 @@ class BaseEventHandler(Object, WithLogging):
         if not self.context.service_account:
             return Status.MISSING_INTEGRATION_HUB.value
 
-        k8s_manager = K8sManager(service_account_info=self.context.service_account, workload=self.workload)
+        k8s_manager = K8sManager(
+            service_account_info=self.context.service_account, workload=self.workload
+        )
 
         # Check whether any one of object storage backend has been configured
         # Currently, we do this check on the basis of presence of Spark properties
@@ -56,9 +58,6 @@ class BaseEventHandler(Object, WithLogging):
 
         if not k8s_manager.is_service_account_valid():
             return Status.INVALID_SERVICE_ACCOUNT.value
-
-        if not self.context.zookeeper:
-            return Status.MISSING_ZOOKEEPER.value
 
         return Status.ACTIVE.value
 

@@ -7,7 +7,7 @@ from scenario import Container, Context, Model, Mount, Relation
 from scenario.state import next_relation_id
 
 from charm import KyuubiCharm
-from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL, SPARK_SERVICE_ACCOUNT_REL
+from constants import KYUUBI_CONTAINER_NAME, S3_INTEGRATOR_REL, SPARK_SERVICE_ACCOUNT_REL, ZOOKEEPER_REL
 
 
 @pytest.fixture
@@ -92,4 +92,24 @@ def spark_service_account_relation():
         relation_id=relation_id,
         local_app_data={"service-account": "kyuubi", "namespace": "spark"},
         remote_app_data={"service-account": "kyuubi", "namespace": "spark"},
+    )
+
+
+@pytest.fixture
+def zookeeper_relation():
+    """Provide fixture for the Zookeeper relation."""
+    relation_id = next_relation_id(update=True)
+
+    return Relation(
+        endpoint=ZOOKEEPER_REL,
+        interface="zookeeper",
+        remote_app_name="zookeeper-k8s",
+        relation_id=relation_id,
+        local_app_data={"database": f"/kyuubi"},
+        remote_app_data={
+            "uris": "host1:2181,host2:2181,host3:2181",
+            "username": "foobar",
+            "password": "foopassbarword",
+            "database": "/kyuubi",
+        },
     )

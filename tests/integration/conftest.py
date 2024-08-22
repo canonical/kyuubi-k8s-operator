@@ -62,6 +62,7 @@ class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
     postgres: TestCharm
     integration_hub: TestCharm
+    zookeeper: TestCharm
 
 
 @pytest.fixture(scope="module")
@@ -88,6 +89,14 @@ def charm_versions() -> IntegrationTestsCharms:
                 "trust": True,
             }
         ),
+        zookeeper=TestCharm(
+            **{
+                "name": "zookeeper-k8s",
+                "channel": "3/edge",
+                "series": "jammy",
+                "alias": "zookeeper",
+            }
+        )
     )
 
 

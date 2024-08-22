@@ -10,15 +10,20 @@ from ops import ConfigData, Model, Relation
 from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    HA_ZNODE_NAME,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
-    HA_ZNODE_NAME
 )
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo, ZookeeperInfo
+from core.domain import (
+    DatabaseConnectionInfo,
+    S3ConnectionInfo,
+    SparkServiceAccountInfo,
+    ZookeeperInfo,
+)
 from utils.logging import WithLogging
 
 
@@ -33,7 +38,7 @@ class Context(WithLogging):
         )
         self.auth_db_requirer = DatabaseRequirerData(
             self.model,
-            POSTGRESQL_AUTH_DB_REL, 
+            POSTGRESQL_AUTH_DB_REL,
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
         )
@@ -53,7 +58,7 @@ class Context(WithLogging):
 
     @property
     def _zookeeper_relation(self) -> Relation | None:
-        """The zookeeper relation"""
+        """The zookeeper relation."""
         return self.model.get_relation(ZOOKEEPER_REL)
 
     # --- DOMAIN OBJECTS ---
@@ -104,8 +109,11 @@ class Context(WithLogging):
     @property
     def zookeeper(self) -> ZookeeperInfo | None:
         """The state of the Zookeeper information."""
-        return ZookeeperInfo(rel, self.zookeeper_requirer_data, rel.app) if (rel := self._zookeeper_relation) else None
-
+        return (
+            ZookeeperInfo(rel, self.zookeeper_requirer_data, rel.app)
+            if (rel := self._zookeeper_relation)
+            else None
+        )
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
