@@ -45,7 +45,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
 
         if self.context.is_ha_enabled():
             address = self.context.zookeeper.uris
-            namespace = self.context.zookeeper.namespace
+            namespace = self.context.zookeeper.database
             if not address.endswith("/"):
                 address += "/"
             endpoint = f"jdbc:hive2://{address};serviceDiscoveryMode=zooKeeper;zooKeeperNamespace={namespace}"

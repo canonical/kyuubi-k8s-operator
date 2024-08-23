@@ -10,7 +10,7 @@ from ops import ConfigData, Model, Relation
 from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
-    HA_ZNODE_NAME,
+    HA_ZNODE_NAME_TEMP,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
@@ -43,7 +43,7 @@ class Context(WithLogging):
             extra_user_roles="superuser",
         )
         self.zookeeper_requirer_data = DatabaseRequirerData(
-            self.model, ZOOKEEPER_REL, database_name=HA_ZNODE_NAME
+            self.model, ZOOKEEPER_REL, database_name=HA_ZNODE_NAME_TEMP
         )
 
     @property
