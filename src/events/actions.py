@@ -7,7 +7,7 @@
 from ops import CharmBase
 from ops.charm import ActionEvent
 
-from constants import DEFAULT_ADMIN_USERNAME, JDBC_PORT
+from constants import DEFAULT_ADMIN_USERNAME, HA_ZNODE_NAME, JDBC_PORT
 from core.context import Context
 from core.domain import Status
 from core.workload import KyuubiWorkloadBase
@@ -45,7 +45,9 @@ class ActionEvents(BaseEventHandler, WithLogging):
 
         if self.context.is_ha_enabled():
             address = self.context.zookeeper.uris
-            namespace = self.context.zookeeper.database
+            # FIXME: Get this value from self.context.zookeeper.uris when znode created by
+            # zookeeper charm has enough permissions for Kyuubi to work
+            namespace = HA_ZNODE_NAME
             if not address.endswith("/"):
                 address += "/"
             endpoint = f"jdbc:hive2://{address};serviceDiscoveryMode=zooKeeper;zooKeeperNamespace={namespace}"

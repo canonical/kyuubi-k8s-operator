@@ -42,6 +42,10 @@ class Context(WithLogging):
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
         )
+
+        # FIXME: The database_name currently requested is a dummy name
+        # This should be replaced with the name of actual znode when znode created
+        # by zookeeper charm has enough permissions for Kyuubi to work
         self.zookeeper_requirer_data = DatabaseRequirerData(
             self.model, ZOOKEEPER_REL, database_name=HA_ZNODE_NAME_TEMP
         )

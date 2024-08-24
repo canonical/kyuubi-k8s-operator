@@ -59,6 +59,9 @@ class BaseEventHandler(Object, WithLogging):
         if not k8s_manager.is_service_account_valid():
             return Status.INVALID_SERVICE_ACCOUNT.value
 
+        if self.context._zookeeper_relation and not self.context.zookeeper:
+            return Status.WAITING_ZOOKEEPER.value
+
         return Status.ACTIVE.value
 
 

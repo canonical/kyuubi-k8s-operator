@@ -57,6 +57,8 @@ class KyuubiConfig(WithLogging):
             return {}
         return {
             "kyuubi.ha.addresses": self.zookeeper_info.uris,
+            # FIXME: Get this value from self.context.zookeeper.uris when znode created by
+            # zookeeper charm has enough permissions for Kyuubi to work
             "kyuubi.ha.namespace": HA_ZNODE_NAME,
             "kyuubi.ha.zookeeper.auth.type": "DIGEST",
             "kyuubi.ha.zookeeper.auth.digest": self._get_zookeeper_auth_digest(),
