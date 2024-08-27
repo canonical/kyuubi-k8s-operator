@@ -10,13 +10,20 @@ from ops import ConfigData, Model, Relation
 from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    HA_ZNODE_NAME_TEMP,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
+    ZOOKEEPER_REL,
 )
-from core.domain import DatabaseConnectionInfo, S3ConnectionInfo, SparkServiceAccountInfo
+from core.domain import (
+    DatabaseConnectionInfo,
+    S3ConnectionInfo,
+    SparkServiceAccountInfo,
+    ZookeeperInfo,
+)
 from utils.logging import WithLogging
 
 
@@ -36,6 +43,13 @@ class Context(WithLogging):
             extra_user_roles="superuser",
         )
 
+        # FIXME: The database_name currently requested is a dummy name
+        # This should be replaced with the name of actual znode when znode created
+        # by zookeeper charm has enough permissions for Kyuubi to work
+        self.zookeeper_requirer_data = DatabaseRequirerData(
+            self.model, ZOOKEEPER_REL, database_name=HA_ZNODE_NAME_TEMP
+        )
+
     @property
     def _s3_relation(self) -> Relation | None:
         """The S3 relation."""
@@ -45,6 +59,11 @@ class Context(WithLogging):
     def _spark_account_relation(self) -> Relation | None:
         """The integration hub relation."""
         return self.model.get_relation(SPARK_SERVICE_ACCOUNT_REL)
+
+    @property
+    def _zookeeper_relation(self) -> Relation | None:
+        """The zookeeper relation."""
+        return self.model.get_relation(ZOOKEEPER_REL)
 
     # --- DOMAIN OBJECTS ---
 
@@ -91,6 +110,19 @@ class Context(WithLogging):
         ):
             return account
 
+    @property
+    def zookeeper(self) -> ZookeeperInfo | None:
+        """The state of the Zookeeper information."""
+        return (
+            ZookeeperInfo(rel, self.zookeeper_requirer_data, rel.app)
+            if (rel := self._zookeeper_relation)
+            else None
+        )
+
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
         return bool(self.auth_db)
+
+    def is_ha_enabled(self) -> bool:
+        """Returns whether HA has been enabled in the Kyuubi charm."""
+        return bool(self.zookeeper)

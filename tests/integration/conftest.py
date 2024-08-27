@@ -62,6 +62,7 @@ class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
     postgres: TestCharm
     integration_hub: TestCharm
+    zookeeper: TestCharm
 
 
 @pytest.fixture(scope="module")
@@ -86,6 +87,15 @@ def charm_versions() -> IntegrationTestsCharms:
                 "series": "jammy",
                 "alias": "integration-hub",
                 "trust": True,
+            }
+        ),
+        zookeeper=TestCharm(
+            **{
+                "name": "zookeeper-k8s",
+                "channel": "3/edge",
+                "series": "jammy",
+                "alias": "zookeeper",
+                "num_units": 3,
             }
         ),
     )
@@ -141,14 +151,15 @@ def s3_bucket_and_creds():
 
 
 @pytest.fixture(scope="module")
-def test_pod():
+def test_pod(ops_test):
     logger.info("Preparing test pod fixture...")
 
     kyuubi_image = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+    namespace = ops_test.model_name
 
     with open(TEST_POD_SPEC_FILE) as tf:
         template = Template(tf.read())
-        pod_spec = template.substitute(kyuubi_image=kyuubi_image)
+        pod_spec = template.substitute(kyuubi_image=kyuubi_image, namespace=namespace)
 
     # Create test pod by applying pod spec
     apply_result = subprocess.run(
@@ -160,7 +171,17 @@ def test_pod():
 
     # Wait until the pod is in ready state
     wait_result = subprocess.run(
-        ["kubectl", "wait", "--for", "condition=Ready", f"pod/{pod_name}", "--timeout", "60s"]
+        [
+            "kubectl",
+            "wait",
+            "--for",
+            "condition=Ready",
+            f"pod/{pod_name}",
+            "-n",
+            namespace,
+            "--timeout",
+            "60s",
+        ]
     )
     assert wait_result.returncode == 0
 
@@ -169,7 +190,9 @@ def test_pod():
 
     # Cleanup by deleting the pod that was created
     logger.info("Deleting test pod fixture...")
-    delete_result = subprocess.run(["kubectl", "delete", "pod", pod_name], check=True)
+    delete_result = subprocess.run(
+        ["kubectl", "delete", "pod", "-n", namespace, pod_name], check=True
+    )
     assert delete_result.returncode == 0
 
 

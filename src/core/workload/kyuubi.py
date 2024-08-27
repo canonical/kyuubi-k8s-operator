@@ -28,6 +28,12 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         self.container = container
         self.user = user
 
+    def get_ip_address(self) -> str:
+        """Return the IP address of the unit running the workload."""
+        hostname = socket.getfqdn()
+        ip_address = socket.gethostbyname(hostname)
+        return ip_address
+
     def get_jdbc_endpoint(self) -> str:
         """Return the JDBC endpoint to connect to Kyuubi server."""
         hostname = socket.getfqdn()

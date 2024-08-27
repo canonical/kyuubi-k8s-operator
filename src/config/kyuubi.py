@@ -7,16 +7,19 @@
 
 from typing import Optional
 
-from constants import AUTHENTICATION_TABLE_NAME
-from core.domain import DatabaseConnectionInfo
+from constants import AUTHENTICATION_TABLE_NAME, HA_ZNODE_NAME
+from core.domain import DatabaseConnectionInfo, ZookeeperInfo
 from utils.logging import WithLogging
 
 
 class KyuubiConfig(WithLogging):
     """Kyuubi Configurations."""
 
-    def __init__(self, db_info: Optional[DatabaseConnectionInfo]):
+    def __init__(
+        self, db_info: Optional[DatabaseConnectionInfo], zookeeper_info: Optional[ZookeeperInfo]
+    ):
         self.db_info = db_info
+        self.zookeeper_info = zookeeper_info
 
     def _get_db_connection_url(self) -> str:
         endpoint = self.db_info.endpoint
@@ -27,6 +30,13 @@ class KyuubiConfig(WithLogging):
             f"SELECT 1 FROM {AUTHENTICATION_TABLE_NAME} "
             "WHERE username=${user} AND passwd=${password}"
         )
+
+    def _get_zookeeper_auth_digest(self) -> str:
+        if not self.zookeeper_info:
+            return ""
+        username = self.zookeeper_info.username
+        password = self.zookeeper_info.password
+        return f"{username}:{password}"
 
     @property
     def _auth_conf(self) -> dict[str, str]:
@@ -41,9 +51,22 @@ class KyuubiConfig(WithLogging):
             "kyuubi.authentication.jdbc.query": self._get_authentication_query(),
         }
 
+    @property
+    def _ha_conf(self) -> dict[str, str]:
+        if not self.zookeeper_info:
+            return {}
+        return {
+            "kyuubi.ha.addresses": self.zookeeper_info.uris,
+            # FIXME: Get this value from self.context.zookeeper.uris when znode created by
+            # zookeeper charm has enough permissions for Kyuubi to work
+            "kyuubi.ha.namespace": HA_ZNODE_NAME,
+            "kyuubi.ha.zookeeper.auth.type": "DIGEST",
+            "kyuubi.ha.zookeeper.auth.digest": self._get_zookeeper_auth_digest(),
+        }
+
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
-        return self._auth_conf
+        return self._auth_conf | self._ha_conf
 
     @property
     def contents(self) -> str:

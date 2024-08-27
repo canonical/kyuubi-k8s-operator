@@ -38,6 +38,7 @@ class Status(Enum):
         "Insufficient cluster permissions. Try: juju trust --scope=cluster <app-name>"
     )
 
+    WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
     ACTIVE = ActiveStatus("")
 
 
@@ -155,3 +156,102 @@ class SparkServiceAccountInfo(RelationState):
     def namespace(self):
         """Namespace used for running Spark jobs."""
         return self.relation_data["namespace"]
+
+
+class ZookeeperInfo(RelationState):
+    """State collection metadata for a the Zookeeper relation."""
+
+    def __init__(
+        self,
+        relation: Relation | None,
+        data_interface: Data,
+        local_app: Application | None = None,
+    ):
+        super().__init__(relation, data_interface, None)
+        self._local_app = local_app
+
+    @property
+    def username(self) -> str:
+        """Username to connect to ZooKeeper."""
+        if not self.relation:
+            return ""
+
+        return (
+            self.data_interface.fetch_relation_field(
+                relation_id=self.relation.id, field="username"
+            )
+            or ""
+        )
+
+    @property
+    def password(self) -> str:
+        """Password of the ZooKeeper user."""
+        if not self.relation:
+            return ""
+
+        return (
+            self.data_interface.fetch_relation_field(
+                relation_id=self.relation.id, field="password"
+            )
+            or ""
+        )
+
+    @property
+    def endpoints(self) -> str:
+        """IP/host where ZooKeeper is located."""
+        if not self.relation:
+            return ""
+
+        return (
+            self.data_interface.fetch_relation_field(
+                relation_id=self.relation.id, field="endpoints"
+            )
+            or ""
+        )
+
+    @property
+    def database(self) -> str:
+        """Path allocated for Kyuubi on ZooKeeper."""
+        if not self.relation:
+            return ""
+
+        return (
+            self.data_interface.fetch_relation_field(
+                relation_id=self.relation.id, field="database"
+            )
+            or ""
+        )
+
+    @property
+    def uris(self) -> str:
+        """Comma separated connection string, containing endpoints."""
+        if not self.relation:
+            return ""
+
+        return ",".join(
+            sorted(  # sorting as they may be disordered
+                (
+                    self.data_interface.fetch_relation_field(
+                        relation_id=self.relation.id, field="uris"
+                    )
+                    or ""
+                ).split(",")
+            )
+        ).replace(self.database, "")
+
+    @property
+    def zookeeper_connected(self) -> bool:
+        """Checks if there is an active ZooKeeper relation with all necessary data.
+
+        Returns:
+            True if ZooKeeper is currently related with sufficient relation data
+                for a broker to connect with. Otherwise False
+        """
+        if not all([self.username, self.password, self.database, self.uris]):
+            return False
+
+        return True
+
+    def __bool__(self) -> bool:
+        """Return whether this class object has sufficient information."""
+        return self.zookeeper_connected
