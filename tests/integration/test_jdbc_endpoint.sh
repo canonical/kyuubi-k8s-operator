@@ -3,21 +3,22 @@
 # See LICENSE file for licensing details.
 
 POD_NAME=$1
-JDBC_ENDPOINT=$2
-DB_NAME=${3:-testdb}
-TABLE_NAME=${4:-testtable}
-USERNAME=${5:-}
-PASSWORD=${6:-}
+NAMESPACE=${2:-default}
+JDBC_ENDPOINT=$3
+DB_NAME=${4:-testdb}
+TABLE_NAME=${5:-testtable}
+USERNAME=${6:-}
+PASSWORD=${7:-}
 SQL_COMMANDS=$(cat ./tests/integration/setup/test.sql | sed "s/db_name/$DB_NAME/g" | sed "s/table_name/$TABLE_NAME/g")
 
 
 if [ -z "${USERNAME}" ]; then
-    echo -e "$(kubectl exec $POD_NAME -- \
+    echo -e "$(kubectl exec $POD_NAME -n $NAMESPACE -- \
             env CMDS="$SQL_COMMANDS" ENDPOINT="$JDBC_ENDPOINT" \
             /bin/bash -c 'echo "$CMDS" | /opt/kyuubi/bin/beeline -u $ENDPOINT'
         )" > /tmp/test_beeline.out
 else 
-    echo -e "$(kubectl exec $POD_NAME -- \
+    echo -e "$(kubectl exec $POD_NAME -n $NAMESPACE -- \
             env CMDS="$SQL_COMMANDS" ENDPOINT="$JDBC_ENDPOINT" USER="$USERNAME" PASSWD="$PASSWORD"\
             /bin/bash -c 'echo "$CMDS" | /opt/kyuubi/bin/beeline -u $ENDPOINT -n $USER -p $PASSWD'
         )" > /tmp/test_beeline.out

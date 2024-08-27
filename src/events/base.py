@@ -10,7 +10,7 @@ from typing import Callable
 from ops import CharmBase, EventBase, Object, StatusBase
 
 from core.context import Context
-from core.domain import S3ConnectionInfo, SparkServiceAccountInfo, Status
+from core.domain import Status
 from core.workload import KyuubiWorkloadBase
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
@@ -26,22 +26,22 @@ class BaseEventHandler(Object, WithLogging):
 
     def get_app_status(
         self,
-        s3_info: S3ConnectionInfo | None,
-        service_account: SparkServiceAccountInfo | None,
     ) -> StatusBase:
         """Return the status of the charm."""
         if not self.workload.ready():
             return Status.WAITING_PEBBLE.value
 
-        if s3_info:
-            s3_manager = S3Manager(s3_info=s3_info)
+        if self.context.s3:
+            s3_manager = S3Manager(s3_info=self.context.s3)
             if not s3_manager.verify():
                 return Status.INVALID_CREDENTIALS.value
 
-        if not service_account:
+        if not self.context.service_account:
             return Status.MISSING_INTEGRATION_HUB.value
 
-        k8s_manager = K8sManager(service_account_info=service_account, workload=self.workload)
+        k8s_manager = K8sManager(
+            service_account_info=self.context.service_account, workload=self.workload
+        )
 
         if not k8s_manager.has_cluster_permissions():
             return Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value
@@ -50,7 +50,7 @@ class BaseEventHandler(Object, WithLogging):
         # Currently, we do this check on the basis of presence of Spark properties
         # TODO: Rethink on this approach with a more sturdy solution
         if (
-            not s3_info
+            not self.context.s3
             and not k8s_manager.is_s3_configured()
             and not k8s_manager.is_azure_storage_configured()
         ):
@@ -61,6 +61,9 @@ class BaseEventHandler(Object, WithLogging):
 
         if not k8s_manager.is_service_account_valid():
             return Status.INVALID_SERVICE_ACCOUNT.value
+
+        if self.context._zookeeper_relation and not self.context.zookeeper:
+            return Status.WAITING_ZOOKEEPER.value
 
         return Status.ACTIVE.value
 
@@ -75,12 +78,8 @@ def compute_status(
         """Return output after resetting statuses."""
         res = hook(event_handler, event)
         if event_handler.charm.unit.is_leader():
-            event_handler.charm.app.status = event_handler.get_app_status(
-                event_handler.context.s3, event_handler.context.service_account
-            )
-        event_handler.charm.unit.status = event_handler.get_app_status(
-            event_handler.context.s3, event_handler.context.service_account
-        )
+            event_handler.charm.app.status = event_handler.get_app_status()
+        event_handler.charm.unit.status = event_handler.get_app_status()
         return res
 
     return wrapper_hook
