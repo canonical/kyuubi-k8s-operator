@@ -15,6 +15,9 @@ POSTGRESQL_METASTORE_DB_REL = "metastore-db"
 POSTGRESQL_AUTH_DB_REL = "auth-db"
 SPARK_SERVICE_ACCOUNT_REL = "spark-service-account"
 
+COS_METRICS_PORT = 10019
+COS_METRICS_PATH = "/metrics"
+
 NAMESPACE_CONFIG_NAME = "namespace"
 SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
 
