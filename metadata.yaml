@@ -44,6 +44,9 @@ requires:
   spark-service-account:
     interface: spark_service_account
     limit: 1
+  zookeeper:
+    interface: zookeeper
+    limit: 1
 
 
 provides:

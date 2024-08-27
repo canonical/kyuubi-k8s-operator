@@ -5,6 +5,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: testpod
+  namespace: ${namespace}
 spec:
   containers:
   - image: ${kyuubi_image}

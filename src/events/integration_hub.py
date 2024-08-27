@@ -59,6 +59,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             metastore_db_info=self.context.metastore_db,
             auth_db_info=self.context.auth_db,
             service_account_info=self.context.service_account,
+            zookeeper_info=self.context.zookeeper,
         )
 
     @compute_status
@@ -71,4 +72,5 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             metastore_db_info=self.context.metastore_db,
             auth_db_info=self.context.auth_db,
             service_account_info=None,
+            zookeeper_info=self.context.zookeeper,
         )

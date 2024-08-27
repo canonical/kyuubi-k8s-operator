@@ -22,6 +22,7 @@ from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.s3 import S3Events
+from events.zookeeper import ZookeeperEvents
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ class KyuubiCharm(ops.CharmBase):
         self.hub_events = SparkIntegrationHubEvents(self, self.context, self.workload)
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
+        self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.action_events = ActionEvents(self, self.context, self.workload)
 
 

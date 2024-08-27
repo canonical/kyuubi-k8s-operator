@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import re
 import subprocess
 import time
 import uuid
@@ -18,6 +19,7 @@ from pytest_operator.plugin import OpsTest
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    HA_ZNODE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
     METASTORE_DATABASE_NAME,
 )
@@ -209,6 +211,7 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_default_metastore",
             "table_default_metastore",
@@ -270,6 +273,7 @@ async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, test_pod
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_postgres_metastore",
             "table_postgres_metastore",
@@ -357,6 +361,7 @@ async def test_jdbc_endpoint_after_removing_postgresql_metastore(
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_default_metastore_2",
             "table_default_metastore_2",
@@ -450,6 +455,7 @@ async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest, test_pod):
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_111",
             "table_111",
@@ -487,6 +493,7 @@ async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest, test_pod):
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_222",
             "table_222",
@@ -535,6 +542,7 @@ async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest, test_pod):
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_333",
             "table_333",
@@ -596,6 +604,7 @@ async def test_set_password_action(ops_test: OpsTest, test_pod):
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_444",
             "table_444",
@@ -706,6 +715,7 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_666",
             "tbl_666",
@@ -805,6 +815,7 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_777",
             "tbl_777",
@@ -855,9 +866,117 @@ async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_555",
             "table_555",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
+
+
+@pytest.mark.abort_on_fail
+async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_versions):
+    """Test the charm by integrating it with Zookeeper."""
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying zookeeper-k8s charm...")
+    await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict()),
+
+    logger.info("Waiting for zookeeper app to be active and idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Integrating kyuubi charm with zookeeper charm...")
+    await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)
+
+    logger.info("Waiting for zookeeper-k8s and kyuubi charms to be idle idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
+
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+
+    assert "serviceDiscoveryMode=zooKeeper" in jdbc_endpoint
+    assert f"zooKeeperNamespace={HA_ZNODE_NAME}" in jdbc_endpoint
+    assert re.match(
+        r"jdbc:hive2://(.*),(.*),(.*)/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=.*",
+        jdbc_endpoint,
+    )
+
+    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            ops_test.model_name,
+            jdbc_endpoint,
+            "db_999",
+            "table_999",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
+
+
+@pytest.mark.abort_on_fail
+async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_versions):
+    """Test the charm after the zookeeper relation has been broken."""
+    logger.info("Removing relation between zookeeper-k8s and kyuubi-k8s...")
+    await ops_test.model.applications[APP_NAME].remove_relation(
+        f"{APP_NAME}:zookeeper", f"{charm_versions.zookeeper.application_name}:zookeeper"
+    )
+
+    logger.info("Waiting for zookeeper-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
+
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+
+    assert "serviceDiscoveryMode=zooKeeper" not in jdbc_endpoint
+    assert f"zooKeeperNamespace={HA_ZNODE_NAME}" not in jdbc_endpoint
+    assert not re.match(
+        r"jdbc:hive2://(.*),(.*),(.*)/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=.*",
+        jdbc_endpoint,
+    )
+
+    logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            ops_test.model_name,
+            jdbc_endpoint,
+            "db_101010",
+            "table_101010",
         ],
         capture_output=True,
     )
@@ -924,6 +1043,7 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
+            ops_test.model_name,
             jdbc_endpoint,
             "db_888",
             "table_888",
