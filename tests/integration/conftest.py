@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 TEST_BUCKET_NAME = "kyuubi-test"
+TEST_PATH_NAME = "spark-events/"
 TEST_NAMESPACE = "kyuubi-test"
 TEST_SERVICE_ACCOUNT = "kyuubi-test"
 TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
@@ -137,12 +138,13 @@ def s3_bucket_and_creds():
     # Create the test bucket
     s3.create_bucket(Bucket=TEST_BUCKET_NAME)
     logger.info(f"Created bucket: {TEST_BUCKET_NAME}")
-
+    test_bucket.put_object(Key=TEST_PATH_NAME)
     yield {
         "endpoint": endpoint_url,
         "access_key": access_key,
         "secret_key": secret_key,
         "bucket": TEST_BUCKET_NAME,
+        "path": TEST_PATH_NAME,
     }
 
     logger.info("Tearing down test bucket...")
