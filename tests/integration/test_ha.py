@@ -15,7 +15,11 @@ from pytest_operator.plugin import OpsTest
 
 from core.domain import Status
 
-from .helpers import get_active_kyuubi_servers_list, run_sql_test_against_jdbc_endpoint
+from .helpers import (
+    get_active_kyuubi_servers_list,
+    is_entire_cluster_responding_requests,
+    run_sql_test_against_jdbc_endpoint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +213,9 @@ async def test_scale_up_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
     # Run SQL test against the cluster
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
+    # Assert the entire cluster is usable
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+
 
 @pytest.mark.abort_on_fail
 async def test_scale_down_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
@@ -233,3 +240,17 @@ async def test_scale_down_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
 
     # Run SQL test against the cluster
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+    # Assert the entire cluster is usable
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+
+
+# @pytest.mark.abort_on_fail
+# async def test_pause(ops_test: OpsTest):
+#     import os
+#     while True:
+#         if not os.path.exists("/home/ubuntu/flags/pause.it"):
+#             break
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME], status="active", timeout=1000, idle_period=30,
+#     )

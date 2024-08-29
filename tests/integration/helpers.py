@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import subprocess
@@ -137,3 +138,79 @@ async def get_active_kyuubi_servers_list(ops_test: OpsTest) -> list[str]:
         servers.append(match.group("node"))
 
     return servers
+
+
+async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
+    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
+
+    kyuubi_pods = {
+        unit.name.replace("/", "-") for unit in ops_test.model.applications[APP_NAME].units
+    }
+    logger.info(f"Nodes in the cluster being tested: " f"{','.join(kyuubi_pods)}")
+    pods_that_responded = set()
+
+    tries = 0
+    max_tries = 20
+    command_executed_at = None
+
+    while True:
+        logger.info(f"Trying the {tries + 1}-th connection to see if entire cluster responds...")
+        unique_id = get_random_name()
+        query = f"SELECT '{unique_id}'"
+        pod_command = ["/opt/kyuubi/bin/beeline", "-u", jdbc_endpoint, "-e", query]
+        kubectl_command = [
+            "kubectl",
+            "exec",
+            test_pod,
+            "-n",
+            ops_test.model_name,
+            "--",
+            *pod_command,
+        ]
+        command_executed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        logger.info(
+            f"Executing command: {' '.join(kubectl_command)} " f"at {command_executed_at}..."
+        )
+        process = subprocess.run(kubectl_command, capture_output=True, check=True)
+        assert process.returncode == 0
+
+        for pod_name in kyuubi_pods:
+            logs_command = [
+                "kubectl",
+                "logs",
+                pod_name,
+                "-n",
+                ops_test.model_name,
+                "-c",
+                "kyuubi",
+                "--since-time",
+                command_executed_at,
+            ]
+            logger.info(f"Checking pod logs for {pod_name}...")
+            process = subprocess.run(logs_command, capture_output=True, check=True)
+            assert process.returncode == 0
+
+            pod_logs = process.stdout.decode()
+            match = re.search(query, pod_logs)
+            if match:
+                logger.info(f"{pod_name} responded SUCCESS!")
+                pods_that_responded.add(pod_name)
+                break
+
+        if pods_that_responded == kyuubi_pods:
+            logger.info(f"All {len(kyuubi_pods)} nodes responded the requests.")
+            return True
+
+        if tries > max_tries:
+            logger.warning(
+                f"Tried for {tries} times, "
+                f"but could only connect to {len(pods_that_responded)} nodes "
+                f"({','.join(pods_that_responded)}) "
+                f"out of {len(kyuubi_pods)} nodes "
+                f"({','.join(kyuubi_pods)})"
+            )
+            break
+
+        tries += 1
+
+    return False
