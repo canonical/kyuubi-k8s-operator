@@ -4,28 +4,18 @@
 
 import asyncio
 import logging
-import re
-import subprocess
-import time
-import uuid
 from pathlib import Path
 
-import psycopg2
 import pytest
 import yaml
 from juju.application import Application
 from juju.unit import Unit
 from ops import StatusBase
 from pytest_operator.plugin import OpsTest
-from .helpers import run_sql_against_jdbc_endpoint
 
-from constants import (
-    AUTHENTICATION_DATABASE_NAME,
-    HA_ZNODE_NAME,
-    KYUUBI_CLIENT_RELATION_NAME,
-    METASTORE_DATABASE_NAME,
-)
 from core.domain import Status
+
+from .helpers import get_active_kyuubi_servers_list, run_sql_test_against_jdbc_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +39,7 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy_cluster(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
-    """Test building, deploying and relating a single Kyuubi unit with 3 units of Zookeeper"""
-
+    """Test building, deploying and relating a single Kyuubi unit with 3 units of Zookeeper."""
     # Build and deploy charm from local source folder
     logger.info("Building charm...")
     charm = await ops_test.build_charm(".")
@@ -72,10 +61,9 @@ async def test_build_and_deploy_cluster(ops_test: OpsTest, charm_versions, s3_bu
         ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
         ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict()),
         ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
-
     )
 
-    # Configure Kyuubi 
+    # Configure Kyuubi
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     await ops_test.model.wait_for_idle(
@@ -129,18 +117,27 @@ async def test_build_and_deploy_cluster(ops_test: OpsTest, charm_versions, s3_bu
 
     # Integrate Spark Integration Hub and S3 Integrator
 
-    logger.info("Waiting for spark-integration-hub and s3-integrator charms to be idle and active...")
+    logger.info(
+        "Waiting for spark-integration-hub and s3-integrator charms to be idle and active..."
+    )
     await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name], timeout=1000, status="active"
+        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
+        timeout=1000,
+        status="active",
     )
 
     logger.info("Integrating spark-integration-hub charm with s3-integrator charm...")
-    await ops_test.model.integrate(charm_versions.integration_hub.application_name, charm_versions.s3.application_name)
+    await ops_test.model.integrate(
+        charm_versions.integration_hub.application_name, charm_versions.s3.application_name
+    )
 
-
-    logger.info("Waiting for spark-integration-hub and s3-integrator charms to be idle and active...")
+    logger.info(
+        "Waiting for spark-integration-hub and s3-integrator charms to be idle and active..."
+    )
     await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name], timeout=1000, status="active"
+        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
+        timeout=1000,
+        status="active",
     )
 
     # Integrate Spark Integration Hub and Kyuubi
@@ -157,7 +154,7 @@ async def test_build_and_deploy_cluster(ops_test: OpsTest, charm_versions, s3_bu
     )
 
     # Integrate Kyuubi and Zookeeper
-    
+
     logger.info("Waiting for zookeeper app to be active and idle...")
     await ops_test.model.wait_for_idle(
         apps=[charm_versions.zookeeper.application_name], timeout=1000, status="active"
@@ -174,20 +171,65 @@ async def test_build_and_deploy_cluster(ops_test: OpsTest, charm_versions, s3_bu
 
     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
-    assert ops_test.model.applications[charm_versions.integration_hub.application_name].status == "active"
-    assert ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
-
+    assert (
+        ops_test.model.applications[charm_versions.integration_hub.application_name].status
+        == "active"
+    )
+    assert (
+        ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
+    )
 
 
 @pytest.mark.abort_on_fail
 async def test_scale_up_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
-    """Test scaling up action on Kyuubi"""
-
+    """Test scaling up action on Kyuubi."""
     # Scale Kyuubi charm to 3 units
     await ops_test.model.applications[APP_NAME].scale(scale=3)
     await ops_test.model.block_until(lambda: len(ops_test.model.applications[APP_NAME].units) == 3)
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.zookeeper.application_name], status="active", timeout=1000, idle_period=40
+        apps=[APP_NAME, charm_versions.zookeeper.application_name],
+        status="active",
+        timeout=1000,
+        idle_period=40,
     )
 
-    assert await run_sql_against_jdbc_endpoint(ops_test, test_pod)
+    assert len(ops_test.model.applications[APP_NAME].units) == 3
+
+    active_servers = await get_active_kyuubi_servers_list(ops_test)
+
+    assert len(active_servers) == 3
+
+    expected_servers = [
+        f"kyuubi-k8s-0.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+        f"kyuubi-k8s-1.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+        f"kyuubi-k8s-2.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+    ]
+    assert set(active_servers) == set(expected_servers)
+
+    # Run SQL test against the cluster
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+
+@pytest.mark.abort_on_fail
+async def test_scale_down_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
+    """Test scaling down action on Kyuubi."""
+    # Scale Kyuubi charm to 3 units
+    await ops_test.model.applications[APP_NAME].scale(scale=2)
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME], status="active", timeout=1000, idle_period=30, wait_for_exact_units=2
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.zookeeper.application_name],
+        status="active",
+        timeout=1000,
+        idle_period=30,
+    )
+
+    assert len(ops_test.model.applications[APP_NAME].units) == 2
+
+    active_servers = await get_active_kyuubi_servers_list(ops_test)
+
+    assert len(active_servers) == 2
+
+    # Run SQL test against the cluster
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
