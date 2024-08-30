@@ -140,6 +140,19 @@ async def get_active_kyuubi_servers_list(ops_test: OpsTest) -> list[str]:
     return servers
 
 
+async def find_leader_unit(ops_test, app_name):
+    for unit in ops_test.model.applications[app_name].units:
+        if await unit.is_leader_from_status():
+            return unit
+    return None
+
+
+async def delete_pod(pod_name, namespace):
+    command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
+    process = subprocess.run(command, capture_output=True, check=True)
+    assert process.returncode == 0, f"Could not delete the pod {pod_name}."
+
+
 async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
 

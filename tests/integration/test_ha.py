@@ -16,6 +16,8 @@ from pytest_operator.plugin import OpsTest
 from core.domain import Status
 
 from .helpers import (
+    delete_pod,
+    find_leader_unit,
     get_active_kyuubi_servers_list,
     is_entire_cluster_responding_requests,
     run_sql_test_against_jdbc_endpoint,
@@ -215,6 +217,58 @@ async def test_scale_up_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
 
     # Assert the entire cluster is usable
     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+
+
+async def test_pod_reschedule(ops_test: OpsTest, test_pod):
+    leader_unit = await find_leader_unit(ops_test, APP_NAME)
+    leader_unit_pod = leader_unit.name.replace("/", "-")
+
+    # Delete the leader pod
+    await delete_pod(leader_unit_pod, ops_test.model_name)
+
+    # let pod reschedule process be noticed up by juju
+    async with ops_test.fast_forward("60s"):
+        await ops_test.model.wait_for_idle(
+            apps=[APP_NAME], idle_period=30, status="active", timeout=1000
+        )
+
+    assert len(ops_test.model.applications[APP_NAME].units) == 3
+
+    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    assert len(active_servers) == 3
+
+    # Run SQL test against the cluster
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+    # Assert the entire cluster is usable
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+
+
+# async def test_reelection_after_leader_unit_destroyed(ops_test: OpsTest, test_pod):
+#     leader_unit = await find_leader_unit(ops_test, APP_NAME)
+
+#     # Delete the leader unit
+#     await ops_test.model.destroy_unit(leader_unit.name)
+
+#     # Wait for juju to recover
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
+#     )
+
+#     assert len(ops_test.model.applications[APP_NAME].units) == 2
+
+#     new_leader_unit = await find_leader_unit(ops_test, APP_NAME)
+#     assert new_leader_unit is not None
+#     assert new_leader_unit.name != leader_unit.name
+
+#     active_servers = await get_active_kyuubi_servers_list(ops_test)
+#     assert len(active_servers) == 2
+
+#     # Run SQL test against the cluster
+#     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+#     # Assert the entire cluster is usable
+#     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
 
 
 @pytest.mark.abort_on_fail
