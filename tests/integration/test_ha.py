@@ -19,7 +19,10 @@ from .helpers import (
     delete_pod,
     find_leader_unit,
     get_active_kyuubi_servers_list,
+    get_kyuubi_pid,
     is_entire_cluster_responding_requests,
+    juju_sleep,
+    kill_kyuubi_process,
     run_sql_test_against_jdbc_endpoint,
 )
 
@@ -220,6 +223,7 @@ async def test_scale_up_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
 
 
 async def test_pod_reschedule(ops_test: OpsTest, test_pod):
+    """Test Kyuubi cluster after the leader pod is reschedule."""
     leader_unit = await find_leader_unit(ops_test, APP_NAME)
     leader_unit_pod = leader_unit.name.replace("/", "-")
 
@@ -244,31 +248,43 @@ async def test_pod_reschedule(ops_test: OpsTest, test_pod):
     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
 
 
-# async def test_reelection_after_leader_unit_destroyed(ops_test: OpsTest, test_pod):
-#     leader_unit = await find_leader_unit(ops_test, APP_NAME)
+async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod):
+    """Test Kyuubi cluster after Kyuubi process in the leader unit is killed with SIGKILL signal."""
+    leader_unit = await find_leader_unit(ops_test, APP_NAME)
 
-#     # Delete the leader unit
-#     await ops_test.model.destroy_unit(leader_unit.name)
+    # Get the current PID of Kyuubi process
+    kyuubi_pid_old = await get_kyuubi_pid(ops_test, leader_unit)
+    assert (
+        kyuubi_pid_old is not None
+    ), f"No Kyuubi process found running in the unit {leader_unit.name}"
 
-#     # Wait for juju to recover
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=2
-#     )
+    # Kill Kyuubi process inside the leader unit
+    await kill_kyuubi_process(ops_test, leader_unit, kyuubi_pid_old)
 
-#     assert len(ops_test.model.applications[APP_NAME].units) == 2
+    # Wait a few seconds for the process to re-appear
+    await juju_sleep(ops_test, 10, APP_NAME)
 
-#     new_leader_unit = await find_leader_unit(ops_test, APP_NAME)
-#     assert new_leader_unit is not None
-#     assert new_leader_unit.name != leader_unit.name
+    # Get the new PID of Kyuubi process
+    kyuubi_pid_new = await get_kyuubi_pid(ops_test, leader_unit)
+    assert kyuubi_pid_new is not None
+    assert kyuubi_pid_new != kyuubi_pid_old
 
-#     active_servers = await get_active_kyuubi_servers_list(ops_test)
-#     assert len(active_servers) == 2
+    # Ensure Kyuubi is in active and idle state
+    async with ops_test.fast_forward("10s"):
+        await ops_test.model.wait_for_idle(
+            apps=[APP_NAME], idle_period=30, status="active", timeout=30
+        )
 
-#     # Run SQL test against the cluster
-#     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    assert len(ops_test.model.applications[APP_NAME].units) == 3
 
-#     # Assert the entire cluster is usable
-#     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    assert len(active_servers) == 3
+
+    # Run SQL test against the cluster
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+    # Assert the entire cluster is usable
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
 
 
 @pytest.mark.abort_on_fail
@@ -297,14 +313,3 @@ async def test_scale_down_kyuubi(ops_test: OpsTest, charm_versions, test_pod):
 
     # Assert the entire cluster is usable
     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
-
-
-# @pytest.mark.abort_on_fail
-# async def test_pause(ops_test: OpsTest):
-#     import os
-#     while True:
-#         if not os.path.exists("/home/ubuntu/flags/pause.it"):
-#             break
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME], status="active", timeout=1000, idle_period=30,
-#     )

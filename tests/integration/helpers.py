@@ -20,6 +20,9 @@ ZOOKEEPER_NAME = "zookeeper-k8s"
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
 
+PROCESS_NAME_PATTERN = "org.apache.kyuubi.server.KyuubiServer"
+KYUUBI_CONTAINER_NAME = "kyuubi"
+
 
 def get_random_name():
     return str(uuid.uuid4()).replace("-", "_")
@@ -153,6 +156,53 @@ async def delete_pod(pod_name, namespace):
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
+async def get_kyuubi_pid(ops_test: OpsTest, unit):
+    pod_name = unit.name.replace("/", "-")
+    command = [
+        "kubectl",
+        "exec",
+        pod_name,
+        "-c",
+        KYUUBI_CONTAINER_NAME,
+        "-n",
+        ops_test.model_name,
+        "--",
+        "ps",
+        "aux",
+    ]
+    process = subprocess.run(command, capture_output=True, check=True)
+    assert (
+        process.returncode == 0
+    ), f"Command: {command} returned with return code {process.returncode}"
+
+    for line in process.stdout.decode().splitlines():
+        match = re.search(re.escape(PROCESS_NAME_PATTERN), line)
+        if match:
+            pid = line.split()[1]
+            logger.info(f"Found Kyuubi process with PID: {pid}")
+            return pid
+    return None
+
+
+async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
+    pod_name = unit.name.replace("/", "-")
+    command = [
+        "kubectl",
+        "exec",
+        pod_name,
+        "-c",
+        KYUUBI_CONTAINER_NAME,
+        "-n",
+        ops_test.model_name,
+        "--",
+        "kill",
+        "-SIGKILL",
+        kyuubi_pid,
+    ]
+    process = subprocess.run(command, capture_output=True, check=True)
+    assert process.returncode == 0, f"Could not kill Kyuubi process with pid {kyuubi_pid}."
+
+
 async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
 
@@ -227,3 +277,13 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
         tries += 1
 
     return False
+
+
+async def juju_sleep(ops: OpsTest, time: int, app: str | None = None):
+    app_name = app if app else ops.model.applications[0]
+
+    await ops.model.wait_for_idle(
+        apps=[app_name],
+        idle_period=time,
+        timeout=300,
+    )
