@@ -86,7 +86,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         timeout=1000,
     )
 
-    # Assert that the charm is in blocked state, waiting for S3 relation
+    # Assert that the charm is in blocked state, waiting for Integration Hub relation
     assert check_status(
         ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
     )

@@ -10,6 +10,7 @@ import re
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.core_v1 import Namespace, ServiceAccount
+from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from core.domain import SparkServiceAccountInfo
 from core.workload import KyuubiWorkloadBase
@@ -72,3 +73,14 @@ class K8sManager(WithLogging):
         """Return whether Azure object storage backend has been configured."""
         pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net=.*"
         return any(re.match(pattern, prop) for prop in self.get_properties())
+
+    def has_cluster_permissions(self) -> bool:
+        """Return whether the service account has permission to read Spark configurations from the cluster."""
+        interface = LightKube(None, None)
+        registry = K8sServiceAccountRegistry(interface)
+        try:
+            registry.get(f"{self.namespace}:{self.service_account}")
+        except ApiError:
+            return False
+        else:
+            return True
