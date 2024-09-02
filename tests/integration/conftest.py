@@ -196,3 +196,10 @@ def test_pod(ops_test):
         ["kubectl", "delete", "pod", "-n", namespace, pod_name], check=True
     )
     assert delete_result.returncode == 0
+
+
+@pytest.fixture(scope="module")
+async def kyuubi_charm(ops_test):
+    logger.info("Building charm...")
+    charm = await ops_test.build_charm(".")
+    return charm

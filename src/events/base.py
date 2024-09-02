@@ -43,6 +43,9 @@ class BaseEventHandler(Object, WithLogging):
             service_account_info=self.context.service_account, workload=self.workload
         )
 
+        if not k8s_manager.has_cluster_permissions():
+            return Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value
+
         # Check whether any one of object storage backend has been configured
         # Currently, we do this check on the basis of presence of Spark properties
         # TODO: Rethink on this approach with a more sturdy solution

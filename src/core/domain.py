@@ -34,6 +34,7 @@ class Status(Enum):
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
+    INSUFFICIENT_CLUSTER_PERMISSIONS = BlockedStatus("Insufficient cluster permissions. Try: juju trust --scope=cluster <app-name>")
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
     ACTIVE = ActiveStatus("")
 

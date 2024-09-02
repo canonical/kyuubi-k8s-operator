@@ -46,11 +46,8 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest):
+async def test_build_and_deploy(ops_test: OpsTest, kyuubi_charm):
     """Test building and deploying the charm without relation with any other charm."""
-    # Build and deploy charm from local source folder
-    logger.info("Building charm...")
-    charm = await ops_test.build_charm(".")
 
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
@@ -59,7 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     # Deploy the charm and wait for waiting status
     logger.info("Deploying kyuubi-k8s charm...")
     await ops_test.model.deploy(
-        charm,
+        kyuubi_charm,
         resources=resources,
         application_name=APP_NAME,
         num_units=1,
@@ -88,7 +85,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         timeout=1000,
     )
 
-    # Assert that the charm is in blocked state, waiting for S3 relation
+    # Assert that the charm is in blocked state, waiting for Integration Hub relation
     assert check_status(
         ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
     )
