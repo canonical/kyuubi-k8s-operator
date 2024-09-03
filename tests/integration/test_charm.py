@@ -8,6 +8,7 @@ import time
 import uuid
 from pathlib import Path
 
+import juju
 import psycopg2
 import pytest
 import yaml
@@ -15,6 +16,7 @@ from juju.application import Application
 from juju.unit import Unit
 from ops import StatusBase
 from pytest_operator.plugin import OpsTest
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
@@ -23,12 +25,21 @@ from constants import (
 )
 from core.domain import Status
 
+from .helpers import (
+    all_prometheus_exporters_data,
+    get_cos_address,
+    published_grafana_dashboards,
+    published_prometheus_alerts,
+    published_prometheus_data,
+)
+
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
+COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -43,6 +54,7 @@ def check_status(entity: Application | Unit, status: StatusBase):
         raise ValueError(f"entity type {type(entity)} is not allowed")
 
 
+@pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, kyuubi_charm):
     """Test building and deploying the charm without relation with any other charm."""
@@ -963,3 +975,86 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
 
     assert len(executor_pod_names) == len(expected_executor_pod_names)
     assert set(executor_pod_names) == set(expected_executor_pod_names)
+
+
+@pytest.mark.abort_on_fail
+async def test_kyuubi_cos_relation_joined(ops_test: OpsTest):
+    # Prometheus data is being published by the app
+    assert await all_prometheus_exporters_data(ops_test, check_field="kyuubi_jvm_uptime")
+
+    # Deploying and relating to grafana-agent
+    logger.info("Deployeing grafana-agent-k8s charm...")
+    await ops_test.model.deploy(COS_AGENT_APP_NAME, num_units=1, series="jammy")
+
+    logger.info("Waiting for test charm to be idle...")
+    await ops_test.model.wait_for_idle(apps=[COS_AGENT_APP_NAME], timeout=1000, status="blocked")
+
+    await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:metrics-endpoint")
+    await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:grafana-dashboard")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME], status="active", timeout=1000, idle_period=30
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[COS_AGENT_APP_NAME], status="blocked", timeout=1000, idle_period=30
+    )
+
+    await ops_test.model.deploy(
+        "cos-lite",
+        series="jammy",
+        trust=True,
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=["prometheus", "alertmanager", "loki", "grafana"],
+        status="active",
+        timeout=1000,
+        idle_period=30,
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[COS_AGENT_APP_NAME],
+        status="blocked",
+        timeout=1000,
+        idle_period=30,
+    )
+
+    # These two relations --though essential to publishing-- are not set.
+    # (May change in the future?)
+    try:
+        await ops_test.model.integrate(
+            f"{COS_AGENT_APP_NAME}:grafana-dashboards-provider", "grafana"
+        )
+    except juju.errors.JujuAPIError:
+        pass
+
+    try:
+        await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:send-remote-write", "prometheus")
+    except juju.errors.JujuAPIError:
+        pass
+
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, COS_AGENT_APP_NAME, "prometheus", "alertmanager", "loki", "grafana"],
+        status="active",
+        timeout=1000,
+        idle_period=30,
+    )
+
+    # We should leave time for Prometheus data to be published
+    for attempt in Retrying(stop=stop_after_attempt(5), wait=wait_fixed(30)):
+        with attempt:
+
+            # Data got published to Prometheus
+            cos_address = await get_cos_address(ops_test)
+            assert published_prometheus_data(ops_test, cos_address, "kyuubi_jvm_uptime")
+
+            # Alerts got published to Prometheus
+            alerts_data = published_prometheus_alerts(ops_test, cos_address)
+            for alert in ["KyuubiBufferPoolCapacityLow", "KyuubiJVMUptime"]:
+                assert any(
+                    rule["name"] == alert
+                    for group in alerts_data["data"]["groups"]
+                    for rule in group["rules"]
+                )
+
+            # Grafana dashboard got published
+            dashboards_info = await published_grafana_dashboards(ops_test)
+            assert any(board["title"] == "Kyuubi" for board in dashboards_info)
