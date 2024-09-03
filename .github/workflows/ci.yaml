@@ -57,7 +57,8 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          - integration
+          - integration-charm
+          - integration-trust
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
@@ -84,7 +85,7 @@ jobs:
           provider: microk8s
           channel: 1.28-strict/stable
           microk8s-group: snap_microk8s
-          microk8s-addons: "hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
+          microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
       - name: Download packed charm(s)
         uses: actions/download-artifact@v4
         with:

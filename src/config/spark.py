@@ -8,6 +8,7 @@
 from typing import Optional
 
 from lightkube import Client
+from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
@@ -59,10 +60,11 @@ class SparkConfig(WithLogging):
             [self.service_account_info.namespace, self.service_account_info.service_account]
         )
 
-        if service_account := registry.get(account_id):
+        try:
+            service_account = registry.get(account_id)
             return service_account.configurations.props
-
-        self.logger.warning(f"Account {account_id} does not exist")
+        except ApiError:
+            self.logger.warning(f"Could not fetch Spark properties from {account_id}.")
 
         return {}
 
