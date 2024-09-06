@@ -29,6 +29,7 @@ def get_random_name():
 
 
 async def fetch_jdbc_endpoint(ops_test):
+    """Return the JDBC endpoint for clients to connect to Kyuubi server."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     action = await kyuubi_unit.run_action(
@@ -144,6 +145,7 @@ async def get_active_kyuubi_servers_list(ops_test: OpsTest) -> list[str]:
 
 
 async def find_leader_unit(ops_test, app_name):
+    """Returns the leader unit of a given application."""
     for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status():
             return unit
@@ -151,12 +153,14 @@ async def find_leader_unit(ops_test, app_name):
 
 
 async def delete_pod(pod_name, namespace):
+    """Delete a pod with given name and namespace."""
     command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
     process = subprocess.run(command, capture_output=True, check=True)
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
 async def get_kyuubi_pid(ops_test: OpsTest, unit):
+    """Return the process ID of Kyuubi process in given pod."""
     pod_name = unit.name.replace("/", "-")
     command = [
         "kubectl",
@@ -185,6 +189,7 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
 
 
 async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
+    """Kill the Kyuubi process with given PID running in the given unit."""
     pod_name = unit.name.replace("/", "-")
     command = [
         "kubectl",
@@ -204,6 +209,7 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
 
 
 async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
+    """Return whether the entire Kyuubi cluster is responding to requests from client."""
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
 
     kyuubi_pods = {
@@ -280,6 +286,7 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
 
 
 async def juju_sleep(ops: OpsTest, time: int, app: str | None = None):
+    """Sleep for given amount of time while waiting for the given application to be idle."""
     app_name = app if app else ops.model.applications[0]
 
     await ops.model.wait_for_idle(
