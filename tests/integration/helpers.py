@@ -18,7 +18,7 @@ OPENSEARCH_APP_NAME = "opensearch"
 
 
 def prometheus_exporter_data(host: str) -> str | None:
-    """Check if a given host has 'kibana-exporter' service available and publishing."""
+    """Check if a given host has metric service available and it is publishing."""
     url = f"http://{host}:{COS_METRICS_PORT}/metrics"
     try:
         response = requests.get(url)
