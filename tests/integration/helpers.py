@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import json
@@ -14,7 +14,6 @@ from constants import COS_METRICS_PORT
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-OPENSEARCH_APP_NAME = "opensearch"
 
 
 def prometheus_exporter_data(host: str) -> str | None:
