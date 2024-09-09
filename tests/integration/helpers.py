@@ -71,35 +71,6 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod):
     return process.returncode == 0
 
 
-# async def get_kyuubi_znode_children(ops_test: OpsTest, test_pod) -> list[str]:
-#     """Return the list of znodes created by Kyuubi when Kyuubi units register with zookeeper"""
-
-#     logger.info("Running action 'get-super-password' on zookeeper-k8s unit...")
-#     zookeeper_unit = ops_test.model.applications[ZOOKEEPER_NAME].units[0]
-#     action = await zookeeper_unit.run_action(
-#         action_name="get-super-password",
-#     )
-#     result = await action.wait()
-
-#     password = result.results.get("super-password")
-#     logger.info(f"super user password: {password}")
-
-#     status = await ops_test.model.get_status()
-#     zookeeper_address = status["applications"][ZOOKEEPER_NAME]["units"][f"{ZOOKEEPER_NAME}/0"]["address"]
-
-#     zk = KazooClient(
-#         hosts=f"{zookeeper_address}:2181",
-#         timeout=1.0,
-#         sasl_options={"mechanism": "DIGEST-MD5", "username": "super", "password": password},
-#         verify_certs=False,
-#         use_ssl = False
-#     )
-#     zk.start()
-#     znodes = zk.get_children(HA_ZNODE_NAME)
-#     zk.stop()
-#     return znodes
-
-
 async def get_active_kyuubi_servers_list(ops_test: OpsTest) -> list[str]:
     """Return the list of Kyuubi servers that are live in the cluster."""
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
