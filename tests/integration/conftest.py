@@ -167,7 +167,7 @@ def test_pod():
     # Yield the name of created pod
     yield pod_name
 
-    # Cleanup by deleting the pod that was creatd
+    # Cleanup by deleting the pod that was created
     logger.info("Deleting test pod fixture...")
     delete_result = subprocess.run(["kubectl", "delete", "pod", pod_name], check=True)
     assert delete_result.returncode == 0
