@@ -906,9 +906,7 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
     )
 
     logger.info("Changing configuration for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config(
-        {"namespace": namespace, "service-account": sa_name}
-    )
+    await ops_test.model.applications[APP_NAME].set_config({"service-account": sa_name})
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     await ops_test.model.wait_for_idle(
