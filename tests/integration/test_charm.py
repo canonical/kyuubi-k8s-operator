@@ -983,7 +983,7 @@ async def test_kyuubi_cos_relation_joined(ops_test: OpsTest):
     assert await all_prometheus_exporters_data(ops_test, check_field="kyuubi_jvm_uptime")
 
     # Deploying and relating to grafana-agent
-    logger.info("Deployeing grafana-agent-k8s charm...")
+    logger.info("Deploying grafana-agent-k8s charm...")
     await ops_test.model.deploy(COS_AGENT_APP_NAME, num_units=1, series="jammy")
 
     logger.info("Waiting for test charm to be idle...")
