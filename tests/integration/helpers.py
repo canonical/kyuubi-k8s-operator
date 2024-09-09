@@ -29,7 +29,7 @@ def prometheus_exporter_data(host: str) -> str | None:
 
 
 async def all_prometheus_exporters_data(ops_test: OpsTest, check_field) -> bool:
-    """Check if a all units has 'kibana-exporter' service available and publishing."""
+    """Check if a all units has metric service available and publishing."""
     result = True
     for unit in ops_test.model.applications[APP_NAME].units:
         unit_ip = await get_address(ops_test, unit.name)
