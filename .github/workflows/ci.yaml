@@ -59,6 +59,7 @@ jobs:
         tox-environments:
           - integration-charm
           - integration-trust
+          - integration-ha
     name: ${{ matrix.tox-environments }}
     needs:
       - lint

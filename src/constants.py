@@ -34,4 +34,3 @@ DEFAULT_ADMIN_USERNAME = "admin"
 
 # Zookeeper literals
 HA_ZNODE_NAME = "/kyuubi"
-HA_ZNODE_NAME_TEMP = "/kyuubi-temp"
