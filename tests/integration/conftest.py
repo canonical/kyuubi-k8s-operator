@@ -40,6 +40,7 @@ class TestCharm(BaseModel):
     name: str
     channel: str
     series: str
+    revision: str
     num_units: int = 1
     alias: Optional[str] = None
     trust: Optional[bool] = False
@@ -53,6 +54,7 @@ class TestCharm(BaseModel):
             "entity_url": self.name,
             "channel": self.channel,
             "series": self.series,
+            "revision": self.revision,
             "num_units": self.num_units,
             "application_name": self.application_name,
             "trust": self.trust,
