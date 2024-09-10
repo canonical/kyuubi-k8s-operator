@@ -40,7 +40,7 @@ class TestCharm(BaseModel):
     name: str
     channel: str
     series: str
-    revision: str
+    revision: int
     num_units: int = 1
     alias: Optional[str] = None
     trust: Optional[bool] = False
@@ -75,7 +75,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "s3-integrator",
                 "channel": "edge",
-                "revision": "41",
+                "revision": 41,
                 "series": "jammy",
                 "alias": "s3",
             }
@@ -84,7 +84,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "postgresql-k8s",
                 "channel": "14/stable",
-                "revision": "281",
+                "revision": 281,
                 "series": "jammy",
                 "alias": "postgresql",
                 "trust": True,
@@ -94,7 +94,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "spark-integration-hub-k8s",
                 "channel": "latest/edge",
-                "revision": "19",
+                "revision": 19,
                 "series": "jammy",
                 "alias": "integration-hub",
                 "trust": True,
@@ -104,7 +104,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "zookeeper-k8s",
                 "channel": "3/edge",
-                "revision": "59",
+                "revision": 59,
                 "series": "jammy",
                 "alias": "zookeeper",
                 "num_units": 3,
