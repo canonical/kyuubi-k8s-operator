@@ -10,7 +10,6 @@ from ops import ConfigData, Model, Relation
 from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
-    HA_ZNODE_NAME_TEMP,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
@@ -47,7 +46,7 @@ class Context(WithLogging):
         # This should be replaced with the name of actual znode when znode created
         # by zookeeper charm has enough permissions for Kyuubi to work
         self.zookeeper_requirer_data = DatabaseRequirerData(
-            self.model, ZOOKEEPER_REL, database_name=HA_ZNODE_NAME_TEMP
+            self.model, ZOOKEEPER_REL, database_name="/kyuubi-test"
         )
 
     @property

@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 TEST_BUCKET_NAME = "kyuubi-test"
+TEST_PATH_NAME = "spark-events/"
 TEST_NAMESPACE = "kyuubi-test"
 TEST_SERVICE_ACCOUNT = "kyuubi-test"
 TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
@@ -39,6 +40,7 @@ class TestCharm(BaseModel):
     name: str
     channel: str
     series: str
+    revision: int
     num_units: int = 1
     alias: Optional[str] = None
     trust: Optional[bool] = False
@@ -52,6 +54,7 @@ class TestCharm(BaseModel):
             "entity_url": self.name,
             "channel": self.channel,
             "series": self.series,
+            "revision": self.revision,
             "num_units": self.num_units,
             "application_name": self.application_name,
             "trust": self.trust,
@@ -69,12 +72,19 @@ class IntegrationTestsCharms(BaseModel):
 def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=TestCharm(
-            **{"name": "s3-integrator", "channel": "edge", "series": "jammy", "alias": "s3"}
+            **{
+                "name": "s3-integrator",
+                "channel": "edge",
+                "revision": 41,
+                "series": "jammy",
+                "alias": "s3",
+            }
         ),
         postgres=TestCharm(
             **{
                 "name": "postgresql-k8s",
                 "channel": "14/stable",
+                "revision": 281,
                 "series": "jammy",
                 "alias": "postgresql",
                 "trust": True,
@@ -84,6 +94,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "spark-integration-hub-k8s",
                 "channel": "latest/edge",
+                "revision": 19,
                 "series": "jammy",
                 "alias": "integration-hub",
                 "trust": True,
@@ -93,6 +104,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "zookeeper-k8s",
                 "channel": "3/edge",
+                "revision": 59,
                 "series": "jammy",
                 "alias": "zookeeper",
                 "num_units": 3,
@@ -137,12 +149,13 @@ def s3_bucket_and_creds():
     # Create the test bucket
     s3.create_bucket(Bucket=TEST_BUCKET_NAME)
     logger.info(f"Created bucket: {TEST_BUCKET_NAME}")
-
+    test_bucket.put_object(Key=TEST_PATH_NAME)
     yield {
         "endpoint": endpoint_url,
         "access_key": access_key,
         "secret_key": secret_key,
         "bucket": TEST_BUCKET_NAME,
+        "path": TEST_PATH_NAME,
     }
 
     logger.info("Tearing down test bucket...")

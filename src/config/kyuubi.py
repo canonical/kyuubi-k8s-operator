@@ -32,6 +32,7 @@ class KyuubiConfig(WithLogging):
         )
 
     def _get_zookeeper_auth_digest(self) -> str:
+        """Return auth digest string to connect to ZooKeeper."""
         if not self.zookeeper_info:
             return ""
         username = self.zookeeper_info.username

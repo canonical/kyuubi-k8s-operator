@@ -57,7 +57,8 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          - integration
+          - integration-charm
+          - integration-ha
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
