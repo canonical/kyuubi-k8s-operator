@@ -70,12 +70,19 @@ class IntegrationTestsCharms(BaseModel):
 def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=TestCharm(
-            **{"name": "s3-integrator", "channel": "edge", "series": "jammy", "alias": "s3"}
+            **{
+                "name": "s3-integrator",
+                "channel": "edge",
+                "revision": "41",
+                "series": "jammy",
+                "alias": "s3",
+            }
         ),
         postgres=TestCharm(
             **{
                 "name": "postgresql-k8s",
                 "channel": "14/stable",
+                "revision": "281",
                 "series": "jammy",
                 "alias": "postgresql",
                 "trust": True,
@@ -85,6 +92,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "spark-integration-hub-k8s",
                 "channel": "latest/edge",
+                "revision": "19",
                 "series": "jammy",
                 "alias": "integration-hub",
                 "trust": True,
@@ -93,7 +101,8 @@ def charm_versions() -> IntegrationTestsCharms:
         zookeeper=TestCharm(
             **{
                 "name": "zookeeper-k8s",
-                "channel": "3/stable",
+                "channel": "3/edge",
+                "revision": "59",
                 "series": "jammy",
                 "alias": "zookeeper",
                 "num_units": 3,
