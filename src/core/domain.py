@@ -82,7 +82,7 @@ class S3ConnectionInfo(StateBase):
     @property
     def endpoint(self) -> str | None:
         """Return endpoint of the S3 bucket."""
-        return self.relation_data.get("endpoint", None)
+        return self.relation_data.get("endpoint", "")
 
     @property
     def access_key(self) -> str:
@@ -97,12 +97,12 @@ class S3ConnectionInfo(StateBase):
     @property
     def path(self) -> str:
         """Return the path in the S3 bucket."""
-        return self.relation_data["path"]
+        return self.relation_data.get("path", "")
 
     @property
     def bucket(self) -> str:
         """Return the name of the S3 bucket."""
-        return self.relation_data["bucket"]
+        return self.relation_data.get("bucket", "")
 
     @property
     def tls_ca_chain(self) -> List[str] | None:

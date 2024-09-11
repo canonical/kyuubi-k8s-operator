@@ -32,7 +32,7 @@ class SparkConfig(WithLogging):
         return f"s3a://{bucket_name}/"
 
     def _get_sql_warehouse_path(self) -> str:
-        bucket_name = self.s3_info.bucket or "kyuubi"
+        bucket_name = self.s3_info.bucket
         warehouse_dir = "warehouse"
         return f"s3a://{bucket_name}/{warehouse_dir}"
 
