@@ -8,7 +8,7 @@
 from functools import cached_property
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError
 
 from core.domain import S3ConnectionInfo
 from utils.logging import WithLogging
@@ -36,7 +36,7 @@ class S3Manager(WithLogging):
 
         try:
             s3.list_buckets()
-        except ClientError:
+        except (ClientError, NoCredentialsError):
             self.logger.error("Invalid S3 credentials...")
             return False
 
