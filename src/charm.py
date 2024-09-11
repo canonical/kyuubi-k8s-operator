@@ -10,8 +10,12 @@
 import logging
 
 import ops
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 
 from constants import (
+    COS_METRICS_PATH,
+    COS_METRICS_PORT,
     KYUUBI_CONTAINER_NAME,
 )
 from core.context import Context
@@ -48,6 +52,21 @@ class KyuubiCharm(ops.CharmBase):
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.action_events = ActionEvents(self, self.context, self.workload)
+
+        # Monitoring/alerting (COS)
+        # Prometheus
+        self.metrics_endpoint = MetricsEndpointProvider(
+            self,
+            refresh_event=self.on.start,
+            jobs=[
+                {
+                    "metrics_path": COS_METRICS_PATH,
+                    "static_configs": [{"targets": [f"*:{COS_METRICS_PORT}"]}],
+                }
+            ],
+        )
+        # Grafana Dashboards
+        self.grafana_dashboards = GrafanaDashboardProvider(self)
 
 
 if __name__ == "__main__":  # pragma: nocover

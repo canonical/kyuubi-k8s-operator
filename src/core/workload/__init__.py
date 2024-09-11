@@ -15,7 +15,9 @@ class KyuubiWorkloadBase(AbstractWorkload):
     SPARK_PROPERTIES_FILE = "/etc/spark8t/conf/spark-defaults.conf"
     HIVE_CONFIGURATION_FILE = "/etc/spark8t/conf/hive-site.xml"
     KYUUBI_CONFIGURATION_FILE = "/opt/kyuubi/conf/kyuubi-defaults.conf"
-    KYUUBI_VERSION_FILE = "/opt/kyuubi/RELEASE"
+    KYUUBI_ROOT = "/opt/kyuubi"
+    KYUUBI_LOGS = KYUUBI_ROOT + "/logs"
+    KYUUBI_VERSION_FILE = KYUUBI_ROOT + "/RELEASE"
 
     def restart(self) -> None:
         """Restarts the workload service."""

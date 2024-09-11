@@ -10,7 +10,7 @@ parts:
       - cargo
       - libpq-dev
       - git
-    charm-strict-dependencies: true
+    charm-strict-dependencies: true 
   libpq:
     build-packages:
       - libpq-dev

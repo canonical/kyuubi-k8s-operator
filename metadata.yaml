@@ -45,7 +45,10 @@ requires:
     interface: spark_service_account
     limit: 1
 
-
 provides:
   jdbc:
     interface: kyuubi_client
+  metrics-endpoint:
+    interface: prometheus_scrape 
+  grafana-dashboard:
+    interface: grafana_dashboard  
