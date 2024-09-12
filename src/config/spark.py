@@ -63,7 +63,7 @@ class SparkConfig(WithLogging):
         try:
             service_account = registry.get(account_id)
             return service_account.configurations.props
-        except ApiError:
+        except (ApiError, AttributeError):
             self.logger.warning(f"Could not fetch Spark properties from {account_id}.")
 
         return {}
