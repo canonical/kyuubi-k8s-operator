@@ -7,6 +7,7 @@
 
 import re
 
+import ops
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.core_v1 import Namespace, ServiceAccount
@@ -47,7 +48,7 @@ class K8sManager(WithLogging):
         """Verify service account information."""
         return self.is_namespace_valid() and self.is_service_account_valid()
 
-    def get_properties(self) -> dict[str, str]:
+    def get_properties(self) -> list[str]:
         """Get Spark properties associated with this service account."""
         command = " ".join(
             [
@@ -61,8 +62,14 @@ class K8sManager(WithLogging):
                 self.namespace,
             ]
         )
-        result = self.workload.exec(command)
-        return result.strip().splitlines()
+        try:
+            result = self.workload.exec(command)
+            return result.strip().splitlines()
+        except ops.pebble.ExecError:
+            self.logger.warning(
+                f"Could not fetch Spark properties from service account {self.namespace}:{self.service_account}."
+            )
+            return []
 
     def is_s3_configured(self) -> bool:
         """Return whether S3 object storage backend has been configured."""
