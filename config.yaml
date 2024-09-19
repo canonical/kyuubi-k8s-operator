@@ -4,8 +4,8 @@
 options:
   namespace:
     type: string
-    description: The namespace to be used by driver to create executor pods.
-    default: 'kyuubi'
+    description: The namespace to be used by driver to create executor pods. If not configured, the model namespace will be used. 
+    default: ''
   service-account:
     type: string
     description: The service account to be used by driver to create executor pods.
