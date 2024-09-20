@@ -382,6 +382,34 @@ def test_invalid_service_account(
 
 
 @patch("managers.s3.S3Manager.verify", return_value=True)
+@patch("ops.model.Application.planned_units", return_value=3)
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("config.spark.SparkConfig._sa_conf", return_value={})
+def test_missing_zookeeper_for_multiple_units_of_kyuubi(
+    mock_sa_conf,
+    mock_get_master,
+    mock_s3_configured,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_planned_units,
+    mock_s3_verify,
+    kyuubi_context,
+    kyuubi_container,
+    s3_relation,
+    spark_service_account_relation,
+):
+    state = State(
+        relations=[s3_relation, spark_service_account_relation],
+        containers=[kyuubi_container],
+    )
+    out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
+    assert out.unit_status == Status.MISSING_ZOOKEEPER.value
+
+
+@patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)

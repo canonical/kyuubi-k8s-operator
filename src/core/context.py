@@ -121,7 +121,3 @@ class Context(WithLogging):
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
         return bool(self.auth_db)
-
-    def is_ha_enabled(self) -> bool:
-        """Returns whether HA has been enabled in the Kyuubi charm."""
-        return bool(self.zookeeper)

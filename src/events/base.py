@@ -62,6 +62,9 @@ class BaseEventHandler(Object, WithLogging):
         if self.context._zookeeper_relation and not self.context.zookeeper:
             return Status.WAITING_ZOOKEEPER.value
 
+        if self.charm.app.planned_units() > 1 and not self.context.zookeeper:
+            return Status.MISSING_ZOOKEEPER.value
+
         return Status.ACTIVE.value
 
 

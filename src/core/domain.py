@@ -35,6 +35,9 @@ class Status(Enum):
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
+    MISSING_ZOOKEEPER = BlockedStatus(
+        "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
+    )
     ACTIVE = ActiveStatus("")
 
 

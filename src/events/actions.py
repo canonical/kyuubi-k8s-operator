@@ -43,7 +43,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the charm is not in active state.")
             return
 
-        if self.context.is_ha_enabled():
+        if self.context.zookeeper:
             address = self.context.zookeeper.uris
             # FIXME: Get this value from self.context.zookeeper.uris when znode created by
             # zookeeper charm has enough permissions for Kyuubi to work
