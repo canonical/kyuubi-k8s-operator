@@ -371,7 +371,7 @@ async def test_remove_zookeeper_relation_on_single_unit(
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000, idle_period=30, wait_for_exact_units=2
+        apps=[APP_NAME], status="active", timeout=1000, idle_period=30, wait_for_exact_units=1
     )
     await ops_test.model.wait_for_idle(
         apps=[charm_versions.zookeeper.application_name],
