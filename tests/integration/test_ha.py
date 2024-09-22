@@ -35,9 +35,17 @@ TEST_CHARM_NAME = "application"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
+
+    logger.warning(entity)
     if isinstance(entity, Application):
+        logger.warning(entity.status)
+        logger.warning(status.name)
+        logger.warning(entity.status_message)
+        logger.warning(status.message)
         return entity.status == status.name and entity.status_message == status.message
     elif isinstance(entity, Unit):
+        logger.warning(entity.workload_status)
+        logger.warning(status.name)
         return (
             entity.workload_status == status.name
             and entity.workload_status_message == status.message
