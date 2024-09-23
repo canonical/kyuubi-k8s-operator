@@ -7,7 +7,7 @@
 import ops
 from ops import CharmBase
 
-from constants import KYUUBI_CLIENT_RELATION_NAME
+from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
@@ -33,6 +33,14 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
+
+        # Peer relation events
+        self.framework.observe(
+            self.charm.on[PEER_REL].relation_joined, self._on_peer_relation_joined
+        )
+        self.framework.observe(
+            self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
+        )
 
     @compute_status
     def _on_install(self, event: ops.InstallEvent) -> None:
@@ -70,3 +78,19 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
             zookeeper_info=self.context.zookeeper,
         )
+
+    @compute_status
+    def _on_peer_relation_joined(self, event: ops.RelationJoinedEvent):
+        """Handle the peer relation joined event.
+
+        This is necessary for updating status of all units upon scaling up/down.
+        """
+        pass
+
+    @compute_status
+    def _on_peer_relation_departed(self, event: ops.RelationDepartedEvent):
+        """Handle the peer relation departed event.
+
+        This is necessary for updating status of all units upon scaling up/down.
+        """
+        pass
