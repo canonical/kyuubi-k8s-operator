@@ -24,7 +24,7 @@ class BaseEventHandler(Object, WithLogging):
     charm: CharmBase
     context: Context
 
-    def get_app_status(
+    def get_app_status(  # noqa: C901
         self,
     ) -> StatusBase:
         """Return the status of the charm."""
