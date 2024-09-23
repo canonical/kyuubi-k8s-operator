@@ -85,7 +85,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         This is necessary for updating status of all units upon scaling up/down.
         """
-        pass
+        self.logger.info("Kyuubi peer relation joined...")
 
     @compute_status
     def _on_peer_relation_departed(self, event: ops.RelationDepartedEvent):
@@ -93,4 +93,4 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         This is necessary for updating status of all units upon scaling up/down.
         """
-        pass
+        self.logger.info("Kyuubi peer relation departed...")
