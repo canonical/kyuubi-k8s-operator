@@ -13,6 +13,7 @@ AUTHENTICATION_TABLE_NAME = "kyuubi_users"
 POSTGRESQL_DEFAULT_DATABASE = "postgres"
 
 # Relation names
+PEER_REL = "kyuubi-peers"
 S3_INTEGRATOR_REL = "s3-credentials"
 POSTGRESQL_METASTORE_DB_REL = "metastore-db"
 POSTGRESQL_AUTH_DB_REL = "auth-db"

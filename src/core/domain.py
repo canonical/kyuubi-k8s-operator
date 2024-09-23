@@ -39,6 +39,9 @@ class Status(Enum):
     )
 
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
+    MISSING_ZOOKEEPER = BlockedStatus(
+        "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
+    )
     ACTIVE = ActiveStatus("")
 
 
