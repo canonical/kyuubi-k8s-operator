@@ -54,9 +54,6 @@ requires:
   logging:
     interface: loki_push_api
     limit: 1
-  # logging-worker:
-  #   interface: loki_push_api
-  #   limit: 1
 
 provides:
   jdbc:
