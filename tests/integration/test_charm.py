@@ -1173,7 +1173,7 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
 # @pytest.mark.abort_on_fail
 async def test_kyuubi_cos_data_published(ops_test: OpsTest):
     # We should leave time for Prometheus data to be published
-    for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(60), reraise=True):
+    for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(60), reraise=True):
         with attempt:
 
             # Data got published to Prometheus
@@ -1211,3 +1211,9 @@ async def test_kyuubi_cos_data_published(ops_test: OpsTest):
             #     for result in loki_server_logs["data"]["result"]
             #     for value in result["values"]
             # )
+
+            logger.info("Checking if Spark server logs are published to Loki...")
+            loki_worker_logs = await published_loki_logs(
+                ops_test, "filename", "/opt/kyuubi/work/anonymous/kyuubi-spark-sql-engine.log.0"
+            )
+            assert len(loki_worker_logs["data"]["result"][0]["values"]) > 0
