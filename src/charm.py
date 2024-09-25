@@ -11,7 +11,7 @@ import logging
 
 import ops
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
-from charms.loki_k8s.v1.loki_push_api import LogForwarder, LogProxyConsumer
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 
 from constants import (
@@ -75,18 +75,6 @@ class KyuubiCharm(ops.CharmBase):
         # Loki
         # Server logs from Pebble
         self._log_forwarder = LogForwarder(self, relation_name=COS_LOG_RELATION_NAME_SERVER)
-
-        # Worker logs from local log files
-        self.loki_push = LogProxyConsumer(
-            self,
-            logs_scheme={
-                KYUUBI_CONTAINER_NAME: {
-                    "log-files": ["/opt/kyuubi/work/*/*"],
-                    "syslog-port": 1514,
-                },
-            },
-            relation_name=COS_LOG_RELATION_NAME_SERVER,
-        )
 
 
 if __name__ == "__main__":  # pragma: nocover
