@@ -16,7 +16,6 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 
 from constants import (
     COS_LOG_RELATION_NAME_SERVER,
-    COS_LOG_RELATION_NAME_WORKER,
     COS_METRICS_PATH,
     COS_METRICS_PORT,
     KYUUBI_CONTAINER_NAME,
@@ -86,7 +85,7 @@ class KyuubiCharm(ops.CharmBase):
                     "syslog-port": 1514,
                 },
             },
-            relation_name=COS_LOG_RELATION_NAME_WORKER,
+            relation_name=COS_LOG_RELATION_NAME_SERVER,
         )
 
 
