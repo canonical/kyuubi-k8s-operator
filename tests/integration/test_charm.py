@@ -1173,7 +1173,7 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
 # @pytest.mark.abort_on_fail
 async def test_kyuubi_cos_data_published(ops_test: OpsTest):
     # We should leave time for Prometheus data to be published
-    for attempt in Retrying(stop=stop_after_attempt(5), wait=wait_fixed(30), reraise=True):
+    for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(10), reraise=True):
         with attempt:
 
             # Data got published to Prometheus
