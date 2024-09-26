@@ -29,6 +29,19 @@ def get_random_name():
     return str(uuid.uuid4()).replace("-", "_")
 
 
+async def set_memory_constraints(ops_test, model_name):
+    """Set memory resource constraints on given model."""
+    logger.info(f"Setting model constraint mem=500M on model {model_name}...")
+    model_constraints_command = [
+        "set-model-constraints",
+        "--model",
+        model_name,
+        "mem=500M",
+    ]
+    retcode, stdout, stderr = await ops_test.juju(*model_constraints_command)
+    assert retcode == 0
+
+
 async def fetch_jdbc_endpoint(ops_test):
     """Return the JDBC endpoint for clients to connect to Kyuubi server."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")

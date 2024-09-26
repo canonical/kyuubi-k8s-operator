@@ -34,6 +34,7 @@ from .helpers import (
     published_loki_logs,
     published_prometheus_alerts,
     published_prometheus_data,
+    set_memory_constraints,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,8 @@ async def test_build_and_deploy(ops_test: OpsTest, kyuubi_charm):
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
     logger.info(f"Image version: {image_version}")
+
+    await set_memory_constraints(ops_test, ops_test.model_name)
 
     # Deploy the charm and wait for waiting status
     logger.info("Deploying kyuubi-k8s charm...")
