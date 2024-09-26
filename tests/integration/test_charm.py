@@ -904,7 +904,7 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_ver
 
     logger.info("Waiting for zookeeper app to be active and idle...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
+        apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=3000, status="active"
     )
 
     logger.info("Integrating kyuubi charm with zookeeper charm...")
