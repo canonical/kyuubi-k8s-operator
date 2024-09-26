@@ -51,6 +51,8 @@ requires:
   zookeeper:
     interface: zookeeper
     limit: 1
+  logging:
+    interface: loki_push_api
 
 provides:
   jdbc:
