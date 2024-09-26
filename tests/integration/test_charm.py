@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import re
 import subprocess
 import time
 import uuid
@@ -20,9 +19,6 @@ from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from constants import (
-    AUTHENTICATION_DATABASE_NAME,
-    HA_ZNODE_NAME,
-    KYUUBI_CLIENT_RELATION_NAME,
     METASTORE_DATABASE_NAME,
 )
 from core.domain import Status
@@ -1168,8 +1164,6 @@ async def test_set_password_action(ops_test: OpsTest, test_pod):
 #
 #     assert len(executor_pod_names) == len(expected_executor_pod_names)
 #     assert set(executor_pod_names) == set(expected_executor_pod_names)
-
-
 
 
 # @pytest.mark.abort_on_fail
