@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2024 Canonical Limited
-# See LICENSE file for licensing details.
+# See the LICENSE file for licensing details.
 
 """Spark related configurations."""
 
