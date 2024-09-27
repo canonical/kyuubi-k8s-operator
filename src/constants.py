@@ -23,6 +23,7 @@ KYUUBI_CLIENT_RELATION_NAME = "jdbc"
 
 COS_METRICS_PORT = 10019
 COS_METRICS_PATH = "/metrics"
+COS_LOG_RELATION_NAME_SERVER = "logging"
 
 # Literals related to K8s
 NAMESPACE_CONFIG_NAME = "namespace"

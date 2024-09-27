@@ -331,6 +331,21 @@ async def published_grafana_dashboards(ops_test: OpsTest) -> str | None:
         return response.json()
 
 
+async def published_loki_logs(
+    ops_test: OpsTest, field: str, value: str, limit: int = 300
+) -> str | None:
+    """Get the list of dashboards published to Grafana."""
+    base_url = await get_cos_address(ops_test)
+    url = f"{base_url}/{ops_test.model.name}-loki-0/loki/api/v1/query_range"
+
+    try:
+        response = requests.get(url, params={"query": f'{{{field}=~"{value}"}}', "limit": limit})
+    except requests.exceptions.RequestException:
+        return
+    if response.status_code == 200:
+        return response.json()
+
+
 async def get_cos_address(ops_test: OpsTest) -> str:
     """Retrieve the URL where COS services are available."""
     cos_addr_res = check_output(
