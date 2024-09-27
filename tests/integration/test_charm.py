@@ -254,7 +254,7 @@ async def test_integration_with_postgresql_over_metastore_db(ops_test: OpsTest, 
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
     )
 
     # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
