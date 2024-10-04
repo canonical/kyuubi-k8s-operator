@@ -36,3 +36,14 @@ DEFAULT_ADMIN_USERNAME = "admin"
 
 # Zookeeper literals
 HA_ZNODE_NAME = "/kyuubi"
+
+# Upgrade policies
+
+DEPENDENCIES = {
+    "service": {
+        "dependencies": {},
+        "name": "kyuubi",
+        "upgrade_supported": "^1",
+        "version": "1.9",
+    },
+}

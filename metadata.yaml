@@ -35,6 +35,8 @@ resources:
 peers:
   kyuubi-peers:
     interface: kyuubi-peers
+  upgrade:
+    interface: upgrade
 
 requires:
   s3-credentials:

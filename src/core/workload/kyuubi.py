@@ -57,6 +57,7 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def start(self):
         """Execute business-logic for starting the workload."""
         services = self.container.get_plan().services
+        self.logger.info("Kyuubi is starting.")
         self.logger.info(f"Pebble services: {services}")
 
         if not self.exists(self.SPARK_PROPERTIES_FILE):
