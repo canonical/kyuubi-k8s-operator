@@ -43,10 +43,6 @@ async def test_build_and_deploy(
     ops_test: OpsTest, charm_versions, kyuubi_charm, s3_bucket_and_creds, test_pod
 ):
     """Test building and deploying the charm without relation with any other charm."""
-    image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    # resources = {"kyuubi-image": image_version}
-    logger.info(f"Image version: {image_version}")
-
     # Deploy the charm and wait for waiting status
     logger.info("Deploying kyuubi-k8s charm...")
     await ops_test.model.deploy(
@@ -218,22 +214,22 @@ async def test_build_and_deploy(
     # Run SQL test against the cluster
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
+
+@pytest.mark.abort_on_fail
+async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod):
+    """Test the correct upgrade of a Kyuubi cluster."""
+    # Retrieve the image to use from metadata.yaml
+    image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+    logger.info(f"Image version: {image_version}")
+
     leader_unit = None
     for unit in ops_test.model.applications[APP_NAME].units:
         if await unit.is_leader_from_status():
             leader_unit = unit
     assert leader_unit
 
-    # ops_test.juju("")
-
-    logger.info("Calling pre-upgrade-check...")
-    # action = await leader_unit.run_action("pre-upgrade-check")
-    # await action.wait()
-    # await ops_test.model.wait_for_idle(
-    #     apps=[APP_NAME], timeout=1000, idle_period=15, status="active"
-    # )
-
-    # test upgrade
+    # TODO trigger pre-upgrade checks after the release of the first charm with upgrades.
+    # test upgrade procedure
     logger.info("Upgrading Kyuubi...")
     await ops_test.model.applications[APP_NAME].refresh(
         path=kyuubi_charm,
@@ -254,11 +250,17 @@ async def test_build_and_deploy(
         apps=[APP_NAME], timeout=1000, idle_period=30, status="active"
     )
 
+    # test that upgraded cluster works
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
-    # logger.info("Checking that produced messages can be consumed afterwards...")
-    # action = await ops_test.model.units.get(f"{DUMMY_NAME}/0").run_action("consume")
-    # await action.wait()
-    # await ops_test.model.wait_for_idle(
-    #     apps=[APP_NAME, DUMMY_NAME], timeout=1000, idle_period=30, status="active"
-    # )
+    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    assert len(active_servers) == 3
+
+    expected_servers = [
+        f"kyuubi-k8s-0.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+        f"kyuubi-k8s-1.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+        f"kyuubi-k8s-2.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+    ]
+    assert set(active_servers) == set(expected_servers)
+
+    logger.info("End of the tests.")
