@@ -95,6 +95,11 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the charm is not in active state.")
             return
 
+        if not self.charm.upgrade_events.idle:  # type: ignore
+            msg = f"Cannot set password while upgrading (upgrade_stack: {self.charm.upgrade_events.upgrade_stack})"  # type: ignore
+            self.logger.error(msg)
+            event.fail(msg)
+
         password = self.auth.generate_password()
 
         if "password" in event.params:

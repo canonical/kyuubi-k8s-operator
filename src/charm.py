@@ -18,6 +18,7 @@ from constants import (
     COS_LOG_RELATION_NAME_SERVER,
     COS_METRICS_PATH,
     COS_METRICS_PORT,
+    DEPENDENCIES,
     KYUUBI_CONTAINER_NAME,
 )
 from core.context import Context
@@ -28,6 +29,7 @@ from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.s3 import S3Events
+from events.upgrade import KyuubiDependencyModel, UpgradeEvents
 from events.zookeeper import ZookeeperEvents
 
 # Log messages can be retrieved using juju debug-log
@@ -56,6 +58,7 @@ class KyuubiCharm(ops.CharmBase):
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.action_events = ActionEvents(self, self.context, self.workload)
+        self.upgrade_events = UpgradeEvents(self, self.context, self.workload, KyuubiDependencyModel(**DEPENDENCIES))  # type: ignore
 
         # Monitoring/alerting (COS)
         # Prometheus

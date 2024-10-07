@@ -4,9 +4,11 @@
 get-jdbc-endpoint:
   description: |
     Returns the JDBC endpoint to connect to Kyuubi server.
+
 get-password:
   description: |
     Returns the password for the admin user.
+
 set-password:
   description: |
     Set the password for the admin user.
@@ -14,3 +16,11 @@ set-password:
     password:
       type: string
       description: The password will be auto-generated if this option is not specified.
+
+pre-upgrade-check:
+  description: |
+    Run necessary pre-upgrade checks before executing a charm upgrade.
+
+resume-upgrade:
+  description: |
+    Resume a rolling upgrade after asserting successful upgrade of a new revision.
