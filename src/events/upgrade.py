@@ -62,10 +62,9 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
             self.logger.info("Workload is not ready")
             return
 
-        # self.apply_backwards_compatibility_fixes()
-
         # useful to have a log here to indicate that the upgrade is progressing
         try:
+            # check if workload is active
             self.workload.active()
         except ModelError:
             self.logger.info(
@@ -81,6 +80,7 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
             zookeeper_info=self.context.zookeeper,
         )
 
+        # check if upgrade is successful and set unit upgrade status
         try:
             self.post_upgrade_check()
         except Exception as e:

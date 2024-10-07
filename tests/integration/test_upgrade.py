@@ -228,9 +228,12 @@ async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod):
             leader_unit = unit
     assert leader_unit
 
-    # TODO trigger pre-upgrade checks after the release of the first charm with upgrades.
+    # TODO trigger pre-upgrade checks after the release of the first charm with the upgrade feature available.
+
     # test upgrade procedure
     logger.info("Upgrading Kyuubi...")
+
+    # start refresh by upgrading to the current version
     await ops_test.model.applications[APP_NAME].refresh(
         path=kyuubi_charm,
         resources={"kyuubi-image": image_version},
@@ -242,7 +245,6 @@ async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod):
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME], timeout=1000, idle_period=180, raise_on_error=False
     )
-    ops_test.juju("status")
     logger.info("Resume upgrade...")
     action = await leader_unit.run_action("resume-upgrade")
     await action.wait()
@@ -250,7 +252,7 @@ async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod):
         apps=[APP_NAME], timeout=1000, idle_period=30, status="active"
     )
 
-    # test that upgraded cluster works
+    # test that upgraded Kyuubi cluster works and all units are available
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
     active_servers = await get_active_kyuubi_servers_list(ops_test)
