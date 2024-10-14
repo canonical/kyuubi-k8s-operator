@@ -38,9 +38,11 @@ boto3 = "^1.26.75"
 jsonschema = "^4.19.1"
 lightkube = "^0.15.2"
 psycopg2 = "^2.9.9"
+tenacity = ">=8.0.1"
 # FIXME: Unpin once rustc 1.76 is available at build time
 rpds-py = "<0.19"
 spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag="v0.0.7", python=">3.8,<4.0"}
+poetry-core = "^1.9.0"
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^2.13.0"
