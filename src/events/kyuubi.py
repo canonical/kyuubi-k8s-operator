@@ -65,11 +65,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         # the new desired service type.
         self.service_util.reconcile_services(expose_external)
 
-        # Check the newly created service is connectable
-        if not self.service_util.is_service_connectable():
-            event.defer()
-            return
-
         self.kyuubi.update(
             s3_info=self.context.s3,
             metastore_db_info=self.context.metastore_db,
@@ -77,6 +72,11 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             service_account_info=self.context.service_account,
             zookeeper_info=self.context.zookeeper,
         )
+
+        # Check the newly created service is connectable
+        if not self.service_util.is_service_connectable():
+            event.defer()
+            return
 
     @compute_status
     def _update_event(self, event):

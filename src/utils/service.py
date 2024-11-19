@@ -197,12 +197,12 @@ class ServiceUtil(WithLogging):
     def is_service_connectable(self) -> bool:
         """Check whether the all endpoints are available for the connection."""
         if not self.get_service():
-            self.logger.debug("No service exists.")
+            self.logger.debug("No service exists yet.")
             return False
 
         endpoints = self.get_jdbc_endpoints()
         if endpoints == "":
-            self.logger.debug("Empty endpoints list")
+            self.logger.debug("Empty Kyuubi service endpoints list")
             return False
 
         for endpoint in endpoints.split(","):
