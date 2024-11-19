@@ -34,7 +34,8 @@ def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
         )
 
 
-def test_start_kyuubi(kyuubi_context):
+@patch("lightkube.Client")
+def test_start_kyuubi(mock_lightkube_client, kyuubi_context):
     state = State(
         config={},
         containers=[Container(name=KYUUBI_CONTAINER_NAME, can_connect=False)],
@@ -45,10 +46,17 @@ def test_start_kyuubi(kyuubi_context):
 
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_pebble_ready(
-    mock_sa_conf, mock_get_master, mock_valid_sa, mock_valid_ns, kyuubi_context, kyuubi_container
+    mock_sa_conf,
+    mock_get_master,
+    mock_lightkube_client,
+    mock_valid_sa,
+    mock_valid_ns,
+    kyuubi_context,
+    kyuubi_container,
 ):
     state = State(
         containers=[kyuubi_container],
@@ -60,11 +68,13 @@ def test_pebble_ready(
 @patch("managers.s3.S3Manager.verify", return_value=False)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_s3_relation_invalid_credentials(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -83,11 +93,13 @@ def test_s3_relation_invalid_credentials(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_missing_integration_hub(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
@@ -108,13 +120,15 @@ def test_missing_integration_hub(
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=False)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_insufficient_permissions(
     mock_sa_conf,
-    mock_get_master,
     mock_s3_configured,
+    mock_get_master,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_valid_sa,
     mock_valid_ns,
@@ -138,12 +152,14 @@ def test_insufficient_permissions(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
 @patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_s3(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_service_connectable,
     mock_has_cluster_permissions,
     mock_s3_configured,
@@ -180,12 +196,14 @@ def test_valid_on_s3(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
 @patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_service_account(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_service_connectable,
     mock_has_cluster_permissions,
     mock_s3_configured,
@@ -223,11 +241,15 @@ def test_valid_on_service_account(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=False)
 @patch("managers.k8s.K8sManager.is_azure_storage_configured", return_value=False)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
+@patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_object_storage_backend_removed(
     mock_sa_conf,
     mock_get_master,
+    mock_service_connectable,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_azure_configured,
     mock_s3_configured,
@@ -257,6 +279,7 @@ def test_object_storage_backend_removed(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
 @patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
@@ -264,6 +287,7 @@ def test_zookeeper_relation_joined(
     mock_sa_conf,
     mock_get_master,
     mock_service_connectable,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -305,12 +329,14 @@ def test_zookeeper_relation_joined(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("lightkube.Client")
 @patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_zookeeper_relation_broken(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_service_connectable,
     mock_s3_configured,
     mock_has_cluster_permissions,
@@ -348,11 +374,15 @@ def test_zookeeper_relation_broken(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
+@patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_spark_service_account_broken(
     mock_sa_conf,
     mock_get_master,
+    mock_service_connectable,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -383,11 +413,13 @@ def test_spark_service_account_broken(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_invalid_namespace(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -411,11 +443,13 @@ def test_invalid_namespace(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=False)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_invalid_service_account(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -440,11 +474,13 @@ def test_invalid_service_account(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_missing_zookeeper_for_multiple_units_of_kyuubi(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_s3_configured,
     mock_has_cluster_permissions,
     mock_valid_sa,
@@ -469,6 +505,7 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("lightkube.Client")
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch(
     "config.spark.SparkConfig._sa_conf",
@@ -481,6 +518,7 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
 def test_spark_property_priorities(
     mock_sa_conf,
     mock_get_master,
+    mock_lightkube_client,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
