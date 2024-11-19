@@ -28,6 +28,7 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 # Literals related to K8s
 NAMESPACE_CONFIG_NAME = "namespace"
 SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
+VALID_EXPOSE_EXTERNAL_VALUES = ("false", "nodeport", "loadbalancer")
 
 # Literals related to Kyuubi
 JDBC_PORT = 10009

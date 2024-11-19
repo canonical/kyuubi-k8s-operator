@@ -7,13 +7,14 @@
 import ops
 from ops import CharmBase
 
-from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
+from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL, VALID_EXPOSE_EXTERNAL_VALUES
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from providers import KyuubiClientProvider
 from utils.logging import WithLogging
+from utils.service import ServiceUtil
 
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
@@ -28,6 +29,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload)
         self.kyuubi_client = KyuubiClientProvider(self.charm, KYUUBI_CLIENT_RELATION_NAME)
+        self.service_util = ServiceUtil(self.charm.model)
 
         self.framework.observe(self.charm.on.install, self._on_install)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
@@ -51,6 +53,21 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
         if not self.charm.unit.is_leader():
+            return
+
+        expose_external = self.charm.config.get("expose-external", "false")
+        if expose_external not in VALID_EXPOSE_EXTERNAL_VALUES:
+            self.logger.warning(f"Invalid value for expose-external: {expose_external}")
+            return
+
+        # Upon the change in the `external-expose` config option,
+        # we want to reconcile the existing K8s service to reflect
+        # the new desired service type.
+        self.service_util.reconcile_services(expose_external)
+
+        # Check the newly created service is connectable
+        if not self.service_util.is_service_connectable():
+            event.defer()
             return
 
         self.kyuubi.update(

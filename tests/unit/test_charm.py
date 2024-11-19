@@ -138,11 +138,13 @@ def test_insufficient_permissions(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_s3(
     mock_sa_conf,
     mock_get_master,
+    mock_service_connectable,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -178,11 +180,13 @@ def test_valid_on_s3(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_service_account(
     mock_sa_conf,
     mock_get_master,
+    mock_service_connectable,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -253,11 +257,13 @@ def test_object_storage_backend_removed(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_zookeeper_relation_joined(
     mock_sa_conf,
     mock_get_master,
+    mock_service_connectable,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -299,11 +305,13 @@ def test_zookeeper_relation_joined(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("utils.service.ServiceUtil.is_service_connectable", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_zookeeper_relation_broken(
     mock_sa_conf,
     mock_get_master,
+    mock_service_connectable,
     mock_s3_configured,
     mock_has_cluster_permissions,
     mock_valid_sa,
