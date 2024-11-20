@@ -75,8 +75,11 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         # Check the newly created service is connectable
         if not self.service_util.is_service_connectable():
+            self.logger.error("DEFER: not connectable, deferring now...")
             event.defer()
             return
+
+        self.logger.error("DEFER: connectable, finishing execution now...")
 
     @compute_status
     def _update_event(self, event):

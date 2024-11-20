@@ -191,11 +191,13 @@ class ServiceUtil(WithLogging):
         pod0 = self.get_pod(f"{self.app_name}/0")
 
         self.create_service(
-            service_type=desired_service_type, ownerReferences=pod0.metadata.ownerReferences
+            service_type=desired_service_type, owner_references=pod0.metadata.ownerReferences
         )
 
     def is_service_connectable(self) -> bool:
         """Check whether the all endpoints are available for the connection."""
+        # import os
+        # return os.path.exists("/connect")
         if not self.get_service():
             self.logger.debug("No service exists yet.")
             return False
