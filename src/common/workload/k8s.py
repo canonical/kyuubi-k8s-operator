@@ -30,7 +30,7 @@ class K8sWorkload(AbstractWorkload, ABC):
         return self.container.exists(path)
 
     @override
-    def read(self, path: str) -> list[str]:
+    def read(self, path: str) -> str:
         """Read from a file.
 
         Args:
@@ -46,7 +46,7 @@ class K8sWorkload(AbstractWorkload, ABC):
             raise FileNotFoundError
 
         with self.container.pull(path) as f:
-            return f.read().split("\n")
+            return f.read()
 
     @override
     def write(self, content: str, path: str, mode: str = "w") -> None:
@@ -58,7 +58,7 @@ class K8sWorkload(AbstractWorkload, ABC):
             mode: the write mode. Usually "w" for write, or "a" for append. Default "w"
         """
         if mode == "a" and (current := self.read(path)):
-            content = "\n".join(current + [content])
+            content = current + "\n" + content
         self.container.push(path, content, make_dirs=True)
 
     @override

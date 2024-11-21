@@ -93,7 +93,7 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def kyuubi_version(self):
         """Return the version of Kyuubi."""
         version_pattern = r"Kyuubi (?P<version>[\d\.]+)"
-        for line in self.read(self.KYUUBI_VERSION_FILE):
+        for line in self.read(self.KYUUBI_VERSION_FILE).splitlines():
             version = re.search(version_pattern, line)
             if version:
                 return version.group("version")
