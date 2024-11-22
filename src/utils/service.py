@@ -8,7 +8,7 @@ import typing
 import lightkube
 from ops import Model
 
-from constants import JDBC_PORT, PEER_REL
+from constants import JDBC_PORT
 from utils.logging import WithLogging
 
 
@@ -47,11 +47,8 @@ class ServiceUtil(WithLogging):
         # Example: kyuubi-k8s-service.my-model.svc.cluster.local
         return f"{self.service_name}.{self.model_service_domain}"
 
-    def _get_node_hosts(self) -> set[str]:
+    def _get_node_host(self) -> set[str]:
         """Return the node ports of nodes where units of this app are scheduled."""
-        peer_relation = self.model.get_relation(PEER_REL)
-        if not peer_relation:
-            return []
 
         def _get_node_address(node) -> str:
             # OpenStack will return an internal hostname, not externally accessible
@@ -61,11 +58,9 @@ class ServiceUtil(WithLogging):
                     if address.type == typ:
                         return address.address
 
-        hosts = set()
-        for unit in peer_relation.units | {self.model.unit}:
-            node = self.get_node(unit.name)
-            hosts.add(_get_node_address(node))
-        return hosts
+        node = self.get_node(self.model.unit.name)
+        host = _get_node_address(node)
+        return host
 
     @functools.cache
     def get_node(self, unit_name: str) -> lightkube.resources.core_v1.Node:
@@ -92,7 +87,7 @@ class ServiceUtil(WithLogging):
 
         return service
 
-    def get_jdbc_endpoints(self):
+    def get_jdbc_endpoint(self):
         """Return the list of JDBC endpoints to connect to Kyuubi."""
         service = self.get_service()
         if not service:
@@ -104,20 +99,14 @@ class ServiceUtil(WithLogging):
         if service_type == _ServiceType.CLUSTER_IP:
             return f"{self._host}:{port}"
         elif service_type == _ServiceType.NODE_PORT:
-            hosts = self._get_node_hosts()
-
+            host = self._get_node_host
             for p in service.spec.ports:
                 node_port = p.nodePort
                 break
-
-            return ",".join(sorted({f"{host}:{node_port}" for host in hosts}))
+            return f"{host}:{node_port}"
         elif service_type == _ServiceType.LOAD_BALANCER and service.status.loadBalancer.ingress:
-            hosts = set()
             for ingress in service.status.loadBalancer.ingress:
-                hosts.add(ingress.ip)
-
-            return ",".join(sorted(f"{host}:{port}" for host in hosts))
-
+                return f"{ingress.ip}:{port}"
         return ""
 
     def delete_service(self):
@@ -200,15 +189,15 @@ class ServiceUtil(WithLogging):
             self.logger.debug("No service exists yet.")
             return False
 
-        endpoints = self.get_jdbc_endpoints()
-        if endpoints == "":
-            self.logger.debug("Empty Kyuubi service endpoints list")
+        endpoint = self.get_jdbc_endpoint()
+        if endpoint == "":
+            self.logger.debug("Kyuubi service endpoint found to be empty string")
             return False
 
-        for endpoint in endpoints.split(","):
-            with socket.socket() as s:
-                host, port = endpoint.split(":")
-                if s.connect_ex((host, int(port))) != 0:
-                    self.logger.info(f"Unable to connect to {endpoint=}")
-                    return False
+        with socket.socket() as s:
+            host, port = endpoint.split(":")
+            if s.connect_ex((host, int(port))) != 0:
+                self.logger.info(f"Unable to connect to {endpoint=}")
+                return False
+
         return True

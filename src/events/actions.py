@@ -59,7 +59,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
                     "The action failed because the Kubernetes service is not available at the moment."
                 )
                 return
-            endpoint = self.service_util.get_jdbc_endpoints()
+            endpoint = f"jdbc:hive2://{self.service_util.get_jdbc_endpoint()}/"
         result = {"endpoint": endpoint}
         event.set_results(result)
 

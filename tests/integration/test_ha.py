@@ -48,13 +48,9 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy_cluster_with_no_zookeeper(
-    ops_test: OpsTest, charm_versions, s3_bucket_and_creds
+    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
 ):
     """Test building, deploying and relating a single Kyuubi unit with 3 units of Zookeeper."""
-    # Build and deploy charm from local source folder
-    logger.info("Building charm...")
-    charm = await ops_test.build_charm(".")
-
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
     logger.info(f"Image version: {image_version}")
@@ -62,7 +58,7 @@ async def test_build_and_deploy_cluster_with_no_zookeeper(
     # Deploy several charms required in the cluster
     await asyncio.gather(
         ops_test.model.deploy(
-            charm,
+            kyuubi_charm,
             resources=resources,
             application_name=APP_NAME,
             num_units=1,

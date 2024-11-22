@@ -97,12 +97,6 @@ async def test_build_and_deploy_without_trust(ops_test: OpsTest, kyuubi_charm, c
         idle_period=20,
     )
 
-    logger.warning(ops_test.model.applications[APP_NAME].status)
-    logger.warning(ops_test.model.applications[APP_NAME].status_message)
-    logger.warning(Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value)
-    logger.warning(Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value.name)
-    logger.warning(Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value.message)
-
     # Assert that integration hub is in active state while Kyuubi is blocked due to insufficient permissions
     assert check_status(
         ops_test.model.applications[APP_NAME], Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value
