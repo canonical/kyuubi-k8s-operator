@@ -196,8 +196,6 @@ class ServiceUtil(WithLogging):
 
     def is_service_connectable(self) -> bool:
         """Check whether the all endpoints are available for the connection."""
-        # import os
-        # return os.path.exists("/connect")
         if not self.get_service():
             self.logger.debug("No service exists yet.")
             return False

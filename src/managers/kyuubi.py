@@ -41,6 +41,8 @@ class KyuubiManager(WithLogging):
             existing_spark_config = self.workload.read(self.workload.SPARK_PROPERTIES_FILE)
         except FileNotFoundError:
             existing_spark_config = ""
+        self.logger.debug(f"existing_spark_config: {existing_spark_config}")
+        self.logger.debug(f"new_spark_config: {existing_spark_config}")
         if existing_spark_config != new_spark_config:
             self.workload.write(new_spark_config, self.workload.SPARK_PROPERTIES_FILE)
             restart_required = True
@@ -50,6 +52,8 @@ class KyuubiManager(WithLogging):
             existing_hive_config = self.workload.read(self.workload.HIVE_CONFIGURATION_FILE)
         except FileNotFoundError:
             existing_hive_config = ""
+        self.logger.debug(f"existing_hive_config: {existing_hive_config}")
+        self.logger.debug(f"new_hive_config: {new_hive_config}")
         if existing_hive_config != new_hive_config:
             self.workload.write(new_hive_config, self.workload.HIVE_CONFIGURATION_FILE)
             restart_required = True
@@ -61,6 +65,8 @@ class KyuubiManager(WithLogging):
             existing_kyuubi_config = self.workload.read(self.workload.KYUUBI_CONFIGURATION_FILE)
         except FileNotFoundError:
             existing_kyuubi_config = ""
+        self.logger.debug(f"existing_kyuubi_config: {existing_kyuubi_config}")
+        self.logger.debug(f"new_kyuubi_config: {new_kyuubi_config}")
         if existing_kyuubi_config != new_kyuubi_config:
             self.workload.write(new_kyuubi_config, self.workload.KYUUBI_CONFIGURATION_FILE)
             restart_required = True

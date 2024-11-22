@@ -60,9 +60,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             self.logger.warning(f"Invalid value for expose-external: {expose_external}")
             return
 
-        # Upon the change in the `external-expose` config option,
-        # we want to reconcile the existing K8s service to reflect
-        # the new desired service type.
+        # Create / update the managed service to reflect the service type in config
         self.service_util.reconcile_services(expose_external)
 
         self.kyuubi.update(
@@ -75,11 +73,15 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         # Check the newly created service is connectable
         if not self.service_util.is_service_connectable():
-            self.logger.error("DEFER: not connectable, deferring now...")
+            self.logger.info(
+                "Managed K8s service not connectable; deferring config-changed event now..."
+            )
             event.defer()
             return
 
-        self.logger.error("DEFER: connectable, finishing execution now...")
+        self.logger.info(
+            "Managed K8s service is connectable; completed handling config-changed event."
+        )
 
     @compute_status
     def _update_event(self, event):
