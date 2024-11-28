@@ -74,6 +74,7 @@ class BaseEventHandler(Object, WithLogging):
             return Status.INVALID_EXPOSE_EXTERNAL.value
 
         service_util = ServiceUtil(self.charm.model)
+
         if not service_util.is_service_connectable():
             return Status.WAITING_FOR_SERVICE.value
 

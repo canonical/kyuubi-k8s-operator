@@ -7,6 +7,7 @@ import typing
 
 import lightkube
 from ops import Model
+from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from constants import JDBC_PORT
 from utils.logging import WithLogging
@@ -99,7 +100,7 @@ class ServiceUtil(WithLogging):
         if service_type == _ServiceType.CLUSTER_IP:
             return f"{self._host}:{port}"
         elif service_type == _ServiceType.NODE_PORT:
-            host = self._get_node_host
+            host = self._get_node_host()
             for p in service.spec.ports:
                 node_port = p.nodePort
                 break
@@ -183,6 +184,12 @@ class ServiceUtil(WithLogging):
             service_type=desired_service_type, owner_references=pod0.metadata.ownerReferences
         )
 
+    @retry(
+        wait=wait_fixed(8),
+        stop=stop_after_attempt(3),
+        retry=retry_if_result(lambda res: res is False),
+        retry_error_callback=lambda _: False,
+    )
     def is_service_connectable(self) -> bool:
         """Check whether the all endpoints are available for the connection."""
         if not self.get_service():
@@ -196,8 +203,14 @@ class ServiceUtil(WithLogging):
 
         with socket.socket() as s:
             host, port = endpoint.split(":")
-            if s.connect_ex((host, int(port))) != 0:
-                self.logger.info(f"Unable to connect to {endpoint=}")
-                return False
+            try:
+                return_code = s.connect_ex((host, int(port)))
+                if return_code != 0:
+                    self.logger.info(f"Unable to connect to service {endpoint=}, {return_code=}")
+                    return False
+            except Exception as e:
+                self.logger.error(
+                    f"Exception when trying to connect to {host=} and {port=}, error message = {e}"
+                )
 
         return True
