@@ -47,6 +47,7 @@ class KyuubiManager(WithLogging):
         set_auth_db_none: bool = False,
         set_service_account_none: bool = False,
         set_zookeeper_none: bool = False,
+        set_tls_none: bool = False,
     ):
         """Update Kyuubi service and restart it."""
         s3_info = None if set_s3_none else self.context.s3
@@ -54,6 +55,7 @@ class KyuubiManager(WithLogging):
         auth_db_info = None if set_auth_db_none else self.context.auth_db
         service_account_info = None if set_service_account_none else self.context.service_account
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
+        tls_info = None if set_tls_none else self.context.tls
 
         # Restart workload only if some configuration has changed.
         if any(
@@ -62,15 +64,20 @@ class KyuubiManager(WithLogging):
                     SparkConfig(
                         s3_info=s3_info, service_account_info=service_account_info
                     ).contents,
-                    self.workload.SPARK_PROPERTIES_FILE,
+                    self.workload.paths.spark_properties,
                 ),
                 self._compare_and_update_file(
                     HiveConfig(db_info=metastore_db_info).contents,
-                    self.workload.HIVE_CONFIGURATION_FILE,
+                    self.workload.paths.hive_properties,
                 ),
                 self._compare_and_update_file(
-                    KyuubiConfig(db_info=auth_db_info, zookeeper_info=zookeeper_info).contents,
-                    self.workload.KYUUBI_CONFIGURATION_FILE,
+                    KyuubiConfig(
+                        db_info=auth_db_info,
+                        zookeeper_info=zookeeper_info,
+                        tls=tls_info,
+                        workload=self.workload,
+                    ).contents,
+                    self.workload.paths.spark_properties,
                 ),
             ]
         ):

@@ -6,15 +6,20 @@
 """Definition of various model classes."""
 
 import json
+import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, MutableMapping
 
-from charms.data_platform_libs.v0.data_interfaces import Data
+from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
+from typing_extensions import override
 
 from common.relation.domain import RelationState
+from constants import SECRETS_APP
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -259,3 +264,169 @@ class ZookeeperInfo(RelationState):
     def __bool__(self) -> bool:
         """Return whether this class object has sufficient information."""
         return self.zookeeper_connected
+
+
+@dataclass
+class TLSInfo:
+    """Class representing a information related to tls."""
+
+    keystore_password: str
+    trustore_password: str
+
+
+class KyuubiServer(RelationState):
+    """State collection metadata for a charm unit."""
+
+    def __init__(
+        self,
+        relation: Relation | None,
+        data_interface: Data,
+        component: Unit,
+    ):
+        super().__init__(relation, data_interface, component)
+        self.unit = component
+
+    @property
+    def unit_id(self) -> int:
+        """The id of the unit from the unit name.
+
+        e.g kyuubi/2 --> 2
+        """
+        return int(self.unit.name.split("/")[1])
+
+    # -- Cluster Init --
+
+    @property
+    def started(self) -> bool:
+        """Flag to check if the unit has started the Kyuubi service."""
+        return self.relation_data.get("state", None) == "started"
+
+    @property
+    def password_rotated(self) -> bool:
+        """Flag to check if the unit has rotated their internal passwords."""
+        return bool(self.relation_data.get("password-rotated", None))
+
+    @property
+    def hostname(self) -> str:
+        """The hostname for the unit."""
+        return self.relation_data.get("hostname", "")
+
+    @property
+    def fqdn(self) -> str:
+        """The Fully Qualified Domain Name for the unit."""
+        return self.relation_data.get("fqdn", "")
+
+    @property
+    def ip(self) -> str:
+        """The IP for the unit."""
+        return self.relation_data.get("ip", "")
+
+    # @property
+    # def server_id(self) -> int:
+    #     """The id of the server derived from the unit name.
+
+    #     Server IDs are part of the server strings that Kyuubi uses for
+    #     intercommunication between quorum members. They should be positive integers.
+
+    #     We default to (unit id + 1)
+
+    #     e.g kyuubu/0 --> 1
+    #     """
+    #     return self.unit_id + 1
+
+    @property
+    def host(self) -> str:
+        """The hostname for the unit."""
+        return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
+
+    # -- TLS --
+
+    @property
+    def private_key(self) -> str:
+        """The private-key contents for the unit to use for TLS."""
+        return self.relation_data.get("private-key", "")
+
+    @property
+    def keystore_password(self) -> str:
+        """The Java Keystore password for the unit to use for TLS."""
+        return self.relation_data.get("keystore-password", "")
+
+    @property
+    def truststore_password(self) -> str:
+        """The Java Truststore password for the unit to use for TLS."""
+        return self.relation_data.get("truststore-password", "")
+
+    @property
+    def csr(self) -> str:
+        """The current certificate signing request contents for the unit."""
+        return self.relation_data.get("csr", "")
+
+    @property
+    def certificate(self) -> str:
+        """The certificate contents for the unit to use for TLS."""
+        return self.relation_data.get("certificate", "")
+
+    @property
+    def ca(self) -> str:
+        """The root CA contents for the unit to use for TLS."""
+        # Backwards compatibility
+        # TODO (zkclient): Remove this property and replace by "" in self.ca_cert
+        ca = self.relation_data.get("ca", "")
+        if ca:
+            logger.warning(
+                "Using 'ca' in the databag is deprecated, use 'ca_cert' instead",
+                DeprecationWarning,
+            )
+        return ca
+
+    @property
+    def ca_cert(self) -> str:
+        """The root CA contents for the unit to use for TLS."""
+        return self.relation_data.get("ca-cert", self.ca)
+
+    @property
+    def sans(self) -> dict[str, list[str]]:
+        """The Subject Alternative Name for the unit's TLS certificates."""
+        if not all([self.ip, self.hostname, self.fqdn]):
+            return {}
+
+        return {
+            "sans_ip": [self.ip],
+            "sans_dns": [self.hostname, self.fqdn],
+        }
+
+
+class KyuubiCluster(RelationState):
+    """State collection metadata for the charm application."""
+
+    def __init__(
+        self,
+        relation: Relation | None,
+        data_interface: DataPeerData,
+        component: Application,
+    ):
+        super().__init__(relation, data_interface, component)
+        self.data_interface = data_interface
+        self.app = component
+
+    @override
+    def update(self, items: dict[str, str]) -> None:
+        """Overridden update to allow for same interface, but writing to local app bag."""
+        if not self.relation:
+            return
+
+        for key, value in items.items():
+            if key in SECRETS_APP or key.startswith("relation-"):
+                if value:
+                    self.data_interface.set_secret(self.relation.id, key, value)
+                else:
+                    self.data_interface.delete_secret(self.relation.id, key)
+            else:
+                self.data_interface.update_relation_data(self.relation.id, {key: value})
+
+    # -- TLS --
+
+    @property
+    def tls(self) -> bool:
+        """Flag to check if TLS is enabled for the cluster."""
+        return self.relation_data.get("tls", "") == "enabled"

@@ -8,7 +8,8 @@
 from typing import Optional
 
 from constants import AUTHENTICATION_TABLE_NAME
-from core.domain import DatabaseConnectionInfo, ZookeeperInfo
+from core.domain import DatabaseConnectionInfo, TLSInfo, ZookeeperInfo
+from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
 
@@ -19,9 +20,13 @@ class KyuubiConfig(WithLogging):
         self,
         db_info: Optional[DatabaseConnectionInfo],
         zookeeper_info: Optional[ZookeeperInfo],
+        tls: Optional[TLSInfo],
+        workload: KyuubiWorkloadBase,
     ):
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
+        self.tls = tls
+        self.workload = workload
 
     def _get_db_connection_url(self) -> str:
         endpoint = self.db_info.endpoint
@@ -65,9 +70,24 @@ class KyuubiConfig(WithLogging):
             "kyuubi.ha.zookeeper.auth.digest": self._get_zookeeper_auth_digest(),
         }
 
+    @property
+    def _tls_conf(self) -> dict[str, str]:
+        if not self.tls:
+            return {}
+        return {
+            "kyuubi.frontend.ssl.keystore.password": self.tls.keystore_password,
+            "kyuubi.frontend.ssl.keystore.path": self.workload.paths.keystore,
+            "kyuubi.frontend.ssl.keystore.type": "PKCS12",
+            "kyuubi.frontend.thrift.binary.ssl.enabled": "true",
+            # enable thrift http frontend with certificate
+            "kyuubi.frontend.thrift.http.ssl.keystore.password": self.tls.keystore_password,
+            "kyuubi.frontend.thrift.http.ssl.keystore.path": self.workload.paths.keystore,
+            "kyuubi.frontend.thrift.http.use.SSL": "true",
+        }
+
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
-        return self._auth_conf | self._ha_conf
+        return self._auth_conf | self._ha_conf | self._tls_conf
 
     @property
     def contents(self) -> str:

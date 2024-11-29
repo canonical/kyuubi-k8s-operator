@@ -31,9 +31,10 @@ python = ">=3.10,<4.0"
 ops = ">=2.4.1"
 boto3 = "^1.26.75"
 lightkube = "^0.15.2"
-psycopg2 = "^2.9.9"
+psycopg2-binary = "^2.9.9"
 tenacity = ">=8.0.1"
 spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag = "v0.0.7", python = ">3.8,<4.0" }
+cryptography = ">42.0.5"
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^2.13.0"
@@ -44,6 +45,10 @@ pydantic = "^1.10.17, <2"
 pyyaml = "^6.0.1"
 # prometheus, loki
 cosl = "^0.0.12"
+# tls_certificates_interface/v1/tls_certificates.py
+# tls_certificates lib uses a feature only available in cryptography >=42.0.5
+cryptography = ">=42.0.5"
+jsonschema = "*"
 
 [tool.poetry.group.format]
 optional = true
