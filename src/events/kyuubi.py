@@ -7,7 +7,7 @@
 import ops
 from ops import CharmBase
 
-from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL, VALID_EXPOSE_EXTERNAL_VALUES
+from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
@@ -55,13 +55,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
-        expose_external = self.charm.config.get("expose-external", "false")
-        if expose_external not in VALID_EXPOSE_EXTERNAL_VALUES:
-            self.logger.warning(f"Invalid value for expose-external: {expose_external}")
-            return
-
         # Create / update the managed service to reflect the service type in config
-        self.service_util.reconcile_services(expose_external)
+        self.service_util.reconcile_services(self.charm.config.expose_external)
 
         self.kyuubi.update(
             s3_info=self.context.s3,

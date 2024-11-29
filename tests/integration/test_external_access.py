@@ -8,10 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from core.domain import Status
-
 from .helpers import (
-    check_status,
     deploy_minimal_kyuubi_setup,
     fetch_jdbc_endpoint,
     get_k8s_service,
@@ -166,7 +163,5 @@ async def test_invalid_service_type(
         timeout=1000,
     )
 
-    # Assert that the charm is in blocked state, due to invalid value of expose-external
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.INVALID_EXPOSE_EXTERNAL.value
-    )
+    # The application should be blocked, with the unit in error state with ValidationError exception
+    assert ops_test.model.applications[APP_NAME].status == "blocked"

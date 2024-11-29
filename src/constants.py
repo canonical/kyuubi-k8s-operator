@@ -25,11 +25,6 @@ COS_METRICS_PORT = 10019
 COS_METRICS_PATH = "/metrics"
 COS_LOG_RELATION_NAME_SERVER = "logging"
 
-# Literals related to K8s
-NAMESPACE_CONFIG_NAME = "namespace"
-SERVICE_ACCOUNT_CONFIG_NAME = "service-account"
-VALID_EXPOSE_EXTERNAL_VALUES = ("false", "nodeport", "loadbalancer")
-
 # Literals related to Kyuubi
 JDBC_PORT = 10009
 KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-kyuubi:3.4-22.04_edge@sha256:9268d19a6eef91914e874734b320fab64908faf0f7adb8856be809bc60ecd1d0"

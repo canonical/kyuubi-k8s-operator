@@ -12,8 +12,6 @@ from common.relation.spark_sa import (
     ServiceAccountGrantedEvent,
 )
 from constants import (
-    NAMESPACE_CONFIG_NAME,
-    SERVICE_ACCOUNT_CONFIG_NAME,
     SPARK_SERVICE_ACCOUNT_REL,
 )
 from core.context import Context
@@ -35,17 +33,14 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload)
 
-        namespace = self.charm.config[NAMESPACE_CONFIG_NAME]
+        namespace = self.charm.config.namespace
+        service_account = self.charm.config.service_account
 
         self.requirer = IntegrationHubRequirer(
             self.charm,
             SPARK_SERVICE_ACCOUNT_REL,
-            self.charm.config[
-                SERVICE_ACCOUNT_CONFIG_NAME
-            ],  # TODO: We should introduce structured config
-            namespace
-            if namespace
-            else self.model.name,  # TODO: We should introduce structured config
+            service_account,
+            namespace if namespace else self.model.name,
         )
 
         self.framework.observe(self.requirer.on.account_granted, self._on_account_granted)

@@ -5,7 +5,7 @@
 """Charm Context definition and parsing logic."""
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
-from ops import ConfigData, Model, Relation
+from ops import Model, Relation
 
 from common.relation.spark_sa import RequirerData
 from constants import (
@@ -29,9 +29,8 @@ from utils.logging import WithLogging
 class Context(WithLogging):
     """Properties and relations of the charm."""
 
-    def __init__(self, model: Model, config: ConfigData):
+    def __init__(self, model: Model):
         self.model = model
-        self.charm_config = config
         self.metastore_db_requirer = DatabaseRequirerData(
             self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )

@@ -9,7 +9,6 @@ from typing import Callable
 
 from ops import CharmBase, EventBase, Object, StatusBase
 
-from constants import VALID_EXPOSE_EXTERNAL_VALUES
 from core.context import Context
 from core.domain import Status
 from core.workload import KyuubiWorkloadBase
@@ -69,9 +68,6 @@ class BaseEventHandler(Object, WithLogging):
 
         if self.charm.app.planned_units() > 1 and not self.context.zookeeper:
             return Status.MISSING_ZOOKEEPER.value
-
-        if self.charm.config.get("expose-external", "false") not in VALID_EXPOSE_EXTERNAL_VALUES:
-            return Status.INVALID_EXPOSE_EXTERNAL.value
 
         service_util = ServiceUtil(self.charm.model)
 
