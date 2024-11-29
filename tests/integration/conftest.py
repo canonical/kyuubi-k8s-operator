@@ -66,6 +66,7 @@ class IntegrationTestsCharms(BaseModel):
     postgres: TestCharm
     integration_hub: TestCharm
     zookeeper: TestCharm
+    tls: TestCharm
 
 
 @pytest.fixture(scope="module")
@@ -108,6 +109,16 @@ def charm_versions() -> IntegrationTestsCharms:
                 "series": "jammy",
                 "alias": "zookeeper",
                 "num_units": 3,
+            }
+        ),
+        tls=TestCharm(
+            **{
+                "name": "zself-signed-certificates",
+                "channel": "edge",
+                "revision": 163,  # FIXME (certs): Unpin the revision once the charm is fixed
+                "series": "jammy",
+                "alias": "self-signed-certificates",
+                "num_units": 1,
             }
         ),
     )

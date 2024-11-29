@@ -78,6 +78,7 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
             auth_db_info=self.context.auth_db,
             service_account_info=self.context.service_account,
             zookeeper_info=self.context.zookeeper,
+            tls=self.context.tls,
         )
 
         # check if upgrade is successful and set unit upgrade status

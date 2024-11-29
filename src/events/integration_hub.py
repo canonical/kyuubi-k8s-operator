@@ -62,6 +62,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             auth_db_info=self.context.auth_db,
             service_account_info=self.context.service_account,
             zookeeper_info=self.context.zookeeper,
+            tls=self.context.tls,
         )
 
     @compute_status
@@ -75,4 +76,5 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             auth_db_info=self.context.auth_db,
             service_account_info=None,
             zookeeper_info=self.context.zookeeper,
+            tls=self.context.tls,
         )

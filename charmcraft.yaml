@@ -5,11 +5,19 @@ type: charm
 
 parts:
   charm:
+    build-snaps:
+      - rustup
     build-packages:
-      - rustc
-      - cargo
       - libpq-dev
       - git
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+    override-build:
+      # get latest rust stable toolchain
+      rustup default stable
+
+      craftctl default
     charm-strict-dependencies: true 
   libpq:
     build-packages:
