@@ -23,6 +23,27 @@ class KyuubiManager(WithLogging):
     def __init__(self, workload: KyuubiWorkloadBase):
         self.workload = workload
 
+    def _compare_and_update_file(self, content: str, file_path: str) -> bool:
+        """Update the file at given file_path with given content.
+
+        Before doing the update, compare the existing content of the file and update
+        it only if has changed.
+
+        Return True if the file was re-written, else False.
+        """
+        try:
+            existing_content = self.workload.read(file_path)
+        except FileNotFoundError:
+            existing_content = ""
+        self.logger.debug(f"{file_path=}")
+        self.logger.debug(f"{existing_content=}")
+        self.logger.debug(f"{content=}")
+        if existing_content != content:
+            self.workload.write(content, file_path)
+            return True
+
+        return False
+
     def update(
         self,
         s3_info: S3ConnectionInfo | None,
@@ -32,49 +53,27 @@ class KyuubiManager(WithLogging):
         zookeeper_info: ZookeeperInfo | None,
     ):
         """Update Kyuubi service and restart it."""
-        restart_required = False
-
-        new_spark_config = SparkConfig(
-            s3_info=s3_info, service_account_info=service_account_info
-        ).contents
-        try:
-            existing_spark_config = self.workload.read(self.workload.SPARK_PROPERTIES_FILE)
-        except FileNotFoundError:
-            existing_spark_config = ""
-        self.logger.debug(f"existing_spark_config: {existing_spark_config}")
-        self.logger.debug(f"new_spark_config: {existing_spark_config}")
-        if existing_spark_config != new_spark_config:
-            self.workload.write(new_spark_config, self.workload.SPARK_PROPERTIES_FILE)
-            restart_required = True
-
-        new_hive_config = HiveConfig(db_info=metastore_db_info).contents
-        try:
-            existing_hive_config = self.workload.read(self.workload.HIVE_CONFIGURATION_FILE)
-        except FileNotFoundError:
-            existing_hive_config = ""
-        self.logger.debug(f"existing_hive_config: {existing_hive_config}")
-        self.logger.debug(f"new_hive_config: {new_hive_config}")
-        if existing_hive_config != new_hive_config:
-            self.workload.write(new_hive_config, self.workload.HIVE_CONFIGURATION_FILE)
-            restart_required = True
-
-        new_kyuubi_config = KyuubiConfig(
-            db_info=auth_db_info, zookeeper_info=zookeeper_info
-        ).contents
-        try:
-            existing_kyuubi_config = self.workload.read(self.workload.KYUUBI_CONFIGURATION_FILE)
-        except FileNotFoundError:
-            existing_kyuubi_config = ""
-        self.logger.debug(f"existing_kyuubi_config: {existing_kyuubi_config}")
-        self.logger.debug(f"new_kyuubi_config: {new_kyuubi_config}")
-        if existing_kyuubi_config != new_kyuubi_config:
-            self.workload.write(new_kyuubi_config, self.workload.KYUUBI_CONFIGURATION_FILE)
-            restart_required = True
-
-        if not restart_required:
+        # Restart workload only if some configuration has changed.
+        if any(
+            [
+                self._compare_and_update_file(
+                    SparkConfig(
+                        s3_info=s3_info, service_account_info=service_account_info
+                    ).contents,
+                    self.workload.SPARK_PROPERTIES_FILE,
+                ),
+                self._compare_and_update_file(
+                    HiveConfig(db_info=metastore_db_info).contents,
+                    self.workload.HIVE_CONFIGURATION_FILE,
+                ),
+                self._compare_and_update_file(
+                    KyuubiConfig(db_info=auth_db_info, zookeeper_info=zookeeper_info).contents,
+                    self.workload.KYUUBI_CONFIGURATION_FILE,
+                ),
+            ]
+        ):
+            self.workload.restart()
+        else:
             self.logger.info(
                 "Workload restart skipped because the configurations have not changed."
             )
-            return
-
-        self.workload.restart()

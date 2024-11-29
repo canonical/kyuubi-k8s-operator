@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from juju.errors import JujuUnitError
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
@@ -154,14 +155,12 @@ async def test_invalid_service_type(
     ops_test,
 ):
     """Test the status of managed K8s service when `expose-external` is set to invalid value."""
-    logger.info("Changing expose-external to an invalid value for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config({"expose-external": "invalid"})
+    with pytest.raises(JujuUnitError):
+        logger.info("Changing expose-external to an invalid value for kyuubi-k8s charm...")
+        await ops_test.model.applications[APP_NAME].set_config({"expose-external": "invalid"})
 
-    logger.info("Waiting for kyuubi-k8s app to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        timeout=1000,
-    )
-
-    # The application should be blocked, with the unit in error state with ValidationError exception
-    assert ops_test.model.applications[APP_NAME].status == "blocked"
+        logger.info("Waiting for kyuubi-k8s app to be idle...")
+        await ops_test.model.wait_for_idle(
+            apps=[APP_NAME],
+            timeout=1000,
+        )

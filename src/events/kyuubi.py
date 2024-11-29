@@ -12,9 +12,9 @@ from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
+from managers.service import ServiceManager
 from providers import KyuubiClientProvider
 from utils.logging import WithLogging
-from utils.service import ServiceUtil
 
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
@@ -29,7 +29,11 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload)
         self.kyuubi_client = KyuubiClientProvider(self.charm, KYUUBI_CLIENT_RELATION_NAME)
-        self.service_util = ServiceUtil(self.charm.model)
+        self.service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
 
         self.framework.observe(self.charm.on.install, self._on_install)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
@@ -56,7 +60,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             return
 
         # Create / update the managed service to reflect the service type in config
-        self.service_util.reconcile_services(self.charm.config.expose_external)
+        self.service_manager.reconcile_services(self.charm.config.expose_external)
 
         self.kyuubi.update(
             s3_info=self.context.s3,
@@ -67,7 +71,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         )
 
         # Check the newly created service is connectable
-        if not self.service_util.is_service_connectable():
+        if not self.service_manager.is_service_connectable():
             self.logger.info(
                 "Managed K8s service not connectable; deferring config-changed event now..."
             )

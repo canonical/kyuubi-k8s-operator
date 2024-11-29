@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+from unittest.mock import patch
+
 import pytest
 from ops import pebble
 from scenario import Container, Context, Model, Mount, Relation
@@ -118,3 +120,10 @@ def zookeeper_relation():
             "database": "/kyuubi",
         },
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_lightkube_client():
+    """A fixture to run unit tests even in non K8s environment."""
+    with patch("lightkube.Client") as mock_client:
+        yield mock_client

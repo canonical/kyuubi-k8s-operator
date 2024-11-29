@@ -14,8 +14,8 @@ from core.domain import Status
 from core.workload import KyuubiWorkloadBase
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
+from managers.service import ServiceManager
 from utils.logging import WithLogging
-from utils.service import ServiceUtil
 
 
 class BaseEventHandler(Object, WithLogging):
@@ -69,9 +69,13 @@ class BaseEventHandler(Object, WithLogging):
         if self.charm.app.planned_units() > 1 and not self.context.zookeeper:
             return Status.MISSING_ZOOKEEPER.value
 
-        service_util = ServiceUtil(self.charm.model)
+        service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
 
-        if not service_util.is_service_connectable():
+        if not service_manager.is_service_connectable():
             return Status.WAITING_FOR_SERVICE.value
 
         return Status.ACTIVE.value

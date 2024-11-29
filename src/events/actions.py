@@ -14,8 +14,8 @@ from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
+from managers.service import ServiceManager
 from utils.logging import WithLogging
-from utils.service import ServiceUtil
 
 
 class ActionEvents(BaseEventHandler, WithLogging):
@@ -30,7 +30,11 @@ class ActionEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload)
         self.auth = AuthenticationManager(self.context.auth_db)
-        self.service_util = ServiceUtil(self.charm.model)
+        self.service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
 
         self.framework.observe(self.charm.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
         self.framework.observe(self.charm.on.get_password_action, self._on_get_password)
@@ -54,12 +58,12 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 address += "/"
             endpoint = f"jdbc:hive2://{address};serviceDiscoveryMode=zooKeeper;zooKeeperNamespace={namespace}"
         else:
-            if not self.service_util.is_service_connectable():
+            if not self.service_manager.is_service_connectable():
                 event.fail(
                     "The action failed because the Kubernetes service is not available at the moment."
                 )
                 return
-            endpoint = f"jdbc:hive2://{self.service_util.get_jdbc_endpoint()}/"
+            endpoint = f"jdbc:hive2://{self.service_manager.get_jdbc_endpoint()}/"
         result = {"endpoint": endpoint}
         event.set_results(result)
 

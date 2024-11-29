@@ -6,7 +6,6 @@ import socket
 import typing
 
 import lightkube
-from ops import Model
 from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from constants import JDBC_PORT
@@ -21,14 +20,14 @@ class _ServiceType(enum.Enum):
     LOAD_BALANCER = "LoadBalancer"
 
 
-class ServiceUtil(WithLogging):
+class ServiceManager(WithLogging):
     """Utility class containing logic of creation and deletion of managed Kyuubi K8s service."""
 
-    def __init__(self, model: Model):
-        self.model = model
-        self.app_name = model.app.name
+    def __init__(self, namespace: str, unit_name: str, app_name: str):
+        self.namespace = namespace
+        self.unit_name = unit_name
+        self.app_name = app_name
         self.service_name = f"{self.app_name}-service"
-        self.namespace = model.name
         self.lightkube_agent = lightkube.Client()
 
     @property
@@ -37,7 +36,7 @@ class ServiceUtil(WithLogging):
         # Example: "kyuubi-k8s-0.kyuubi-k8s-endpoints.my-model.svc.cluster.local"
         fqdn = socket.getfqdn()
         # Example: "kyuubi-k8s-0.kyuubi-k8s-endpoints."
-        prefix = f"{self.model.unit.name.replace('/', '-')}.{self.app_name}-endpoints."
+        prefix = f"{self.unit_name.replace('/', '-')}.{self.app_name}-endpoints."
         assert fqdn.startswith(f"{prefix}{self.namespace}.")
         # Example: my-model.svc.cluster.local
         return fqdn.removeprefix(prefix)
@@ -59,7 +58,7 @@ class ServiceUtil(WithLogging):
                     if address.type == typ:
                         return address.address
 
-        node = self.get_node(self.model.unit.name)
+        node = self.get_node(self.unit_name)
         host = _get_node_address(node)
         return host
 
