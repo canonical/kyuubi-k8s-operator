@@ -2,8 +2,11 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import ast
 import asyncio
+import json
 import logging
+import os
 import subprocess
 from pathlib import Path
 
@@ -16,7 +19,7 @@ from pytest_operator.plugin import OpsTest
 
 from core.domain import Status
 
-from .helpers import get_address
+from .helpers import get_address, run_command_in_pod, umask_named_temporary_file
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +216,7 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
 
 
 @pytest.mark.abort_on_fail
-async def test_deploy_ssl(ops_test: OpsTest, charm_versions):
+async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     await asyncio.gather(
         ops_test.model.deploy(
             charm_versions.tls.application_name,
@@ -250,6 +253,116 @@ async def test_deploy_ssl(ops_test: OpsTest, charm_versions):
 
     assert "TLSv1.3" in response
     assert "CN = kyuubi" in response
+
+    # get issued certificates
+    c_unit = ops_test.model.applications[charm_versions.tls.application_name].units[0]
+    action = await c_unit.run_action(
+        action_name="get-issued-certificates",
+    )
+    result = await action.wait()
+    logger.info(result.results)
+    logger.info(type(result.results))
+    logger.info(result.results.get("certificates"))
+    logger.info(type(result.results.get("certificates")))
+    logger.info("HERE")
+    items = ast.literal_eval(result.results.get("certificates"))
+    logger.info(f"items: {items}")
+    # item = list(result.results.get("certificates"))[0]
+    item = items[0]
+    logger.info(f"item: {item}")
+
+    logger.info(list(result.results.get("certificates"))[0])
+    certificates = json.loads(item)
+    logger.info(f"Certificates: {certificates}")
+    cert = certificates["certificate"]
+    logger.info(f"Certificate: {cert}")
+    # params to set certificate in pod and generate truststore
+    trustore_password = "password"
+    # local_certificate_location = "/tmp/local_cert.pem"
+
+    certificate_location = "/tmp/cert.pem"
+    trustore_location = "/tmp/truststore.jks"
+    # copy certificate to pod
+    # c1 = ["echo", cert, ">", certificate_location]
+    # await run_command_in_pod(ops_test, "kyuubi-k8s-0", c1)
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="cert-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as temp_file:
+        with open(temp_file.name, "w+") as f:
+            f.writelines(cert)
+        kubectl_command = [
+            "kubectl",
+            "cp",
+            "-n",
+            ops_test.model_name,
+            temp_file.name,
+            f"kyuubi-k8s-0:{certificate_location}",
+            "-c",
+            "kyuubi",
+        ]
+        process = subprocess.run(kubectl_command, capture_output=True, check=True)
+        logger.info(process.stdout.decode())
+        logger.info(process.stderr.decode())
+        assert process.returncode == 0
+
+    # generate trustore
+    c2 = [
+        "keytool",
+        "-importcert",
+        "--noprompt",
+        "-alias",
+        "mycert",
+        "-file",
+        certificate_location,
+        "-keystore",
+        trustore_location,
+        "-storepass",
+        trustore_password,
+    ]
+    await run_command_in_pod(ops_test, "kyuubi-k8s-0", c2)
+    # mod permission of the trustore
+    c3 = ["chmod", "u+x", trustore_location]
+    await run_command_in_pod(ops_test, "kyuubi-k8s-0", c3)
+    # run query with tls
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    action = await kyuubi_unit.run_action(
+        action_name="get-jdbc-endpoint",
+    )
+    result = await action.wait()
+
+    jdbc_endpoint = result.results.get("endpoint")
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+
+    jdbc_endpoint_ssl = (
+        jdbc_endpoint
+        + f";ssl=true;trustStorePassword={trustore_password};sslTrustStore={trustore_location}"
+    )
+    logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
+
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
+    )
+    process = subprocess.run(
+        [
+            "./tests/integration/test_jdbc_endpoint.sh",
+            test_pod,
+            ops_test.model_name,
+            jdbc_endpoint_ssl,
+            "db_default_metastore",
+            "table_default_metastore",
+        ],
+        capture_output=True,
+    )
+    print("========== test_jdbc_endpoint.sh STDOUT =================")
+    print(process.stdout.decode())
+    print("========== test_jdbc_endpoint.sh STDERR =================")
+    print(process.stderr.decode())
+    logger.info(f"JDBC endpoint test returned with status {process.returncode}")
+    assert process.returncode == 0
 
 
 # @pytest.mark.abort_on_fail

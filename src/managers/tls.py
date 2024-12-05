@@ -4,11 +4,13 @@
 
 """Manager for building necessary files for Java TLS auth."""
 import logging
+import socket
 import subprocess
 
 import ops.pebble
 
 from core.context import Context
+from core.domain import SANs
 from core.workload.kyuubi import KyuubiWorkload
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,58 @@ class TLSManager:
     def __init__(self, context: Context, workload: KyuubiWorkload):
         self.context = context
         self.workload = workload
+
+    # @retry(
+    #     wait=wait_fixed(5),
+    #     stop=stop_after_attempt(3),
+    #     retry=retry_if_exception_cause_type(LightKubeApiError),
+    #     reraise=True,
+    # )
+    def build_sans(self) -> SANs:
+        """Builds a SAN structure of DNS names and IPs for the unit."""
+        sans_ip = [str(self.context.bind_address)]
+        if node_ip := self.context.unit_server.node_ip:
+            sans_ip.append(node_ip)
+        # try:
+        #     sans_ip.append(self.context.unit_server.loadbalancer_ip)
+        # except Exception:
+        #     pass
+        return SANs(
+            sans_ip=sorted(sans_ip),
+            sans_dns=sorted(
+                [
+                    self.context.unit_server.internal_address.split(".")[0],
+                    self.context.unit_server.internal_address,
+                    socket.getfqdn(),
+                ]
+            ),
+        )
+
+    def get_current_sans(self) -> SANs | None:
+        """Gets the current SANs for the unit cert."""
+        if not self.context.unit_server.certificate:
+            return
+
+        command = ["openssl", "x509", "-noout", "-ext", "subjectAltName", "-in", "server.pem"]
+        try:
+            sans_lines = self.workload.exec(
+                command=" ".join(command), working_dir=self.workload.paths.conf_path
+            ).splitlines()
+        except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
+            logger.error(e.stdout)
+            raise e
+        for line in sans_lines:
+            if "DNS" in line and "IP" in line:
+                break
+        sans_ip = []
+        sans_dns = []
+        for item in line.split(", "):
+            san_type, san_value = item.split(":")
+            if san_type.strip() == "DNS":
+                sans_dns.append(san_value)
+            if san_type.strip() == "IP Address":
+                sans_ip.append(san_value)
+        return SANs(sans_ip=sorted(sans_ip), sans_dns=sorted(sans_dns))
 
     def set_private_key(self) -> None:
         """Sets the unit private-key."""

@@ -6,6 +6,7 @@
 
 import ops
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
+from ops import CharmBase, SecretChangedEvent
 
 from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
 from core.context import Context
@@ -103,3 +104,19 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         This is necessary for updating status of all units upon scaling up/down.
         """
         self.logger.info("Kyuubi peer relation departed...")
+
+    @compute_status
+    def _on_secret_changed(self, event: SecretChangedEvent) -> None:
+        """Reconfigure services on a secret changed event."""
+        if not event.secret.label:
+            return
+
+        if not self.context.cluster.relation:
+            return
+
+        if event.secret.label == self.context.cluster.data_interface._generate_secret_label(
+            PEER_REL,
+            self.context.cluster.relation.id,
+            "extra",  # type:ignore noqa  -- Changes with the https://github.com/canonical/data-platform-libs/issues/124
+        ):
+            self.logger.info(f"Event secret label: {event.secret.label} updated!")

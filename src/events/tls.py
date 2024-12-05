@@ -5,6 +5,7 @@
 """Event handler for related applications on the `certificates` relation interface."""
 import base64
 import logging
+import os
 import re
 from typing import TYPE_CHECKING
 
@@ -104,12 +105,16 @@ class TLSEvents(BaseEventHandler, WithLogging):
                 or self.workload.generate_password(),  # type: ignore
             }
         )
+        subject = os.uname()[1]
+        sans = self.tls_manager.build_sans()
+
+        # logger.info(f"ip: {sans.sans_ip} tls: {sans.sans_dns}")
 
         csr = generate_csr(
             private_key=self.context.unit_server.private_key.encode("utf-8"),
-            subject=self.context.unit_server.host,
-            sans_ip=self.context.unit_server.sans.get("sans_ip", []),
-            sans_dns=self.context.unit_server.sans.get("sans_dns", []),
+            subject=subject,
+            sans_ip=sans.sans_ip,
+            sans_dns=sans.sans_dns,
         )
 
         self.context.unit_server.update({"csr": csr.decode("utf-8").strip()})
@@ -143,11 +148,14 @@ class TLSEvents(BaseEventHandler, WithLogging):
             logger.error("Missing unit private key and/or old csr")
             return
 
+        subject = os.uname()[1]
+        sans = self.tls_manager.build_sans()
+
         new_csr = generate_csr(
             private_key=self.context.unit_server.private_key.encode("utf-8"),
-            subject=self.context.unit_server.host,
-            sans_ip=self.context.unit_server.sans["sans_ip"],
-            sans_dns=self.context.unit_server.sans["sans_dns"],
+            subject=subject,
+            sans_ip=sans.sans_ip,
+            sans_dns=sans.sans_dns,
         )
 
         self.certificates.request_certificate_renewal(

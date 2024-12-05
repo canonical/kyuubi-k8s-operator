@@ -6,6 +6,7 @@ import socket
 import typing
 
 import lightkube
+from tenacity import retry, retry_if_result, stop_after_attempt, wait_fixed
 
 from constants import JDBC_PORT
 from utils.logging import WithLogging
@@ -93,15 +94,7 @@ class ServiceManager(WithLogging):
             return ""
 
         port = JDBC_PORT
-        service_type = {
-            "false": _ServiceType.CLUSTER_IP,
-            "nodeport": _ServiceType.NODE_PORT,
-            "loadbalancer": _ServiceType.LOAD_BALANCER,
-        }[expose_external]
-
-        if service_type != _ServiceType(service.spec.type):
-            # This means, the type of service that's desired has not been created yet
-            return ""
+        service_type = _ServiceType(service.spec.type)
 
         if service_type == _ServiceType.CLUSTER_IP:
             return f"{self._host}:{port}"
@@ -182,10 +175,55 @@ class ServiceManager(WithLogging):
                 )
                 return
 
-            # self.delete_service()
+            self.delete_service()
 
         pod0 = self.get_pod(f"{self.app_name}/0")
 
         self.create_service(
             service_type=desired_service_type, owner_references=pod0.metadata.ownerReferences
         )
+
+    @retry(
+        wait=wait_fixed(8),
+        stop=stop_after_attempt(3),
+        retry=retry_if_result(lambda res: res is False),
+        retry_error_callback=lambda _: False,
+    )
+    def is_service_connectable(self) -> bool:
+        """Check whether the all endpoints are available for the connection."""
+        if not self.get_service():
+            self.logger.debug("No service exists yet.")
+            return False
+
+        endpoint = self.get_jdbc_endpoint()
+        if endpoint == "":
+            self.logger.debug("Kyuubi service endpoint found to be empty string")
+            return False
+
+        with socket.socket() as s:
+            host, port = endpoint.split(":")
+            try:
+                return_code = s.connect_ex((host, int(port)))
+                if return_code != 0:
+                    self.logger.info(f"Unable to connect to service {endpoint=}, {return_code=}")
+                    return False
+            except Exception as e:
+                self.logger.error(
+                    f"Exception when trying to connect to {host=} and {port=}, error message = {e}"
+                )
+
+        return True
+
+    def get_node_ip(self, pod_name: str) -> str:
+        """Gets the IP Address of the Node of a given Pod via the K8s API."""
+        try:
+            node = self.get_node(pod_name)
+        except lightkube.core.exceptions.ApiError as e:
+            if e.status.code == 403:
+                return ""
+        if not node.status or not node.status.addresses:
+            raise Exception(f"No status found for {node}")
+        for addresses in node.status.addresses:
+            if addresses.type in ["ExternalIP", "InternalIP", "Hostname"]:
+                return addresses.address
+        return ""

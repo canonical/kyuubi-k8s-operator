@@ -4,6 +4,8 @@
 
 """Charm Context definition and parsing logic."""
 
+from ipaddress import IPv4Address, IPv6Address
+
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequirerData,
     DataPeerData,
@@ -156,6 +158,15 @@ class Context(WithLogging):
         return None
 
     # CORE COMPONENTS
+
+    @property
+    def bind_address(self) -> IPv4Address | IPv6Address | str:
+        """The network binding address from the peer relation."""
+        bind_address = None
+        if self._peer_relation:
+            if binding := self.model.get_binding(self._peer_relation):
+                bind_address = binding.network.bind_address
+        return bind_address or ""
 
     @property
     def unit_server(self) -> KyuubiServer:

@@ -9,6 +9,7 @@ import json
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from functools import cached_property
 from typing import List, MutableMapping
 
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
@@ -18,6 +19,7 @@ from typing_extensions import override
 
 from common.relation.domain import RelationState
 from constants import SECRETS_APP
+from managers.service import ServiceManager
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +276,14 @@ class TLSInfo:
     trustore_password: str
 
 
+@dataclass
+class SANs:
+    """Subject Alternative Name (SAN)s used to create multi-domains certificates."""
+
+    sans_ip: list[str]
+    sans_dns: list[str]
+
+
 class KyuubiServer(RelationState):
     """State collection metadata for a charm unit."""
 
@@ -285,6 +295,9 @@ class KyuubiServer(RelationState):
     ):
         super().__init__(relation, data_interface, component)
         self.unit = component
+        self.k8s = ServiceManager(
+            self.unit._backend.model_name, self.unit.name, self.unit.app.name
+        )
 
     @property
     def unit_id(self) -> int:
@@ -320,19 +333,6 @@ class KyuubiServer(RelationState):
     def ip(self) -> str:
         """The IP for the unit."""
         return self.relation_data.get("ip", "")
-
-    # @property
-    # def server_id(self) -> int:
-    #     """The id of the server derived from the unit name.
-
-    #     Server IDs are part of the server strings that Kyuubi uses for
-    #     intercommunication between quorum members. They should be positive integers.
-
-    #     We default to (unit id + 1)
-
-    #     e.g kyuubu/0 --> 1
-    #     """
-    #     return self.unit_id + 1
 
     @property
     def host(self) -> str:
@@ -385,15 +385,34 @@ class KyuubiServer(RelationState):
         return self.relation_data.get("ca-cert", self.ca)
 
     @property
-    def sans(self) -> dict[str, list[str]]:
-        """The Subject Alternative Name for the unit's TLS certificates."""
-        if not all([self.ip, self.hostname, self.fqdn]):
-            return {}
+    def internal_address(self) -> str:
+        """The hostname for the unit, for internal communication."""
+        return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
 
-        return {
-            "sans_ip": [self.ip],
-            "sans_dns": [self.hostname, self.fqdn],
-        }
+    @property
+    def pod_name(self) -> str:
+        """The name of the K8s Pod for the unit.
+
+        K8s-only.
+        """
+        return self.unit.name.replace("/", "-")
+
+    @cached_property
+    def node_ip(self) -> str:
+        """The IPV4/IPV6 IP address of the Node the unit is on.
+
+        K8s-only.
+        """
+        return self.k8s.get_node_ip(self.pod_name)
+
+    @cached_property
+    def loadbalancer_ip(self) -> str:
+        """The IPV4/IPV6 IP address of the LoadBalancer exposing the unit.
+
+        K8s-only.
+        """
+        # TODO fix when external access is merged.
+        return ""
 
 
 class KyuubiCluster(RelationState):

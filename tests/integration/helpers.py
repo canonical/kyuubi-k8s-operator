@@ -1,11 +1,14 @@
 import datetime
 import json
 import logging
+import os
 import re
 import subprocess
 import uuid
 from pathlib import Path
 from subprocess import PIPE, check_output
+from tempfile import NamedTemporaryFile
+from typing import List
 
 import lightkube
 import requests
@@ -594,3 +597,29 @@ def get_k8s_service(namespace: str, service_name: str):
         raise
 
     return service
+async def run_command_in_pod(ops_test: OpsTest, pod_name: str, pod_command: List[str]) -> None:
+    """Load certificate in the pod."""
+    kubectl_command = [
+        "kubectl",
+        "exec",
+        pod_name,
+        "-c",
+        "kyuubi",
+        "-n",
+        ops_test.model_name,
+        "--",
+        *pod_command,
+    ]
+    process = subprocess.run(kubectl_command, capture_output=True, check=True)
+    logger.info(process.stdout.decode())
+    logger.info(process.stderr.decode())
+    assert process.returncode == 0
+
+
+def umask_named_temporary_file(*args, **kargs):
+    """Return a temporary file descriptor readable by all users."""
+    file_desc = NamedTemporaryFile(*args, **kargs)
+    mask = os.umask(0o666)
+    os.umask(mask)
+    os.chmod(file_desc.name, 0o666 & ~mask)
+    return file_desc
