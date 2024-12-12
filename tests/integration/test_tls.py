@@ -299,7 +299,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
             "-n",
             ops_test.model_name,
             temp_file.name,
-            f"kyuubi-k8s-0:{certificate_location}",
+            f"testpod:{certificate_location}",
             "-c",
             "kyuubi",
         ]
@@ -322,10 +322,10 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
         "-storepass",
         trustore_password,
     ]
-    await run_command_in_pod(ops_test, "kyuubi-k8s-0", c2)
+    await run_command_in_pod(ops_test, "testpod", c2)
     # mod permission of the trustore
     c3 = ["chmod", "u+x", trustore_location]
-    await run_command_in_pod(ops_test, "kyuubi-k8s-0", c3)
+    await run_command_in_pod(ops_test, "testpod", c3)
     # run query with tls
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
@@ -352,8 +352,8 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
             test_pod,
             ops_test.model_name,
             jdbc_endpoint_ssl,
-            "db_default_metastore",
-            "table_default_metastore",
+            "db_default_metastore_1",
+            "table_default_metastore_1",
         ],
         capture_output=True,
     )
