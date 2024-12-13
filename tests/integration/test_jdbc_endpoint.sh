@@ -16,16 +16,15 @@ if [ -z "${USERNAME}" ]; then
     echo -e "$(kubectl exec $POD_NAME -n $NAMESPACE -- \
             env CMDS="$SQL_COMMANDS" ENDPOINT="$JDBC_ENDPOINT" \
             /bin/bash -c 'echo "$CMDS" | /opt/kyuubi/bin/beeline -u \"$ENDPOINT\"'
-        )" &> /tmp/test_beeline.out
+        )" > /tmp/test_beeline.out
 else 
     echo -e "$(kubectl exec $POD_NAME -n $NAMESPACE -- \
             env CMDS="$SQL_COMMANDS" ENDPOINT="$JDBC_ENDPOINT" USER="$USERNAME" PASSWD="$PASSWORD"\
             /bin/bash -c 'echo "$CMDS" | /opt/kyuubi/bin/beeline -u $ENDPOINT -n $USER -p $PASSWD'
-        )" &> /tmp/test_beeline.out
+        )" > /tmp/test_beeline.out
 fi
 
-echo "Print file content"
-cat /tmp/test_beeline.out
+
 num_rows_inserted=$(cat /tmp/test_beeline.out | grep "Inserted Rows:" | sed 's/|/ /g' | tail -n 1 | xargs | rev | cut -d' ' -f1 | rev )
 echo -e "${num_rows_inserted} rows were inserted."
 
