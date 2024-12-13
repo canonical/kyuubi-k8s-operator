@@ -23,21 +23,12 @@ class TLSManager:
         self.context = context
         self.workload = workload
 
-    # @retry(
-    #     wait=wait_fixed(5),
-    #     stop=stop_after_attempt(3),
-    #     retry=retry_if_exception_cause_type(LightKubeApiError),
-    #     reraise=True,
-    # )
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""
         sans_ip = [str(self.context.bind_address)]
         if node_ip := self.context.unit_server.node_ip:
             sans_ip.append(node_ip)
-        # try:
-        #     sans_ip.append(self.context.unit_server.loadbalancer_ip)
-        # except Exception:
-        #     pass
+        # TODO add loadbalancer ip when external access is merged. A retry logic with tenacity will be needed.
         return SANs(
             sans_ip=sorted(sans_ip),
             sans_dns=sorted(
@@ -112,7 +103,7 @@ class TLSManager:
                 # Replacement strategy:
                 # - We need to own the file, otherwise keytool throws a permission error upon removing an entry
                 # - We need to make sure that the keystore is not empty at any point, hence the three steps.
-                #  Otherwise, ZK would pick up the file change when it's empty, and crash its internal watcher thread
+                #  Otherwise, Kyuubi would pick up the file change when it's empty, and crash its internal watcher thread
                 try:
                     self._rename_ca_in_truststore()
                     self._delete_ca_in_truststore()
