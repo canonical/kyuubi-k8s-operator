@@ -71,14 +71,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
-        # if not self.context.stable == Status.ACTIVE:
-        #     logger.debug("certificates relation created - quorum not stable - deferring")
-        #     event.defer()
-        #     return
-
-        # if this event fired, we don't know whether the cluster was fully running or not
-        # assume it's already running, and trigger `upgrade` from non-ssl -> ssl
-        # ideally trigger this before any other `certificates_*` step
         self.context.cluster.update({"tls": "enabled"})
 
     def _on_certificates_joined(self, event: RelationJoinedEvent) -> None:
@@ -178,8 +170,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
-        # if this event fired, trigger `upgrade` from ssl -> non-ssl
-        # ideally trigger this before any other `certificates_*` step
         self.context.cluster.update({"tls": ""})
         self.kyuubi.update(set_tls_none=True)
 

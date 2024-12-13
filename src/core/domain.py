@@ -307,18 +307,6 @@ class KyuubiServer(RelationState):
         """
         return int(self.unit.name.split("/")[1])
 
-    # -- Cluster Init --
-
-    @property
-    def started(self) -> bool:
-        """Flag to check if the unit has started the Kyuubi service."""
-        return self.relation_data.get("state", None) == "started"
-
-    @property
-    def password_rotated(self) -> bool:
-        """Flag to check if the unit has rotated their internal passwords."""
-        return bool(self.relation_data.get("password-rotated", None))
-
     @property
     def hostname(self) -> str:
         """The hostname for the unit."""
