@@ -16,7 +16,9 @@ class KyuubiConfig(WithLogging):
     """Kyuubi Configurations."""
 
     def __init__(
-        self, db_info: Optional[DatabaseConnectionInfo], zookeeper_info: Optional[ZookeeperInfo]
+        self,
+        db_info: Optional[DatabaseConnectionInfo],
+        zookeeper_info: Optional[ZookeeperInfo],
     ):
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info

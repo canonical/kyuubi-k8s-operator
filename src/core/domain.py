@@ -37,13 +37,11 @@ class Status(Enum):
     INSUFFICIENT_CLUSTER_PERMISSIONS = BlockedStatus(
         "Insufficient cluster permissions. Try: juju trust --scope=cluster <app-name>"
     )
-    INVALID_EXPOSE_EXTERNAL = BlockedStatus("Invalid config option: expose-external")
-
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
     MISSING_ZOOKEEPER = BlockedStatus(
         "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
     )
-    WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be ready")
+    WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
 
     ACTIVE = ActiveStatus("")
 

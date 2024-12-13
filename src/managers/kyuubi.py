@@ -7,12 +7,7 @@
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
-from core.domain import (
-    DatabaseConnectionInfo,
-    S3ConnectionInfo,
-    SparkServiceAccountInfo,
-    ZookeeperInfo,
-)
+from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
@@ -20,8 +15,9 @@ from utils.logging import WithLogging
 class KyuubiManager(WithLogging):
     """Kyuubi manager class."""
 
-    def __init__(self, workload: KyuubiWorkloadBase):
+    def __init__(self, workload: KyuubiWorkloadBase, context: Context):
         self.workload = workload
+        self.context = context
 
     def _compare_and_update_file(self, content: str, file_path: str) -> bool:
         """Update the file at given file_path with given content.
@@ -46,13 +42,19 @@ class KyuubiManager(WithLogging):
 
     def update(
         self,
-        s3_info: S3ConnectionInfo | None,
-        metastore_db_info: DatabaseConnectionInfo | None,
-        auth_db_info: DatabaseConnectionInfo | None,
-        service_account_info: SparkServiceAccountInfo | None,
-        zookeeper_info: ZookeeperInfo | None,
+        set_s3_none: bool = False,
+        set_metastore_db_none: bool = False,
+        set_auth_db_none: bool = False,
+        set_service_account_none: bool = False,
+        set_zookeeper_none: bool = False,
     ):
         """Update Kyuubi service and restart it."""
+        s3_info = None if set_s3_none else self.context.s3
+        metastore_db_info = None if set_metastore_db_none else self.context.metastore_db
+        auth_db_info = None if set_auth_db_none else self.context.auth_db
+        service_account_info = None if set_service_account_none else self.context.service_account
+        zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
+
         # Restart workload only if some configuration has changed.
         if any(
             [

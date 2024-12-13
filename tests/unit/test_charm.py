@@ -5,7 +5,7 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from scenario import Container, State
 
@@ -141,15 +141,49 @@ def test_insufficient_permissions(
 @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
+@patch("core.context.Context.kyuubi_address", new_callable=PropertyMock, return_value="")
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("config.spark.SparkConfig._sa_conf", return_value={})
+def test_kyuubi_address_unavailable(
+    mock_sa_conf,
+    mock_s3_configured,
+    mock_get_master,
+    mock_kyuubi_address,
+    mock_has_cluster_permissions,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_s3_verify,
+    kyuubi_context,
+    kyuubi_container,
+    s3_relation,
+    spark_service_account_relation,
+):
+    state = State(
+        relations=[s3_relation, spark_service_account_relation],
+        containers=[kyuubi_container],
+    )
+    out = kyuubi_context.run("config-changed", state)
+    assert out.unit_status == Status.WAITING_FOR_SERVICE.value
+
+
+@patch("managers.s3.S3Manager.verify", return_value=True)
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
-@patch("managers.service.ServiceManager.is_service_connectable", return_value=True)
+@patch(
+    "core.context.Context.kyuubi_address",
+    new_callable=PropertyMock,
+    return_value="10.10.10.10:10009",
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_s3(
     mock_sa_conf,
     mock_get_master,
-    mock_service_connectable,
+    mock_kyuubi_address,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -185,13 +219,17 @@ def test_valid_on_s3(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
-@patch("managers.service.ServiceManager.is_service_connectable", return_value=True)
+@patch(
+    "core.context.Context.kyuubi_address",
+    new_callable=PropertyMock,
+    return_value="10.10.10.10:10009",
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_valid_on_service_account(
     mock_sa_conf,
     mock_get_master,
-    mock_service_connectable,
+    mock_kyuubi_address,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -228,13 +266,17 @@ def test_valid_on_service_account(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=False)
 @patch("managers.k8s.K8sManager.is_azure_storage_configured", return_value=False)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
-@patch("managers.service.ServiceManager.is_service_connectable", return_value=True)
+@patch(
+    "core.context.Context.kyuubi_address",
+    new_callable=PropertyMock,
+    return_value="10.10.10.10:10009",
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_object_storage_backend_removed(
     mock_sa_conf,
     mock_get_master,
-    mock_service_connectable,
+    mock_kyuubi_address,
     mock_has_cluster_permissions,
     mock_azure_configured,
     mock_s3_configured,
@@ -264,13 +306,17 @@ def test_object_storage_backend_removed(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
-@patch("managers.service.ServiceManager.is_service_connectable", return_value=True)
+@patch(
+    "core.context.Context.kyuubi_address",
+    new_callable=PropertyMock,
+    return_value="10.10.10.10:10009",
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_zookeeper_relation_joined(
     mock_sa_conf,
     mock_get_master,
-    mock_service_connectable,
+    mock_kyuubi_address,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,
@@ -312,13 +358,17 @@ def test_zookeeper_relation_joined(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
-@patch("managers.service.ServiceManager.is_service_connectable", return_value=True)
+@patch(
+    "core.context.Context.kyuubi_address",
+    new_callable=PropertyMock,
+    return_value="10.10.10.10:10009",
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_zookeeper_relation_broken(
     mock_sa_conf,
     mock_get_master,
-    mock_service_connectable,
+    mock_kyuubi_address,
     mock_s3_configured,
     mock_has_cluster_permissions,
     mock_valid_sa,
@@ -355,13 +405,17 @@ def test_zookeeper_relation_broken(
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
-@patch("managers.service.ServiceManager.is_service_connectable", return_value=True)
+@patch(
+    "core.context.Context.kyuubi_address",
+    new_callable=PropertyMock,
+    return_value="10.10.10.10:10009",
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_spark_service_account_broken(
     mock_sa_conf,
     mock_get_master,
-    mock_service_connectable,
+    mock_kyuubi_address,
     mock_has_cluster_permissions,
     mock_s3_configured,
     mock_valid_sa,

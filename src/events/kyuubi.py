@@ -27,7 +27,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.kyuubi_client = KyuubiClientProvider(self.charm, KYUUBI_CLIENT_RELATION_NAME)
         self.service_manager = ServiceManager(
             namespace=self.charm.model.name,
@@ -56,49 +56,35 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
-        if not self.charm.unit.is_leader():
-            return
+        if self.charm.unit.is_leader():
+            # Create / update the managed service to reflect the service type in config
+            self.service_manager.reconcile_services(self.charm.config.expose_external)
 
-        # Create / update the managed service to reflect the service type in config
-        self.service_manager.reconcile_services(self.charm.config.expose_external)
-
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
         # Check the newly created service is connectable
-        if not self.service_manager.is_service_connectable():
+        if not self.context.kyuubi_address:
             self.logger.info(
-                "Managed K8s service not connectable; deferring config-changed event now..."
+                "Managed K8s service is not available yet; deferring config-changed event now..."
             )
             event.defer()
             return
 
         self.logger.info(
-            "Managed K8s service is connectable; completed handling config-changed event."
+            "Managed K8s service is available; completed handling config-changed event."
         )
 
     @compute_status
     def _update_event(self, event):
         """Handle the update event hook."""
-        pass
+        self.kyuubi.update()
 
     @compute_status
     @defer_when_not_ready
     def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_peer_relation_joined(self, event: ops.RelationJoinedEvent):

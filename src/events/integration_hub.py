@@ -31,7 +31,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
 
         namespace = self.charm.config.namespace
         service_account = self.charm.config.service_account
@@ -51,23 +51,11 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
     def _on_account_granted(self, _: ServiceAccountGrantedEvent):
         """Handle the `ServiceAccountGrantedEvent` event from integration hub."""
         self.logger.info("Service account received")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_account_gone(self, _: ServiceAccountGoneEvent):
         """Handle the `ServiceAccountGoneEvent` event from integration hub."""
         self.logger.info("Service account deleted")
         self.logger.info(self.context.s3)
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=None,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update(set_service_account_none=True)

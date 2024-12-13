@@ -28,7 +28,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.auth_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.auth_db_requirer
         )
@@ -51,37 +51,19 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.logger.info("Authentication database created...")
         auth = AuthenticationManager(self.context.auth_db)
         auth.prepare_auth_db()
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_auth_db_endpoints_changed(self, event) -> None:
         """Handle the event when authentication database endpoints are changed."""
         self.logger.info("Authentication database endpoints changed...")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_auth_db_relation_removed(self, event) -> None:
         """Handle the event when authentication database relation is removed."""
         self.logger.info("Authentication database relation removed")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=None,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update(set_auth_db_none=True)
 
     @compute_status
     def _on_auth_db_relation_departed(self, event) -> None:

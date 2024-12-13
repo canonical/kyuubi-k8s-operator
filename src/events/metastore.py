@@ -27,7 +27,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.metatstore_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.metastore_db_requirer
         )
@@ -47,22 +47,10 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle event when metastore database is created."""
         self.logger.info("Metastore database created...")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_metastore_db_relation_removed(self, event) -> None:
         """Handle event when metastore database relation is removed."""
         self.logger.info("Mestastore database relation removed")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=None,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update(set_metastore_db_none=True)

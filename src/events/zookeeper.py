@@ -25,7 +25,7 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.zookeeper_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.zookeeper_requirer_data
         )
@@ -40,21 +40,9 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
     @compute_status
     def _on_zookeeper_changed(self, _):
         self.logger.info("Zookeeper relation changed new...")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_zookeeper_broken(self, _):
         self.logger.info("Zookeeper relation broken...")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=None,
-        )
+        self.kyuubi.update(set_zookeeper_none=True)

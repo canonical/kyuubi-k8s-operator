@@ -10,6 +10,7 @@ from ops import Model, Relation
 from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    HA_ZNODE_NAME,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
@@ -17,20 +18,23 @@ from constants import (
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
 )
+from core.config import CharmConfig
 from core.domain import (
     DatabaseConnectionInfo,
     S3ConnectionInfo,
     SparkServiceAccountInfo,
     ZookeeperInfo,
 )
+from managers.service import ServiceManager
 from utils.logging import WithLogging
 
 
 class Context(WithLogging):
     """Properties and relations of the charm."""
 
-    def __init__(self, model: Model):
+    def __init__(self, model: Model, config: CharmConfig):
         self.model = model
+        self.config = config
         self.metastore_db_requirer = DatabaseRequirerData(
             self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
@@ -45,7 +49,9 @@ class Context(WithLogging):
         # This should be replaced with the name of actual znode when znode created
         # by zookeeper charm has enough permissions for Kyuubi to work
         self.zookeeper_requirer_data = DatabaseRequirerData(
-            self.model, ZOOKEEPER_REL, database_name="/kyuubi-test"
+            self.model,
+            ZOOKEEPER_REL,
+            database_name=HA_ZNODE_NAME,
         )
 
     @property
@@ -62,6 +68,12 @@ class Context(WithLogging):
     def _zookeeper_relation(self) -> Relation | None:
         """The zookeeper relation."""
         return self.model.get_relation(ZOOKEEPER_REL)
+
+    @property
+    def _service_manager(self) -> ServiceManager | None:
+        return ServiceManager(
+            namespace=self.model.name, unit_name=self.model.unit.name, app_name=self.model.app.name
+        )
 
     # --- DOMAIN OBJECTS ---
 
@@ -120,3 +132,10 @@ class Context(WithLogging):
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
         return bool(self.auth_db)
+
+    @property
+    def kyuubi_address(self) -> str:
+        """Returns the address of the Kyuubi JDBC service."""
+        return self._service_manager.get_service_endpoint(
+            expose_external=self.config.expose_external.value
+        )

@@ -5,14 +5,12 @@
 """Module containing all business logic related to the workload."""
 
 import re
-import socket
 
 import ops.pebble
 from ops.model import Container
 
 from common.workload.k8s import K8sWorkload
 from constants import (
-    JDBC_PORT,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
 )
@@ -27,18 +25,6 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def __init__(self, container: Container, user: User = User()):
         self.container = container
         self.user = user
-
-    def get_ip_address(self) -> str:
-        """Return the IP address of the unit running the workload."""
-        hostname = socket.getfqdn()
-        ip_address = socket.gethostbyname(hostname)
-        return ip_address
-
-    def get_jdbc_endpoint(self) -> str:
-        """Return the JDBC endpoint to connect to Kyuubi server."""
-        hostname = socket.getfqdn()
-        ip_address = socket.gethostbyname(hostname)
-        return f"jdbc:hive2://{ip_address}:{JDBC_PORT}/"
 
     @property
     def _kyuubi_server_layer(self):

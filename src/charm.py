@@ -52,7 +52,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         )
 
         # Context
-        self.context = Context(model=self.model)
+        self.context = Context(model=self.model, config=self.config)
 
         # Event handlers
         self.kyuubi_events = KyuubiEvents(self, self.context, self.workload)
