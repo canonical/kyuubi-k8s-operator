@@ -23,15 +23,12 @@ from .helpers import get_address, run_command_in_pod, umask_named_temporary_file
 
 logger = logging.getLogger(__name__)
 
-TLS_NAME = "self-signed-certificates"
-
-logger = logging.getLogger(__name__)
-
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
-COS_AGENT_APP_NAME = "grafana-agent-k8s"
+
+TRUSTSTORE_PASSWORD = "password"
+CERTIFICATE_LOCATION = "/tmp/cert.pem"
+TRUSTSTORE_LOCATION = "/tmp/truststore.jks"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -230,13 +227,13 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
         ),
     )
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, TLS_NAME], status="active", timeout=1000, idle_period=30
+        apps=[APP_NAME, charm_versions.tls.name], status="active", timeout=1000, idle_period=30
     )
-    await ops_test.model.add_relation(APP_NAME, TLS_NAME)
+    await ops_test.model.add_relation(APP_NAME, charm_versions.tls.name)
 
     async with ops_test.fast_forward(fast_interval="60s"):
         await ops_test.model.wait_for_idle(
-            apps=[APP_NAME, TLS_NAME],
+            apps=[APP_NAME, charm_versions.tls.name],
             status="active",
             timeout=1000,
             idle_period=30,
@@ -255,36 +252,19 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     assert "CN = kyuubi" in response
 
     # get issued certificates
-    c_unit = ops_test.model.applications[charm_versions.tls.application_name].units[0]
-    action = await c_unit.run_action(
+    logger.info("Get certificate from self-signed certificate operator")
+    self_signed_certificate_unit = ops_test.model.applications[
+        charm_versions.tls.application_name
+    ].units[0]
+    action = await self_signed_certificate_unit.run_action(
         action_name="get-issued-certificates",
     )
     result = await action.wait()
-    logger.info(result.results)
-    logger.info(type(result.results))
-    logger.info(result.results.get("certificates"))
-    logger.info(type(result.results.get("certificates")))
-    logger.info("HERE")
     items = ast.literal_eval(result.results.get("certificates"))
-    logger.info(f"items: {items}")
-    # item = list(result.results.get("certificates"))[0]
-    item = items[0]
-    logger.info(f"item: {item}")
-
-    logger.info(list(result.results.get("certificates"))[0])
-    certificates = json.loads(item)
-    logger.info(f"Certificates: {certificates}")
+    certificates = json.loads(items[0])
     cert = certificates["certificate"]
-    logger.info(f"Certificate: {cert}")
-    # params to set certificate in pod and generate truststore
-    trustore_password = "password"
-    # local_certificate_location = "/tmp/local_cert.pem"
 
-    certificate_location = "/tmp/cert.pem"
-    trustore_location = "/tmp/truststore.jks"
-    # copy certificate to pod
-    # c1 = ["echo", cert, ">", certificate_location]
-    # await run_command_in_pod(ops_test, "kyuubi-k8s-0", c1)
+    logger.info(f"Copy the certificate to the testpod in this location: {CERTIFICATE_LOCATION}")
     with umask_named_temporary_file(
         mode="w",
         prefix="cert-",
@@ -299,7 +279,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
             "-n",
             ops_test.model_name,
             temp_file.name,
-            f"testpod:{certificate_location}",
+            f"{test_pod}:{CERTIFICATE_LOCATION}",
             "-c",
             "kyuubi",
         ]
@@ -308,24 +288,28 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
         logger.info(process.stderr.decode())
         assert process.returncode == 0
 
-    # generate trustore
-    c2 = [
-        "keytool",
-        "-importcert",
-        "--noprompt",
-        "-alias",
-        "mycert",
-        "-file",
-        certificate_location,
-        "-keystore",
-        trustore_location,
-        "-storepass",
-        trustore_password,
-    ]
+        logger.info(
+            f"Generating the trustore in the testpod in this location: {TRUSTSTORE_LOCATION}"
+        )
+        c2 = [
+            "keytool",
+            "-importcert",
+            "--noprompt",
+            "-alias",
+            "mycert",
+            "-file",
+            CERTIFICATE_LOCATION,
+            "-keystore",
+            TRUSTSTORE_LOCATION,
+            "-storepass",
+            TRUSTSTORE_PASSWORD,
+        ]
+
     await run_command_in_pod(ops_test, "testpod", c2)
     # mod permission of the trustore
-    c3 = ["chmod", "u+x", trustore_location]
+    c3 = ["chmod", "u+x", TRUSTSTORE_LOCATION]
     await run_command_in_pod(ops_test, "testpod", c3)
+
     # run query with tls
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
@@ -339,7 +323,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
 
     jdbc_endpoint_ssl = (
         jdbc_endpoint
-        + f";ssl=true;trustStorePassword={trustore_password};sslTrustStore={trustore_location}"
+        + f";ssl=true;trustStorePassword={TRUSTSTORE_PASSWORD};sslTrustStore={TRUSTSTORE_LOCATION}"
     )
     logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
 
@@ -363,22 +347,15 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     print(process.stderr.decode())
     logger.info(f"JDBC endpoint test returned with status {process.returncode}")
     assert process.returncode == 0
-
-
-# @pytest.mark.abort_on_fail
-# async def test_scale_up_tls(ops_test: OpsTest):
-#     await ops_test.model.applications[APP_NAME].add_units(count=1)
-#     await ops_test.model.block_until(lambda: len(ops_test.model.applications[APP_NAME].units) == 4)
-#     await ops_test.model.wait_for_idle(
-#         apps=[APP_NAME], status="active", timeout=1000, idle_period=40
-#     )
-#     check here
+    logger.info("SSL connection established correctly.")
 
 
 @pytest.mark.abort_on_fail
-async def test_renew_cert(ops_test: OpsTest):
+async def test_renew_cert(ops_test: OpsTest, charm_versions):
     # invalidate previous certs
-    await ops_test.model.applications[TLS_NAME].set_config({"ca-common-name": "new-name"})
+    await ops_test.model.applications[charm_versions.tls.name].set_config(
+        {"ca-common-name": "new-name"}
+    )
 
     await ops_test.model.wait_for_idle([APP_NAME], status="active", timeout=1000, idle_period=30)
     async with ops_test.fast_forward(fast_interval="20s"):

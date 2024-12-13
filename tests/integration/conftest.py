@@ -114,7 +114,7 @@ def charm_versions() -> IntegrationTestsCharms:
         ),
         tls=TestCharm(
             **{
-                "name": "zself-signed-certificates",
+                "name": "self-signed-certificates",
                 "channel": "edge",
                 "revision": 163,  # FIXME (certs): Unpin the revision once the charm is fixed
                 "series": "jammy",
@@ -171,8 +171,8 @@ def s3_bucket_and_creds():
     }
 
     logger.info("Tearing down test bucket...")
-    # test_bucket.objects.all().delete()
-    # test_bucket.delete()
+    test_bucket.objects.all().delete()
+    test_bucket.delete()
 
 
 @pytest.fixture(scope="module")
@@ -214,11 +214,11 @@ def test_pod(ops_test):
     yield pod_name
 
     # Cleanup by deleting the pod that was created
-    # logger.info("Deleting test pod fixture...")
-    # delete_result = subprocess.run(
-    # ["kubectl", "delete", "pod", "-n", namespace, pod_name], check=True
-    # )
-    # assert delete_result.returncode == 0
+    logger.info("Deleting test pod fixture...")
+    delete_result = subprocess.run(
+        ["kubectl", "delete", "pod", "-n", namespace, pod_name], check=True
+    )
+    assert delete_result.returncode == 0
 
 
 @pytest.fixture(scope="module")
