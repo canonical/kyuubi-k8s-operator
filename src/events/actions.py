@@ -4,7 +4,6 @@
 
 """Action related event handlers."""
 
-# from ops import CharmBase
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops.charm import ActionEvent
 
