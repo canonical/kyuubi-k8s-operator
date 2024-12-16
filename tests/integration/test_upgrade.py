@@ -92,7 +92,6 @@ async def test_build_and_deploy(ops_test: OpsTest, charm_versions, s3_bucket_and
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
 
-
 @pytest.mark.abort_on_fail
 async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod, charm_versions):
     """Test the correct upgrade of a Kyuubi cluster."""
