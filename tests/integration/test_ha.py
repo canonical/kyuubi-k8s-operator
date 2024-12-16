@@ -2,7 +2,6 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-import asyncio
 import logging
 from pathlib import Path
 
@@ -17,6 +16,7 @@ from core.domain import Status
 
 from .helpers import (
     delete_pod,
+    deploy_minimal_kyuubi_setup,
     find_leader_unit,
     get_active_kyuubi_servers_list,
     get_kyuubi_pid,
@@ -47,117 +47,26 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_cluster_with_no_zookeeper(
+async def test_build_and_deploy_cluster_with_no_zookeeper_new(
     ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
 ):
-    """Test building, deploying and relating a single Kyuubi unit with 3 units of Zookeeper."""
-    image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    resources = {"kyuubi-image": image_version}
-    logger.info(f"Image version: {image_version}")
-
-    # Deploy several charms required in the cluster
-    await asyncio.gather(
-        ops_test.model.deploy(
-            kyuubi_charm,
-            resources=resources,
-            application_name=APP_NAME,
-            num_units=1,
-            series="jammy",
-            trust=True,
-        ),
-        ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
-        ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict()),
-        ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
+    await deploy_minimal_kyuubi_setup(
+        ops_test=ops_test,
+        kyuubi_charm=kyuubi_charm,
+        charm_versions=charm_versions,
+        s3_bucket_and_creds=s3_bucket_and_creds,
+        trust=True,
     )
 
-    # Configure Kyuubi
-
-    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    # Wait for everything to settle down
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        timeout=1000,
-    )
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
-
-    logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace = ops_test.model.name
-    username = "kyuubi-spark-engine"
-    await ops_test.model.applications[APP_NAME].set_config(
-        {"namespace": namespace, "service-account": username}
-    )
-
-    logger.info("Waiting for kyuubi-k8s app to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="blocked",
-        timeout=1000,
-    )
-
-    # Configure S3 Integrator
-
-    logger.info("Waiting for s3-integrator app to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
-    )
-
-    endpoint_url = s3_bucket_and_creds["endpoint"]
-    access_key = s3_bucket_and_creds["access_key"]
-    secret_key = s3_bucket_and_creds["secret_key"]
-    bucket_name = s3_bucket_and_creds["bucket"]
-    path = s3_bucket_and_creds["path"]
-
-    logger.info("Setting up s3 credentials in s3-integrator charm")
-    s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
-    action = await s3_integrator_unit.run_action(
-        action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
-    )
-    await action.wait()
-
-    logger.info("Setting configuration for s3-integrator charm...")
-    await ops_test.model.applications[charm_versions.s3.application_name].set_config(
-        {
-            "bucket": bucket_name,
-            "path": path,
-            "endpoint": endpoint_url,
-        }
-    )
-
-    # Integrate Spark Integration Hub and S3 Integrator
-
-    logger.info(
-        "Waiting for spark-integration-hub and s3-integrator charms to be idle and active..."
-    )
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
-        timeout=1000,
-        status="active",
-    )
-
-    logger.info("Integrating spark-integration-hub charm with s3-integrator charm...")
-    await ops_test.model.integrate(
-        charm_versions.integration_hub.application_name, charm_versions.s3.application_name
-    )
-
-    logger.info(
-        "Waiting for spark-integration-hub and s3-integrator charms to be idle and active..."
-    )
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
-        timeout=1000,
-        status="active",
-    )
-
-    # Integrate Spark Integration Hub and Kyuubi
-
-    logger.info("Integrating spark-integration-hub charm with kyuubi charm...")
-    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
-
-    logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.integration_hub.application_name],
-        timeout=1000,
-        status="active",
+        apps=[
+            APP_NAME,
+            charm_versions.integration_hub.application_name,
+            charm_versions.s3.application_name,
+        ],
         idle_period=20,
+        status="active",
     )
 
     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
@@ -182,9 +91,7 @@ async def test_scale_up_kyuubi_to_three_units_without_zookeeper(
     await ops_test.model.applications[APP_NAME].scale(scale=3)
     await ops_test.model.block_until(lambda: len(ops_test.model.applications[APP_NAME].units) == 3)
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.zookeeper.application_name],
-        timeout=1000,
-        idle_period=40,
+        apps=[APP_NAME], timeout=1000, idle_period=30, status="blocked"
     )
 
     assert len(ops_test.model.applications[APP_NAME].units) == 3
@@ -195,7 +102,17 @@ async def test_scale_up_kyuubi_to_three_units_without_zookeeper(
 async def test_zookeeper_relation_with_three_units_of_kyuubi(
     ops_test: OpsTest, charm_versions, test_pod
 ):
-    """Test scaling up action on Kyuubi."""
+    """Test relating Zookeeper with Kyuubi with multiple units."""
+    # Deploy Zookeeper and wait
+    await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
+    logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.zookeeper.application_name],
+        timeout=1000,
+        idle_period=20,
+        status="active",
+    )
+
     # Integrate Kyuubi and Zookeeper
     logger.info("Integrating kyuubi charm with zookeeper charm...")
     await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)

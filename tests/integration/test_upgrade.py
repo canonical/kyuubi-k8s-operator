@@ -12,6 +12,7 @@ from pytest_operator.plugin import OpsTest
 from core.domain import Status
 
 from .helpers import (
+    deploy_minimal_kyuubi_setup,
     get_active_kyuubi_servers_list,
     run_sql_test_against_jdbc_endpoint,
 )
@@ -39,155 +40,29 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(
-    ops_test: OpsTest, charm_versions, kyuubi_charm, s3_bucket_and_creds, test_pod
-):
+async def test_build_and_deploy(ops_test: OpsTest, charm_versions, s3_bucket_and_creds, test_pod):
     """Test building and deploying the charm without relation with any other charm."""
-    # Deploy the charm and wait for waiting status
-    logger.info("Deploying kyuubi-k8s charm...")
-    await ops_test.model.deploy(
-        "kyuubi-k8s",
-        application_name=APP_NAME,
-        num_units=1,
-        channel="edge",
-        series="jammy",
+    await deploy_minimal_kyuubi_setup(
+        ops_test=ops_test,
+        kyuubi_charm="kyuubi-k8s",
+        charm_versions=charm_versions,
+        s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
+        num_units=3,
+        integrate_zookeeper=True,
+        deploy_from_charmhub=True,
     )
 
-    await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
-
-    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    # Wait for everything to settle down
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.zookeeper.application_name],
-        timeout=1000,
-    )
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
-
-    logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace = ops_test.model.name
-    username = "kyuubi-spark-engine"
-    await ops_test.model.applications[APP_NAME].set_config(
-        {"namespace": namespace, "service-account": username}
-    )
-
-    logger.info("Waiting for kyuubi-k8s app to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="blocked",
-        timeout=1000,
-    )
-
-    # Assert that the charm is in blocked state, waiting for Integration Hub relation
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
-    )
-
-    # Deploy the charm and wait for waiting status
-    logger.info("Deploying s3-integrator charm...")
-    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
-
-    logger.info("Waiting for s3-integrator app to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
-    )
-
-    # Receive S3 params from fixture
-    endpoint_url = s3_bucket_and_creds["endpoint"]
-    access_key = s3_bucket_and_creds["access_key"]
-    secret_key = s3_bucket_and_creds["secret_key"]
-    bucket_name = s3_bucket_and_creds["bucket"]
-
-    logger.info("Setting up s3 credentials in s3-integrator charm")
-    s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
-    action = await s3_integrator_unit.run_action(
-        action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
-    )
-    await action.wait()
-
-    logger.info("Waiting for s3-integrator app to be idle and active...")
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[charm_versions.s3.application_name], status="active"
-        )
-
-    logger.info("Setting configuration for s3-integrator charm...")
-    await ops_test.model.applications[charm_versions.s3.application_name].set_config(
-        {
-            "bucket": bucket_name,
-            "path": "testpath",
-            "endpoint": endpoint_url,
-        }
-    )
-
-    logger.info("Integrating kyuubi charm with s3-integrator charm...")
-    await ops_test.model.integrate(charm_versions.s3.application_name, APP_NAME)
-
-    logger.info("Waiting for s3-integrator and kyuubi charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
-    )
-
-    # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
-    )
-
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
-
-    # Deploy the charm and wait for waiting status
-    logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
-
-    logger.info("Waiting for integration_hub app to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
-    )
-
-    # Add configuration key
-    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
-    action = await unit.run_action(
-        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
-    )
-    _ = await action.wait()
-
-    logger.info("Integrating kyuubi charm with integration-hub charm...")
-    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
-
-    logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.integration_hub.application_name],
-        timeout=1000,
-        status="active",
+        apps=[
+            APP_NAME,
+            charm_versions.integration_hub.application_name,
+            charm_versions.zookeeper.application_name,
+            charm_versions.s3.application_name,
+        ],
         idle_period=20,
-    )
-
-    # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-
-    # Scale Kyuubi charm to 3 units
-    await ops_test.model.applications[APP_NAME].scale(scale=3)
-    await ops_test.model.block_until(lambda: len(ops_test.model.applications[APP_NAME].units) == 3)
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.zookeeper.application_name],
-        timeout=1000,
-        idle_period=40,
-    )
-
-    assert len(ops_test.model.applications[APP_NAME].units) == 3
-    assert check_status(ops_test.model.applications[APP_NAME], Status.MISSING_ZOOKEEPER.value)
-
-    # Integrate Kyuubi and Zookeeper
-    logger.info("Integrating kyuubi charm with zookeeper charm...")
-    await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)
-
-    logger.info("Waiting for zookeeper-k8s and kyuubi charms to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000, status="active"
+        status="active",
     )
 
     # Assert that all charms is in active and idle state
@@ -215,6 +90,186 @@ async def test_build_and_deploy(
 
     # Run SQL test against the cluster
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+
+# @pytest.mark.skip_if_deployed
+# @pytest.mark.abort_on_fail
+# async def test_build_and_deploy(
+#     ops_test: OpsTest, charm_versions, kyuubi_charm, s3_bucket_and_creds, test_pod
+# ):
+#     """Test building and deploying the charm without relation with any other charm."""
+#     # Deploy the charm and wait for waiting status
+#     logger.info("Deploying kyuubi-k8s charm...")
+#     await ops_test.model.deploy(
+#         "kyuubi-k8s",
+#         application_name=APP_NAME,
+#         num_units=1,
+#         channel="edge",
+#         series="jammy",
+#         trust=True,
+#     )
+
+#     await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
+
+#     logger.info("Waiting for kyuubi-k8s app to be idle...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, charm_versions.zookeeper.application_name],
+#         timeout=1000,
+#     )
+#     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
+
+#     logger.info("Setting configuration for kyuubi-k8s charm...")
+#     namespace = ops_test.model.name
+#     username = "kyuubi-spark-engine"
+#     await ops_test.model.applications[APP_NAME].set_config(
+#         {"namespace": namespace, "service-account": username}
+#     )
+
+#     logger.info("Waiting for kyuubi-k8s app to be idle...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME],
+#         status="blocked",
+#         timeout=1000,
+#     )
+
+#     # Assert that the charm is in blocked state, waiting for Integration Hub relation
+#     assert check_status(
+#         ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
+#     )
+
+#     # Deploy the charm and wait for waiting status
+#     logger.info("Deploying s3-integrator charm...")
+#     await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
+
+#     logger.info("Waiting for s3-integrator app to be idle...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
+#     )
+
+#     # Receive S3 params from fixture
+#     endpoint_url = s3_bucket_and_creds["endpoint"]
+#     access_key = s3_bucket_and_creds["access_key"]
+#     secret_key = s3_bucket_and_creds["secret_key"]
+#     bucket_name = s3_bucket_and_creds["bucket"]
+
+#     logger.info("Setting up s3 credentials in s3-integrator charm")
+#     s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
+#     action = await s3_integrator_unit.run_action(
+#         action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
+#     )
+#     await action.wait()
+
+#     logger.info("Waiting for s3-integrator app to be idle and active...")
+#     async with ops_test.fast_forward():
+#         await ops_test.model.wait_for_idle(
+#             apps=[charm_versions.s3.application_name], status="active"
+#         )
+
+#     logger.info("Setting configuration for s3-integrator charm...")
+#     await ops_test.model.applications[charm_versions.s3.application_name].set_config(
+#         {
+#             "bucket": bucket_name,
+#             "path": "testpath",
+#             "endpoint": endpoint_url,
+#         }
+#     )
+
+#     logger.info("Integrating kyuubi charm with s3-integrator charm...")
+#     await ops_test.model.integrate(charm_versions.s3.application_name, APP_NAME)
+
+#     logger.info("Waiting for s3-integrator and kyuubi charms to be idle...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
+#     )
+
+#     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
+#     assert check_status(
+#         ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
+#     )
+
+#     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+#     # Deploy the charm and wait for waiting status
+#     logger.info("Deploying integration-hub charm...")
+#     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
+
+#     logger.info("Waiting for integration_hub app to be idle and active...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
+#     )
+
+#     # Add configuration key
+#     unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+#     action = await unit.run_action(
+#         action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+#     )
+#     _ = await action.wait()
+
+#     logger.info("Integrating kyuubi charm with integration-hub charm...")
+#     await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
+
+#     logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, charm_versions.integration_hub.application_name],
+#         timeout=1000,
+#         status="active",
+#         idle_period=20,
+#     )
+
+#     # Assert that both kyuubi-k8s and s3-integrator charms are in active state
+#     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+
+#     assert (
+#         ops_test.model.applications[charm_versions.integration_hub.application_name].status
+#         == "active"
+#     )
+
+#     # Scale Kyuubi charm to 3 units
+#     await ops_test.model.applications[APP_NAME].scale(scale=3)
+#     await ops_test.model.block_until(lambda: len(ops_test.model.applications[APP_NAME].units) == 3)
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, charm_versions.zookeeper.application_name],
+#         timeout=1000,
+#         idle_period=40,
+#     )
+
+#     assert len(ops_test.model.applications[APP_NAME].units) == 3
+#     assert check_status(ops_test.model.applications[APP_NAME], Status.MISSING_ZOOKEEPER.value)
+
+#     # Integrate Kyuubi and Zookeeper
+#     logger.info("Integrating kyuubi charm with zookeeper charm...")
+#     await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)
+
+#     logger.info("Waiting for zookeeper-k8s and kyuubi charms to be active and idle...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000, status="active"
+#     )
+
+#     # Assert that all charms is in active and idle state
+#     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+#     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+#     assert (
+#         ops_test.model.applications[charm_versions.integration_hub.application_name].status
+#         == "active"
+#     )
+#     assert (
+#         ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
+#     )
+
+#     active_servers = await get_active_kyuubi_servers_list(
+#         ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+#     )
+#     assert len(active_servers) == 3
+
+#     expected_servers = [
+#         f"kyuubi-k8s-0.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+#         f"kyuubi-k8s-1.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+#         f"kyuubi-k8s-2.kyuubi-k8s-endpoints.{ops_test.model_name}.svc.cluster.local",
+#     ]
+#     assert set(active_servers) == set(expected_servers)
+
+#     # Run SQL test against the cluster
+#     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
 
 @pytest.mark.abort_on_fail

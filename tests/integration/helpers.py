@@ -428,22 +428,25 @@ async def deploy_minimal_kyuubi_setup(
     trust: bool = True,
     num_units=1,
     integrate_zookeeper=False,
+    deploy_from_charmhub=False,
 ) -> str:
-    image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    resources = {"kyuubi-image": image_version}
-    logger.info(f"Image version: {image_version}")
+    deploy_args = {
+        "application_name": APP_NAME,
+        "num_units": num_units,
+        "channel": "edge",
+        "series": "jammy",
+        "trust": trust,
+    }
+    if not deploy_from_charmhub:
+        image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+        resources = {"kyuubi-image": image_version}
+        logger.info(f"Image version: {image_version}")
+
+        deploy_args.update({"resources": resources})
 
     # Deploy the Kyuubi charm and wait
     logger.info("Deploying kyuubi-k8s charm...")
-    await ops_test.model.deploy(
-        kyuubi_charm,
-        resources=resources,
-        application_name=APP_NAME,
-        num_units=num_units,
-        channel="edge",
-        series="jammy",
-        trust=trust,
-    )
+    await ops_test.model.deploy(kyuubi_charm, **deploy_args)
     logger.info("Waiting for kyuubi-k8s app to be settle...")
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked")
     logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
