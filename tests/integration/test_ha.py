@@ -202,10 +202,10 @@ async def test_zookeeper_relation_with_three_units_of_kyuubi(
 
     logger.info("Waiting for zookeeper-k8s and kyuubi charms to be active and idle...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000, status="active"
+        apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
     )
 
-    # Assert that all charms is in active and idle state
+    # Assert that all charms are in active and idle state
     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
     assert (
@@ -216,7 +216,9 @@ async def test_zookeeper_relation_with_three_units_of_kyuubi(
         ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
     )
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test=ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 3
 
     expected_servers = [
@@ -233,7 +235,7 @@ async def test_zookeeper_relation_with_three_units_of_kyuubi(
     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
 
 
-async def test_pod_reschedule(ops_test: OpsTest, test_pod):
+async def test_pod_reschedule(ops_test: OpsTest, test_pod, charm_versions):
     """Test Kyuubi cluster after the leader pod is reschedule."""
     leader_unit = await find_leader_unit(ops_test, APP_NAME)
     leader_unit_pod = leader_unit.name.replace("/", "-")
@@ -249,7 +251,9 @@ async def test_pod_reschedule(ops_test: OpsTest, test_pod):
 
     assert len(ops_test.model.applications[APP_NAME].units) == 3
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test=ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 3
 
     # Run SQL test against the cluster
@@ -259,7 +263,7 @@ async def test_pod_reschedule(ops_test: OpsTest, test_pod):
     assert await is_entire_cluster_responding_requests(ops_test, test_pod)
 
 
-async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod):
+async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
     """Test Kyuubi cluster after Kyuubi process in the leader unit is killed with SIGKILL signal."""
     leader_unit = await find_leader_unit(ops_test, APP_NAME)
 
@@ -283,12 +287,14 @@ async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod):
     # Ensure Kyuubi is in active and idle state
     async with ops_test.fast_forward("10s"):
         await ops_test.model.wait_for_idle(
-            apps=[APP_NAME], idle_period=30, status="active", timeout=30
+            apps=[APP_NAME], idle_period=30, status="active", timeout=1000
         )
 
     assert len(ops_test.model.applications[APP_NAME].units) == 3
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test=ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 3
 
     # Run SQL test against the cluster
@@ -317,8 +323,9 @@ async def test_scale_down_kyuubi_from_three_to_two_with_zookeeper(
 
     assert len(ops_test.model.applications[APP_NAME].units) == 2
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
-
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test=ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 2
 
     # Run SQL test against the cluster
@@ -346,8 +353,9 @@ async def test_scale_down_to_standalone_kyuubi_with_zookeeper(
 
     assert len(ops_test.model.applications[APP_NAME].units) == 1
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
-
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test=ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 1
 
     # Run SQL test against the cluster

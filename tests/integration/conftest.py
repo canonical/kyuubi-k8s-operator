@@ -13,9 +13,6 @@ import boto3.session
 import pytest
 import yaml
 from botocore.client import Config
-from juju.application import Application
-from juju.unit import Unit
-from ops import StatusBase
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -218,15 +215,3 @@ async def kyuubi_charm(ops_test):
     logger.info("Building charm...")
     charm = await ops_test.build_charm(".")
     return charm
-
-
-def check_status(entity: Application | Unit, status: StatusBase):
-    if isinstance(entity, Application):
-        return entity.status == status.name and entity.status_message == status.message
-    elif isinstance(entity, Unit):
-        return (
-            entity.workload_status == status.name
-            and entity.workload_status_message == status.message
-        )
-    else:
-        raise ValueError(f"entity type {type(entity)} is not allowed")

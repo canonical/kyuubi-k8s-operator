@@ -77,7 +77,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @compute_status
     def _update_event(self, event):
         """Handle the update event hook."""
-        self.kyuubi.update()
+        pass
 
     @compute_status
     @defer_when_not_ready

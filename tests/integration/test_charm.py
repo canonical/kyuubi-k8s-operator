@@ -13,9 +13,6 @@ import juju
 import psycopg2
 import pytest
 import yaml
-from juju.application import Application
-from juju.unit import Unit
-from ops import StatusBase
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
@@ -29,6 +26,7 @@ from core.domain import Status
 
 from .helpers import (
     all_prometheus_exporters_data,
+    check_status,
     get_cos_address,
     published_grafana_dashboards,
     published_loki_logs,
@@ -43,18 +41,6 @@ APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
 COS_AGENT_APP_NAME = "grafana-agent-k8s"
-
-
-def check_status(entity: Application | Unit, status: StatusBase):
-    if isinstance(entity, Application):
-        return entity.status == status.name and entity.status_message == status.message
-    elif isinstance(entity, Unit):
-        return (
-            entity.workload_status == status.name
-            and entity.workload_status_message == status.message
-        )
-    else:
-        raise ValueError(f"entity type {type(entity)} is not allowed")
 
 
 @pytest.mark.skip_if_deployed
