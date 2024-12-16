@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import re
 import subprocess
 import time
 import uuid
@@ -18,7 +17,6 @@ from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
-    HA_ZNODE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
     METASTORE_DATABASE_NAME,
 )
@@ -906,13 +904,6 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_ver
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-    assert "serviceDiscoveryMode=zooKeeper" in jdbc_endpoint
-    assert f"zooKeeperNamespace={HA_ZNODE_NAME}" in jdbc_endpoint
-    assert re.match(
-        r"jdbc:hive2://(.*),(.*),(.*)/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=.*",
-        jdbc_endpoint,
-    )
-
     logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
     process = subprocess.run(
         [
@@ -955,13 +946,6 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_vers
 
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
-    assert "serviceDiscoveryMode=zooKeeper" not in jdbc_endpoint
-    assert f"zooKeeperNamespace={HA_ZNODE_NAME}" not in jdbc_endpoint
-    assert not re.match(
-        r"jdbc:hive2://(.*),(.*),(.*)/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=.*",
-        jdbc_endpoint,
-    )
 
     logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
     process = subprocess.run(

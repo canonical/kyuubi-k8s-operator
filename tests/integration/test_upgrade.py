@@ -201,7 +201,9 @@ async def test_build_and_deploy(
         ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
     )
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 3
 
     expected_servers = [
@@ -216,7 +218,7 @@ async def test_build_and_deploy(
 
 
 @pytest.mark.abort_on_fail
-async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod):
+async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod, charm_versions):
     """Test the correct upgrade of a Kyuubi cluster."""
     # Retrieve the image to use from metadata.yaml
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -255,7 +257,9 @@ async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod):
     # test that upgraded Kyuubi cluster works and all units are available
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
-    active_servers = await get_active_kyuubi_servers_list(ops_test)
+    active_servers = await get_active_kyuubi_servers_list(
+        ops_test, zookeeper_name=charm_versions.zookeeper.application_name
+    )
     assert len(active_servers) == 3
 
     expected_servers = [
