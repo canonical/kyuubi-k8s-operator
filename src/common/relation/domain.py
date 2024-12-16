@@ -1,5 +1,7 @@
 """Common domain objects."""
 
+from collections.abc import MutableMapping
+
 from charms.data_platform_libs.v0.data_interfaces import Data
 from ops import Application, Relation, Unit
 
@@ -26,6 +28,11 @@ class RelationState:
             return bool(self.relation)
         except AttributeError:
             return False
+
+    @property
+    def data(self) -> MutableMapping:
+        """Data representing the state."""
+        return self.relation_data
 
     def update(self, items: dict[str, str]) -> None:
         """Writes to relation_data."""
