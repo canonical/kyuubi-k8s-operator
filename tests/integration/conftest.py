@@ -105,7 +105,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "zookeeper-k8s",
                 "channel": "3/edge",
-                "revision": 59,
+                "revision": 70,
                 "series": "jammy",
                 "alias": "zookeeper",
                 "num_units": 3,

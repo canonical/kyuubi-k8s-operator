@@ -7,7 +7,7 @@
 
 from typing import Optional
 
-from constants import AUTHENTICATION_TABLE_NAME, HA_ZNODE_NAME
+from constants import AUTHENTICATION_TABLE_NAME
 from core.domain import DatabaseConnectionInfo, ZookeeperInfo
 from utils.logging import WithLogging
 
@@ -60,9 +60,7 @@ class KyuubiConfig(WithLogging):
             return {}
         return {
             "kyuubi.ha.addresses": self.zookeeper_info.uris,
-            # FIXME: Get this value from self.context.zookeeper.uris when znode created by
-            # zookeeper charm has enough permissions for Kyuubi to work
-            "kyuubi.ha.namespace": HA_ZNODE_NAME,
+            "kyuubi.ha.namespace": self.zookeeper_info.database,
             "kyuubi.ha.zookeeper.auth.type": "DIGEST",
             "kyuubi.ha.zookeeper.auth.digest": self._get_zookeeper_auth_digest(),
         }
