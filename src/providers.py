@@ -9,7 +9,8 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequestedEvent,
 )
-from ops.charm import CharmBase, RelationBrokenEvent
+from charms.data_platform_libs.v0.data_models import TypedCharmBase
+from ops.charm import RelationBrokenEvent
 from ops.framework import Object
 from ops.model import BlockedStatus
 
@@ -27,7 +28,7 @@ class KyuubiClientProvider(Object):
         - relation-broken
     """
 
-    def __init__(self, charm: CharmBase, relation_name: str) -> None:
+    def __init__(self, charm: TypedCharmBase, relation_name: str) -> None:
         """Constructor for KyuubiClientProvider object.
 
         Args:
@@ -74,7 +75,9 @@ class KyuubiClientProvider(Object):
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
 
-            kyuubi_address = service_manager.get_service_endpoint()
+            kyuubi_address = service_manager.get_service_endpoint(
+                expose_external=self.charm.config.expose_external
+            )
             endpoint = f"jdbc:hive2://{kyuubi_address}/" if kyuubi_address else ""
 
             # Set the JDBC endpoint.

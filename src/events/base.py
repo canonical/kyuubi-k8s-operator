@@ -76,7 +76,9 @@ class BaseEventHandler(Object, WithLogging):
             app_name=self.charm.app.name,
         )
 
-        if not service_manager.get_service_endpoint():
+        if not service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        ):
             return Status.WAITING_FOR_SERVICE.value
 
         return Status.ACTIVE.value

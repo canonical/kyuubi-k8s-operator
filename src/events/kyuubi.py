@@ -5,7 +5,7 @@
 """Kyuubi related event handlers."""
 
 import ops
-from ops import CharmBase
+from charms.data_platform_libs.v0.data_models import TypedCharmBase
 
 from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
 from core.context import Context
@@ -20,7 +20,7 @@ from utils.logging import WithLogging
 class KyuubiEvents(BaseEventHandler, WithLogging):
     """Class implementing Kyuubih related event hooks."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
         super().__init__(charm, "kyuubi")
 
         self.charm = charm
@@ -63,7 +63,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update()
 
         # Check the newly created service is connectable
-        if not self.service_manager.get_service_endpoint():
+        if not self.service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        ):
             self.logger.info(
                 "Managed K8s service is not available yet; deferring config-changed event now..."
             )
