@@ -25,7 +25,6 @@ from core.domain import (
     SparkServiceAccountInfo,
     ZookeeperInfo,
 )
-from managers.service import ServiceManager
 from utils.logging import WithLogging
 
 
@@ -64,12 +63,6 @@ class Context(WithLogging):
     def _zookeeper_relation(self) -> Relation | None:
         """The zookeeper relation."""
         return self.model.get_relation(ZOOKEEPER_REL)
-
-    @property
-    def _service_manager(self) -> ServiceManager | None:
-        return ServiceManager(
-            namespace=self.model.name, unit_name=self.model.unit.name, app_name=self.model.app.name
-        )
 
     # --- DOMAIN OBJECTS ---
 
@@ -128,10 +121,3 @@ class Context(WithLogging):
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
         return bool(self.auth_db)
-
-    @property
-    def kyuubi_address(self) -> str:
-        """Returns the address of the Kyuubi JDBC service."""
-        return self._service_manager.get_service_endpoint(
-            expose_external=self.config.expose_external.value
-        )

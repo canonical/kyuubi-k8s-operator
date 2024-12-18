@@ -14,6 +14,7 @@ from ops.framework import Object
 from ops.model import BlockedStatus
 
 from managers.auth import AuthenticationManager
+from managers.service import ServiceManager
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +64,18 @@ class KyuubiClientProvider(Object):
                 "over auth-db relation endpoint."
             )
         auth = AuthenticationManager(self.charm.context.auth_db)
-
+        service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
         try:
             username = f"relation_id_{event.relation.id}"
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
 
-            endpoint = f"jdbc:hive2://{self.charm.context.kyuubi_address}/"
+            kyuubi_address = service_manager.get_service_endpoint()
+            endpoint = f"jdbc:hive2://{kyuubi_address}/" if kyuubi_address else ""
 
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
