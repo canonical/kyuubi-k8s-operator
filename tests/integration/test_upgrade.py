@@ -89,8 +89,7 @@ async def test_build_and_deploy(ops_test: OpsTest, charm_versions, s3_bucket_and
     assert set(active_servers) == set(expected_servers)
 
     # Run SQL test against the cluster
-    # TODO: Uncomment the following line once new version of Kyuubi is published to CharmHub
-    # assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
 
 
 @pytest.mark.abort_on_fail
