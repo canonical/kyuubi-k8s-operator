@@ -47,7 +47,7 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_cluster_with_no_zookeeper_new(
+async def test_build_and_deploy_cluster_with_no_zookeeper(
     ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
 ):
     await deploy_minimal_kyuubi_setup(

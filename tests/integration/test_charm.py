@@ -1103,7 +1103,7 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(
         apps=["prometheus", "alertmanager", "loki", "grafana"],
         status="active",
-        timeout=1000,
+        timeout=2000,
         idle_period=30,
     )
     await ops_test.model.wait_for_idle(
