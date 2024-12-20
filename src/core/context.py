@@ -5,11 +5,12 @@
 """Charm Context definition and parsing logic."""
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
-from ops import ConfigData, Model, Relation
+from ops import Model, Relation
 
 from common.relation.spark_sa import RequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    HA_ZNODE_NAME,
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
@@ -17,6 +18,7 @@ from constants import (
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
 )
+from core.config import CharmConfig
 from core.domain import (
     DatabaseConnectionInfo,
     S3ConnectionInfo,
@@ -29,9 +31,9 @@ from utils.logging import WithLogging
 class Context(WithLogging):
     """Properties and relations of the charm."""
 
-    def __init__(self, model: Model, config: ConfigData):
+    def __init__(self, model: Model, config: CharmConfig):
         self.model = model
-        self.charm_config = config
+        self.config = config
         self.metastore_db_requirer = DatabaseRequirerData(
             self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
         )
@@ -41,12 +43,10 @@ class Context(WithLogging):
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
         )
-
-        # FIXME: The database_name currently requested is a dummy name
-        # This should be replaced with the name of actual znode when znode created
-        # by zookeeper charm has enough permissions for Kyuubi to work
         self.zookeeper_requirer_data = DatabaseRequirerData(
-            self.model, ZOOKEEPER_REL, database_name="/kyuubi-test"
+            self.model,
+            ZOOKEEPER_REL,
+            database_name=HA_ZNODE_NAME,
         )
 
     @property

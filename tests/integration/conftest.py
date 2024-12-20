@@ -18,6 +18,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+APP_NAME = METADATA["name"]
 TEST_BUCKET_NAME = "kyuubi-test"
 TEST_PATH_NAME = "spark-events/"
 TEST_NAMESPACE = "kyuubi-test"
@@ -104,7 +105,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "zookeeper-k8s",
                 "channel": "3/edge",
-                "revision": 59,
+                "revision": 70,
                 "series": "jammy",
                 "alias": "zookeeper",
                 "num_units": 3,
@@ -136,7 +137,7 @@ def s3_bucket_and_creds():
         service_name="s3",
         endpoint_url=endpoint_url,
         verify=False,
-        config=Config(connect_timeout=60, retries={"max_attempts": 0}),
+        config=Config(connect_timeout=60, retries={"max_attempts": 4}),
     )
     test_bucket = s3.Bucket(TEST_BUCKET_NAME)
 

@@ -7,13 +7,15 @@
 from functools import wraps
 from typing import Callable
 
-from ops import CharmBase, EventBase, Object, StatusBase
+from charms.data_platform_libs.v0.data_models import TypedCharmBase
+from ops import EventBase, Object, StatusBase
 
 from core.context import Context
 from core.domain import Status
 from core.workload import KyuubiWorkloadBase
 from managers.k8s import K8sManager
 from managers.s3 import S3Manager
+from managers.service import ServiceManager
 from utils.logging import WithLogging
 
 
@@ -21,7 +23,7 @@ class BaseEventHandler(Object, WithLogging):
     """Base class for all Event Handler classes in the Spark Integration Hub."""
 
     workload: KyuubiWorkloadBase
-    charm: CharmBase
+    charm: TypedCharmBase
     context: Context
 
     def get_app_status(  # noqa: C901
@@ -67,6 +69,17 @@ class BaseEventHandler(Object, WithLogging):
 
         if self.charm.app.planned_units() > 1 and not self.context.zookeeper:
             return Status.MISSING_ZOOKEEPER.value
+
+        service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
+
+        if not service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        ):
+            return Status.WAITING_FOR_SERVICE.value
 
         return Status.ACTIVE.value
 

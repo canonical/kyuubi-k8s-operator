@@ -10,3 +10,11 @@ options:
     type: string
     description: The service account to be used by driver to create executor pods.
     default: 'kyuubi-spark-engine'
+  expose-external:
+    type: string
+    description: The mode in which the service should be exposed externally. Valid values are false, nodeport and loadbalancer.
+    default: 'false' 
+  loadbalancer-extra-annotations:
+    type: string
+    description: Optional extra annotations to be supplied to the load balancer service.
+    default: ''

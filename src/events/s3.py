@@ -29,7 +29,7 @@ class S3Events(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.s3_requires = S3Requirer(self.charm, S3_INTEGRATOR_REL)
 
         self.framework.observe(
@@ -42,23 +42,11 @@ class S3Events(BaseEventHandler, WithLogging):
     def _on_s3_credential_changed(self, _: CredentialsChangedEvent):
         """Handle the `CredentialsChangedEvent` event from S3 integrator."""
         self.logger.info("S3 Credentials changed")
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
     @compute_status
     def _on_s3_credential_gone(self, _: CredentialsGoneEvent):
         """Handle the `CredentialsGoneEvent` event for S3 integrator."""
         self.logger.info("S3 Credentials gone")
         self.logger.info(self.context.s3)
-        self.kyuubi.update(
-            s3_info=None,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update(set_s3_none=True)

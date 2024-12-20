@@ -10,6 +10,7 @@
 import logging
 
 import ops
+from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
@@ -21,6 +22,7 @@ from constants import (
     DEPENDENCIES,
     KYUUBI_CONTAINER_NAME,
 )
+from core.config import CharmConfig
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
 from events.actions import ActionEvents
@@ -36,8 +38,10 @@ from events.zookeeper import ZookeeperEvents
 logger = logging.getLogger(__name__)
 
 
-class KyuubiCharm(ops.CharmBase):
+class KyuubiCharm(TypedCharmBase[CharmConfig]):
     """Charm the service."""
+
+    config_type = CharmConfig
 
     def __init__(self, *args):
         super().__init__(*args)

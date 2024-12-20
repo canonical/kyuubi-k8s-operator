@@ -28,14 +28,14 @@ class AbstractWorkload(ABC):
         ...
 
     @abstractmethod
-    def read(self, path: str) -> list[str]:
+    def read(self, path: str) -> str:
         """Reads a file from the workload.
 
         Args:
             path: the full filepath to read from
 
         Returns:
-            List of string lines from the specified path
+            String read from the specified path
 
         Raises:
             FileNotFound if the file does not exist

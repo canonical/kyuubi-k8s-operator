@@ -4,31 +4,37 @@
 
 """Action related event handlers."""
 
-from ops import CharmBase
+from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops.charm import ActionEvent
 
-from constants import DEFAULT_ADMIN_USERNAME, HA_ZNODE_NAME, JDBC_PORT
+from constants import DEFAULT_ADMIN_USERNAME
 from core.context import Context
 from core.domain import Status
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
+from managers.service import ServiceManager
 from utils.logging import WithLogging
 
 
 class ActionEvents(BaseEventHandler, WithLogging):
     """Class implementing charm action event hooks."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
         super().__init__(charm, "action-events")
 
         self.charm = charm
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.auth = AuthenticationManager(self.context.auth_db)
+        self.service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
 
         self.framework.observe(self.charm.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
         self.framework.observe(self.charm.on.get_password_action, self._on_get_password)
@@ -43,17 +49,15 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the charm is not in active state.")
             return
 
-        if self.context.zookeeper:
-            address = self.context.zookeeper.uris
-            # FIXME: Get this value from self.context.zookeeper.uris when znode created by
-            # zookeeper charm has enough permissions for Kyuubi to work
-            namespace = HA_ZNODE_NAME
-            if not address.endswith("/"):
-                address += "/"
-            endpoint = f"jdbc:hive2://{address};serviceDiscoveryMode=zooKeeper;zooKeeperNamespace={namespace}"
-        else:
-            address = self.workload.get_ip_address()
-            endpoint = f"jdbc:hive2://{address}:{JDBC_PORT}/"
+        address = self.service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        )
+        if not address:
+            event.fail(
+                "The action failed because the Kubernetes service is not available at the moment."
+            )
+            return
+        endpoint = f"jdbc:hive2://{address}/"
         result = {"endpoint": endpoint}
         event.set_results(result)
 

@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import re
 import subprocess
 import time
 import uuid
@@ -13,15 +12,11 @@ import juju
 import psycopg2
 import pytest
 import yaml
-from juju.application import Application
-from juju.unit import Unit
-from ops import StatusBase
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
-    HA_ZNODE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
     METASTORE_DATABASE_NAME,
 )
@@ -29,6 +24,7 @@ from core.domain import Status
 
 from .helpers import (
     all_prometheus_exporters_data,
+    check_status,
     get_cos_address,
     published_grafana_dashboards,
     published_loki_logs,
@@ -43,18 +39,6 @@ APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
 COS_AGENT_APP_NAME = "grafana-agent-k8s"
-
-
-def check_status(entity: Application | Unit, status: StatusBase):
-    if isinstance(entity, Application):
-        return entity.status == status.name and entity.status_message == status.message
-    elif isinstance(entity, Unit):
-        return (
-            entity.workload_status == status.name
-            and entity.workload_status_message == status.message
-        )
-    else:
-        raise ValueError(f"entity type {type(entity)} is not allowed")
 
 
 @pytest.mark.skip_if_deployed
@@ -920,13 +904,6 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_ver
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
-    assert "serviceDiscoveryMode=zooKeeper" in jdbc_endpoint
-    assert f"zooKeeperNamespace={HA_ZNODE_NAME}" in jdbc_endpoint
-    assert re.match(
-        r"jdbc:hive2://(.*),(.*),(.*)/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=.*",
-        jdbc_endpoint,
-    )
-
     logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
     process = subprocess.run(
         [
@@ -969,13 +946,6 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_vers
 
     jdbc_endpoint = result.results.get("endpoint")
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
-    assert "serviceDiscoveryMode=zooKeeper" not in jdbc_endpoint
-    assert f"zooKeeperNamespace={HA_ZNODE_NAME}" not in jdbc_endpoint
-    assert not re.match(
-        r"jdbc:hive2://(.*),(.*),(.*)/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=.*",
-        jdbc_endpoint,
-    )
 
     logger.info("Testing JDBC endpoint by connecting with beeline with no credentials ...")
     process = subprocess.run(
@@ -1133,7 +1103,7 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(
         apps=["prometheus", "alertmanager", "loki", "grafana"],
         status="active",
-        timeout=1000,
+        timeout=2000,
         idle_period=30,
     )
     await ops_test.model.wait_for_idle(

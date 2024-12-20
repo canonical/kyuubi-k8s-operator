@@ -7,11 +7,16 @@ import uuid
 from pathlib import Path
 from subprocess import PIPE, check_output
 
+import lightkube
 import requests
 import yaml
+from juju.application import Application
+from juju.unit import Unit
+from ops import StatusBase
 from pytest_operator.plugin import OpsTest
 
 from constants import COS_METRICS_PORT, HA_ZNODE_NAME
+from core.domain import Status
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +25,7 @@ APP_NAME = METADATA["name"]
 ZOOKEEPER_NAME = "zookeeper-k8s"
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
+ZOOKEEPER_PORT = 2181
 
 PROCESS_NAME_PATTERN = "org.apache.kyuubi.server.KyuubiServer"
 KYUUBI_CONTAINER_NAME = "kyuubi"
@@ -27,6 +33,18 @@ KYUUBI_CONTAINER_NAME = "kyuubi"
 
 def get_random_name():
     return str(uuid.uuid4()).replace("-", "_")
+
+
+def check_status(entity: Application | Unit, status: StatusBase):
+    if isinstance(entity, Application):
+        return entity.status == status.name and entity.status_message == status.message
+    elif isinstance(entity, Unit):
+        return (
+            entity.workload_status == status.name
+            and entity.workload_status_message == status.message
+        )
+    else:
+        raise ValueError(f"entity type {type(entity)} is not allowed")
 
 
 async def fetch_jdbc_endpoint(ops_test):
@@ -44,9 +62,10 @@ async def fetch_jdbc_endpoint(ops_test):
     return jdbc_endpoint
 
 
-async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod):
+async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_endpoint=None):
     """Verify the JDBC endpoint exposed by the charm with some SQL queries."""
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
+    if jdbc_endpoint is None:
+        jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
     database_name = get_random_name()
     table_name = get_random_name()
     logger.info(
@@ -72,17 +91,27 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod):
     return process.returncode == 0
 
 
-async def get_active_kyuubi_servers_list(ops_test: OpsTest) -> list[str]:
-    """Return the list of Kyuubi servers that are live in the cluster."""
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    zookeper_quorum = jdbc_endpoint.split(";")[0].split("//")[-1]
+async def get_zookeeper_quorum(ops_test: OpsTest, zookeeper_name: str) -> str:
+    addresses = []
+    for unit in ops_test.model.applications[zookeeper_name].units:
+        host = await get_address(ops_test, unit.name)
+        port = ZOOKEEPER_PORT
+        addresses.append(f"{host}:{port}")
+    return ",".join(addresses)
 
+
+async def get_active_kyuubi_servers_list(
+    ops_test: OpsTest, zookeeper_name=ZOOKEEPER_NAME
+) -> list[str]:
+    """Return the list of Kyuubi servers that are live in the cluster."""
+    zookeeper_quorum = await get_zookeeper_quorum(ops_test=ops_test, zookeeper_name=zookeeper_name)
+    logger.info(f"Zookeeper quorum: {zookeeper_quorum}")
     pod_command = [
         "/opt/kyuubi/bin/kyuubi-ctl",
         "list",
         "server",
         "--zk-quorum",
-        zookeper_quorum,
+        zookeeper_quorum,
         "--namespace",
         HA_ZNODE_NAME,
         "--version",
@@ -386,5 +415,182 @@ async def get_grafana_access(ops_test: OpsTest) -> tuple[str, str]:
 async def get_address(ops_test: OpsTest, unit_name: str) -> str:
     """Get the address for a unit."""
     status = await ops_test.model.get_status()  # noqa: F821
-    address = status["applications"][APP_NAME]["units"][f"{unit_name}"]["address"]
+    app_name = unit_name.split("/")[0]
+    address = status["applications"][app_name]["units"][f"{unit_name}"]["address"]
     return address
+
+
+async def deploy_minimal_kyuubi_setup(
+    ops_test: OpsTest,
+    kyuubi_charm: str,
+    charm_versions,
+    s3_bucket_and_creds,
+    trust: bool = True,
+    num_units=1,
+    integrate_zookeeper=False,
+    deploy_from_charmhub=False,
+) -> str:
+    deploy_args = {
+        "application_name": APP_NAME,
+        "num_units": num_units,
+        "channel": "edge",
+        "series": "jammy",
+        "trust": trust,
+    }
+    if not deploy_from_charmhub:
+        image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+        resources = {"kyuubi-image": image_version}
+        logger.info(f"Image version: {image_version}")
+
+        deploy_args.update({"resources": resources})
+
+    # Deploy the Kyuubi charm and wait
+    logger.info("Deploying kyuubi-k8s charm...")
+    await ops_test.model.deploy(kyuubi_charm, **deploy_args)
+    logger.info("Waiting for kyuubi-k8s app to be settle...")
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked")
+    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
+
+    # Set Kyuubi config options and wait
+    logger.info("Setting configuration for kyuubi-k8s charm...")
+    namespace = ops_test.model.name
+    username = "kyuubi-spark-engine"
+    await ops_test.model.applications[APP_NAME].set_config(
+        {"namespace": namespace, "service-account": username}
+    )
+    logger.info("Waiting for kyuubi-k8s app to settle...")
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", idle_period=20)
+    assert check_status(
+        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
+    )
+
+    # Deploy the S3 Integrator charm and wait
+    logger.info("Deploying s3-integrator charm...")
+    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
+    logger.info("Waiting for s3-integrator app to be idle...")
+    await ops_test.model.wait_for_idle(apps=[charm_versions.s3.application_name])
+
+    # Receive S3 params from fixture, apply them and wait
+    endpoint_url = s3_bucket_and_creds["endpoint"]
+    access_key = s3_bucket_and_creds["access_key"]
+    secret_key = s3_bucket_and_creds["secret_key"]
+    bucket_name = s3_bucket_and_creds["bucket"]
+    path = s3_bucket_and_creds["path"]
+    logger.info("Setting up s3 credentials in s3-integrator charm")
+    s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
+    action = await s3_integrator_unit.run_action(
+        action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
+    )
+    await action.wait()
+    logger.info("Setting configuration for s3-integrator charm...")
+    await ops_test.model.applications[charm_versions.s3.application_name].set_config(
+        {
+            "bucket": bucket_name,
+            "path": path,
+            "endpoint": endpoint_url,
+        }
+    )
+    logger.info("Waiting for s3-integrator app to be idle and active...")
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[charm_versions.s3.application_name], status="active"
+        )
+
+    # Deploy the integration hub charm and wait
+    logger.info("Deploying integration-hub charm...")
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
+    logger.info("Waiting for integration_hub and s3-integrator app to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
+        status="active",
+    )
+
+    # Integrate integration hub with S3 integrator and wait
+    logger.info("Integrating integration-hub charm with s3-integrator charm...")
+    await ops_test.model.integrate(
+        charm_versions.s3.application_name, charm_versions.integration_hub.application_name
+    )
+    logger.info("Waiting for s3-integrator and integration-hub charms to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[
+            charm_versions.integration_hub.application_name,
+            charm_versions.s3.application_name,
+        ],
+        status="active",
+    )
+
+    # Add configuration key to prevent resource starvation during tests
+    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+    action = await unit.run_action(
+        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+    )
+    _ = await action.wait()
+
+    # Integrate Kyuubi with Integration Hub and wait
+    logger.info("Integrating kyuubi charm with integration-hub charm...")
+    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
+    logger.info("Waiting for s3-integrator and integration_hub charms to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[
+            charm_versions.integration_hub.application_name,
+            charm_versions.s3.application_name,
+        ],
+        idle_period=20,
+        status="active",
+    )
+    logger.info("Waiting for kyuubi charm to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[
+            APP_NAME,
+        ],
+        idle_period=20,
+    )
+
+    if integrate_zookeeper:
+        # Deploy Zookeeper and wait
+        await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
+        logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
+        await ops_test.model.wait_for_idle(
+            apps=[charm_versions.zookeeper.application_name], idle_period=20, status="active"
+        )
+
+        # Integrate Kyuubi with Zookeeper and wait
+        logger.info("Integrating kyuubi charm with zookeeper charm...")
+        await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)
+        logger.info(
+            "Waiting for s3-integrator, integration_hub and zookeeper to be idle and active..."
+        )
+        await ops_test.model.wait_for_idle(
+            apps=[
+                charm_versions.integration_hub.application_name,
+                charm_versions.zookeeper.application_name,
+                charm_versions.s3.application_name,
+            ],
+            idle_period=20,
+            status="active",
+        )
+        logger.info("Waiting for Kyuubi charm to be idle...")
+        await ops_test.model.wait_for_idle(
+            apps=[
+                APP_NAME,
+            ],
+            idle_period=20,
+        )
+
+    logger.info("Successfully deployed minimal working Kyuubi setup.")
+
+
+def get_k8s_service(namespace: str, service_name: str):
+    client = lightkube.Client()
+    try:
+        service = client.get(
+            res=lightkube.resources.core_v1.Service,
+            name=service_name,
+            namespace=namespace,
+        )
+    except lightkube.core.exceptions.ApiError as e:
+        if e.status.code == 404:
+            return None
+        raise
+
+    return service

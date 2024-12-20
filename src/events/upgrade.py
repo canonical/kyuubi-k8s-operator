@@ -48,7 +48,7 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload)
+        self.kyuubi = KyuubiManager(self.workload, self.context)
         self.framework.observe(
             getattr(self.charm.on, "upgrade_charm"), self._on_kyuubi_pebble_ready_upgrade
         )
@@ -72,13 +72,7 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
             )
 
         # re-initialise + replan pebble layer if no service, or service not running
-        self.kyuubi.update(
-            s3_info=self.context.s3,
-            metastore_db_info=self.context.metastore_db,
-            auth_db_info=self.context.auth_db,
-            service_account_info=self.context.service_account,
-            zookeeper_info=self.context.zookeeper,
-        )
+        self.kyuubi.update()
 
         # check if upgrade is successful and set unit upgrade status
         try:
