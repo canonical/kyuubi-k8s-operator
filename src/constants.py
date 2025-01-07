@@ -45,14 +45,3 @@ DEPENDENCIES = {
         "version": "1.9",
     },
 }
-
-SECRETS_UNIT = [
-    "ca-cert",
-    "csr",
-    "certificate",
-    "truststore-password",
-    "keystore-password",
-    "private-key",
-]
-
-SECRETS_APP = []

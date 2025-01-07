@@ -22,7 +22,6 @@ from constants import (
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
     S3_INTEGRATOR_REL,
-    SECRETS_UNIT,
     SPARK_SERVICE_ACCOUNT_REL,
     TLS_REL,
     ZOOKEEPER_REL,
@@ -38,6 +37,15 @@ from core.domain import (
     ZookeeperInfo,
 )
 from utils.logging import WithLogging
+
+SECRETS_UNIT = [
+    "ca-cert",
+    "csr",
+    "certificate",
+    "truststore-password",
+    "keystore-password",
+    "private-key",
+]
 
 
 class Context(WithLogging):

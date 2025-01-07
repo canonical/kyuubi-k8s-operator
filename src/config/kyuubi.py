@@ -5,8 +5,6 @@
 
 """Kyuubi workload configurations."""
 
-from typing import Optional
-
 from constants import AUTHENTICATION_TABLE_NAME
 from core.domain import DatabaseConnectionInfo, TLSInfo, ZookeeperInfo
 from core.workload import KyuubiWorkloadBase
@@ -18,14 +16,14 @@ class KyuubiConfig(WithLogging):
 
     def __init__(
         self,
-        db_info: Optional[DatabaseConnectionInfo],
-        zookeeper_info: Optional[ZookeeperInfo],
-        tls: Optional[TLSInfo],
+        db_info: DatabaseConnectionInfo | None,
+        zookeeper_info: ZookeeperInfo | None,
+        tls_info: TLSInfo | None,
         workload: KyuubiWorkloadBase,
     ):
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
-        self.tls = tls
+        self.tls = tls_info
         self.workload = workload
 
     def _get_db_connection_url(self) -> str:

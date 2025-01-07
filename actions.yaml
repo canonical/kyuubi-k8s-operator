@@ -26,7 +26,7 @@ resume-upgrade:
     Resume a rolling upgrade after asserting successful upgrade of a new revision.
 
 set-tls-private-key:
-  description: Set the privates key, which will be used for certificate signing requests (CSR). Run for each unit separately.
+  description: Set the private key, which will be used for certificate signing requests (CSR). Run for each unit separately.
   params:
     internal-key:
       type: string

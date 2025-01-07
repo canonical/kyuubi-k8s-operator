@@ -597,6 +597,8 @@ def get_k8s_service(namespace: str, service_name: str):
         raise
 
     return service
+
+
 async def run_command_in_pod(ops_test: OpsTest, pod_name: str, pod_command: List[str]) -> None:
     """Load certificate in the pod."""
     kubectl_command = [

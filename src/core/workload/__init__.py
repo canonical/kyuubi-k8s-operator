@@ -11,7 +11,7 @@ from common.workload import AbstractWorkload
 
 
 class KyuubiPaths:
-    """Object to store common paths for Kafka."""
+    """Object to store common paths for Kyuubi."""
 
     def __init__(
         self,

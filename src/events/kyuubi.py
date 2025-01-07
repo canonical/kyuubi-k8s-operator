@@ -8,7 +8,7 @@ from datetime import datetime
 
 import ops
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
-from ops import CharmBase, SecretChangedEvent
+from ops import SecretChangedEvent
 
 from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
 from core.context import Context
@@ -47,6 +47,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
 
         # Peer relation events
         self.framework.observe(

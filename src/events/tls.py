@@ -4,10 +4,8 @@
 
 """Event handler for related applications on the `certificates` relation interface."""
 import base64
-import logging
 import os
 import re
-from typing import TYPE_CHECKING
 
 from charms.tls_certificates_interface.v3.tls_certificates import (
     CertificateAvailableEvent,
@@ -25,13 +23,6 @@ from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from managers.tls import TLSManager
 from utils.logging import WithLogging
-
-# from literals import Status
-
-if TYPE_CHECKING:
-    pass
-
-logger = logging.getLogger(__name__)
 
 
 class TLSEvents(BaseEventHandler, WithLogging):
@@ -76,7 +67,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
     def _on_certificates_joined(self, event: RelationJoinedEvent) -> None:
         """Handler for `certificates_relation_joined` event."""
         if not self.context.cluster.tls:
-            logger.debug(
+            self.logger.debug(
                 "certificates relation joined - tls not enabled and not switching encryption - deferring"
             )
             event.defer()
@@ -113,11 +104,12 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.certificates.request_certificate_creation(certificate_signing_request=csr)
 
+    @compute_status
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
         # avoid setting tls files and restarting
         if event.certificate_signing_request != self.context.unit_server.csr:
-            logger.error("Can't use certificate, found unknown CSR")
+            self.logger.error("Can't use certificate, found unknown CSR")
             return
 
         self.context.unit_server.update(
@@ -137,7 +129,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
     def _on_certificate_expiring(self, _: EventBase) -> None:
         """Handler for `certificates_expiring` event when certs need renewing."""
         if not (self.context.unit_server.private_key or self.context.unit_server.csr):
-            logger.error("Missing unit private key and/or old csr")
+            self.logger.error("Missing unit private key and/or old csr")
             return
 
         subject = os.uname()[1]
@@ -174,7 +166,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update(set_tls_none=True)
 
     def _set_tls_private_key(self, event: ActionEvent) -> None:
-        """Handler for `set-tls-privat-key` event when user manually specifies private-keys for a unit."""
+        """Handler for `set-tls-private-key` event when user manually specifies private-keys for a unit."""
         key = event.params.get("internal-key") or generate_private_key().decode("utf-8")
         private_key = (
             key
