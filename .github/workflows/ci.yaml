@@ -11,32 +11,30 @@ on:
   workflow_call:
   pull_request:
   schedule:
-    - cron: '53 0 * * *' # Daily at 00:53 UTC
+    - cron: "53 0 * * *" # Daily at 00:53 UTC
 
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install tox
-        run: python3 -m pip install tox
+        run: pipx install tox
       - name: Run linters
         run: tox run -e lint
 
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install tox
-        run: python3 -m pip install tox
-      - name: Run tests
-        run: tox run -e format
+        run: pipx install tox
       - name: Run tests
         run: tox run -e unit
 
@@ -47,7 +45,7 @@ jobs:
         path:
           - .
           - tests/integration/app-charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.2
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v24.0.5
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: true
@@ -75,8 +73,8 @@ jobs:
       - name: Install Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
       - name: Get prefsrc
         run: |
           echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
@@ -99,8 +97,7 @@ jobs:
         run: |
           # Download image for avoiding time out
           IMAGE=$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
-          
-          docker pull $IMAGE 
+          docker pull $IMAGE
           docker save $IMAGE -o image.tar
           sudo microk8s ctr images import --base-name $IMAGE image.tar
           docker rmi $IMAGE

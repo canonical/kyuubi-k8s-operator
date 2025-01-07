@@ -19,36 +19,31 @@ markers = ["unstable"]
 line-length = 99
 target-version = ["py310"]
 
-[tool.isort]
-profile = "black"
-
 [tool.poetry]
 name = "kyuubi-k8s-operator"
 version = "1.0"
 description = "kyuubi-k8s-operator"
 authors = []
+package-mode = false
 
 [tool.poetry.dependencies]
-cosl = "^0.0.12"
-python = ">=3.8,<4.0"
+python = ">=3.10,<4.0"
 ops = ">=2.4.1"
-pydantic ="^1.10.7"
-pyyaml = "^6.0.1"
 boto3 = "^1.26.75"
-jsonschema = "^4.19.1"
 lightkube = "^0.15.2"
 psycopg2 = "^2.9.9"
 tenacity = ">=8.0.1"
-# FIXME: Unpin once rustc 1.76 is available at build time
-rpds-py = "<0.19"
-spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag="v0.0.7", python=">3.8,<4.0"}
-poetry-core = "^1.9.0"
+spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag = "v0.0.7", python = ">3.8,<4.0" }
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^2.13.0"
-poetry-core = "^1.9.0"
+poetry-core = "*"
 # grafana_agent/v0/cos_agent.py requires pydantic <2
 pydantic = "^1.10.17, <2"
+# grafana, loki, prometheus
+pyyaml = "^6.0.1"
+# prometheus, loki
+cosl = "^0.0.12"
 
 [tool.poetry.group.format]
 optional = true
@@ -71,8 +66,8 @@ optional = true
 [tool.poetry.group.unit.dependencies]
 pytest = ">=7.2"
 pytest-asyncio = ">0.20.0"
-coverage = {extras = ["toml"], version = ">7.0"}
-ops-scenario = "^6.0.2"
+coverage = { extras = ["toml"], version = ">7.0" }
+ops = { version = "^2.17.0", extras = ["testing"] }
 
 [tool.poetry.group.integration]
 optional = true
@@ -80,35 +75,45 @@ optional = true
 [tool.poetry.group.integration.dependencies]
 pytest = ">=7.2"
 juju = "^3.1.6"
-coverage = {extras = ["toml"], version = ">7.0"}
+coverage = { extras = ["toml"], version = ">7.0" }
 pytest-operator = ">0.20"
 boto3 = ">=1.28.0"
 tenacity = "^8.2.2"
-pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v6.1.1", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
-
+pytest-operator-cache = { git = "https://github.com/canonical/data-platform-workflows", tag = "v24.0.5", subdirectory = "python/pytest_plugins/pytest_operator_cache" }
 
 [tool.ruff]
 line-length = 99
-select = ["E", "W", "F", "C", "N", "D", "I001"]
-extend-ignore = [
-    "D203",
-    "D204",
-    "D213",
-    "D215",
-    "D400",
-    "D401",
-    "D404",
-    "D406",
-    "D407",
-    "D408",
-    "D409",
-    "D413",
-]
-ignore = ["E501", "D107"]
 extend-exclude = ["__pycache__", "*.egg_info"]
-per-file-ignores = {"tests/*" = ["D100","D101","D102","D103","D104", "E999"]}
-target-version="py310"
+target-version = "py310"
 src = ["src", "tests"]
 
-[tool.ruff.mccabe]
-max-complexity = 10
+[tool.ruff.lint]
+select = ["E", "W", "F", "C", "N", "D", "I001"]
+ignore = ["E501", "D107"]
+per-file-ignores = { "tests/*" = ["D100", "D101", "D102", "D103", "D104", "E999"], "src/literals.py" = ["D101"] }
+extend-ignore = [
+  "D203",
+  "D204",
+  "D213",
+  "D215",
+  "D400",
+  "D401",
+  "D404",
+  "D406",
+  "D407",
+  "D408",
+  "D409",
+  "D413",
+]
+mccabe.max-complexity = 10
+
+[tool.pyright]
+include = ["src"]
+extraPaths = ["./lib", "src"]
+pythonVersion = "3.10"
+pythonPlatform = "All"
+typeCheckingMode = "basic"
+reportIncompatibleMethodOverride = false
+reportImportCycles = false
+reportMissingModuleSource = true
+stubPath = ""

@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from unittest.mock import patch
 
-from scenario import Container, State
+from ops.testing import Container, Context, Relation, State
 
 from constants import KYUUBI_CONTAINER_NAME, KYUUBI_OCI_IMAGE
 from core.domain import Status
@@ -34,12 +34,12 @@ def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
         )
 
 
-def test_start_kyuubi(kyuubi_context):
+def test_start_kyuubi(kyuubi_context: Context) -> None:
     state = State(
         config={},
         containers=[Container(name=KYUUBI_CONTAINER_NAME, can_connect=False)],
     )
-    out = kyuubi_context.run("install", state)
+    out = kyuubi_context.run(kyuubi_context.on.install(), state)
     assert out.unit_status == Status.WAITING_PEBBLE.value
 
 
@@ -52,13 +52,13 @@ def test_pebble_ready(
     mock_get_master,
     mock_valid_sa,
     mock_valid_ns,
-    kyuubi_context,
-    kyuubi_container,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+) -> None:
     state = State(
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
     assert out.unit_status == Status.MISSING_INTEGRATION_HUB.value
 
 
@@ -73,15 +73,15 @@ def test_s3_relation_invalid_credentials(
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(s3_relation.changed_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
     assert out.unit_status == Status.INVALID_CREDENTIALS.value
 
 
@@ -97,15 +97,15 @@ def test_missing_integration_hub(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(s3_relation.changed_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
     assert out.unit_status == Status.MISSING_INTEGRATION_HUB.value
 
 
@@ -125,16 +125,18 @@ def test_insufficient_permissions(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(spark_service_account_relation.changed_event, state)
+    out = kyuubi_context.run(
+        kyuubi_context.on.relation_changed(spark_service_account_relation), state
+    )
     assert out.unit_status == Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value
 
 
@@ -155,16 +157,16 @@ def test_service_unavailable(
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run("config-changed", state)
+    out = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
     assert out.unit_status == Status.WAITING_FOR_SERVICE.value
 
 
@@ -189,16 +191,16 @@ def test_valid_on_s3(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(s3_relation.changed_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
     assert out.unit_status == Status.ACTIVE.value
 
     # Check containers modifications
@@ -234,16 +236,18 @@ def test_valid_on_service_account(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(spark_service_account_relation.changed_event, state)
+    out = kyuubi_context.run(
+        kyuubi_context.on.relation_changed(spark_service_account_relation), state
+    )
     assert out.unit_status == Status.ACTIVE.value
 
     # Check containers modifications
@@ -280,19 +284,21 @@ def test_object_storage_backend_removed(
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     initial_state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
 
-    state_after_relation_changed = kyuubi_context.run(s3_relation.changed_event, initial_state)
+    state_after_relation_changed = kyuubi_context.run(
+        kyuubi_context.on.relation_changed(s3_relation), initial_state
+    )
     state_after_relation_broken = kyuubi_context.run(
-        s3_relation.broken_event, state_after_relation_changed
+        kyuubi_context.on.relation_broken(s3_relation), state_after_relation_changed
     )
 
     assert state_after_relation_broken.unit_status == Status.MISSING_OBJECT_STORAGE_BACKEND.value
@@ -319,17 +325,17 @@ def test_zookeeper_relation_joined(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-    zookeeper_relation,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+    zookeeper_relation: Relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(zookeeper_relation.changed_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.relation_changed(zookeeper_relation), state)
     assert out.unit_status == Status.ACTIVE.value
 
     kyuubi_configurations = parse_kyuubi_configurations(tmp_path)
@@ -370,19 +376,21 @@ def test_zookeeper_relation_broken(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-    zookeeper_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+    zookeeper_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
-    state_after_relation_changed = kyuubi_context.run(zookeeper_relation.changed_event, state)
+    state_after_relation_changed = kyuubi_context.run(
+        kyuubi_context.on.relation_changed(zookeeper_relation), state
+    )
     state_after_relation_broken = kyuubi_context.run(
-        zookeeper_relation.broken_event, state_after_relation_changed
+        kyuubi_context.on.relation_broken(zookeeper_relation), state_after_relation_changed
     )
     assert state_after_relation_broken.unit_status == Status.ACTIVE.value
 
@@ -415,21 +423,22 @@ def test_spark_service_account_broken(
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     initial_state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
 
     state_after_relation_changed = kyuubi_context.run(
-        spark_service_account_relation.changed_event, initial_state
+        kyuubi_context.on.relation_changed(spark_service_account_relation), initial_state
     )
     state_after_relation_broken = kyuubi_context.run(
-        spark_service_account_relation.broken_event, state_after_relation_changed
+        kyuubi_context.on.relation_broken(spark_service_account_relation),
+        state_after_relation_changed,
     )
 
     assert state_after_relation_broken.unit_status == Status.MISSING_INTEGRATION_HUB.value
@@ -450,16 +459,16 @@ def test_invalid_namespace(
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
 ):
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
     assert out.unit_status == Status.INVALID_NAMESPACE.value
 
 
@@ -478,16 +487,16 @@ def test_invalid_service_account(
     mock_valid_sa,
     mock_valid_ns,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
     assert out.unit_status == Status.INVALID_SERVICE_ACCOUNT.value
 
 
@@ -508,16 +517,16 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
     mock_valid_ns,
     mock_planned_units,
     mock_s3_verify,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
-    spark_service_account_relation,
-):
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
+    spark_service_account_relation: Relation,
+) -> None:
     state = State(
         relations=[s3_relation, spark_service_account_relation],
         containers=[kyuubi_container],
     )
-    out = kyuubi_context.run(kyuubi_container.pebble_ready_event, state)
+    out = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
     assert out.unit_status == Status.MISSING_ZOOKEEPER.value
 
 
@@ -544,15 +553,15 @@ def test_spark_property_priorities(
     mock_valid_ns,
     mock_s3_verify,
     tmp_path,
-    kyuubi_context,
-    kyuubi_container,
-    s3_relation,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    s3_relation: Relation,
 ):
     state = State(
         relations=[s3_relation],
         containers=[kyuubi_container],
     )
-    kyuubi_context.run(s3_relation.changed_event, state)
+    kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
 
     spark_properties = parse_spark_properties(tmp_path)
 

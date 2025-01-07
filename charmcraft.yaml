@@ -5,12 +5,26 @@ type: charm
 
 parts:
   charm:
+    build-snaps:
+      - rustup
     build-packages:
-      - rustc
-      - cargo
-      - libpq-dev
       - git
-    charm-strict-dependencies: true 
+      - pkg-config
+      - libffi-dev
+      - libssl-dev
+      - libpq-dev
+    override-build: |
+      # get latest rust stable toolchain
+      rustup default stable
+
+      # Convert subset of poetry.lock to requirements.txt
+      curl -sSL https://install.python-poetry.org | python3 -
+      /root/.local/bin/poetry self add poetry-plugin-export
+      /root/.local/bin/poetry export --only main,charm-libs --output requirements.txt
+
+      craftctl default
+    charm-strict-dependencies: true
+    charm-requirements: [requirements.txt]
   libpq:
     build-packages:
       - libpq-dev
@@ -24,8 +38,8 @@ parts:
 
 bases:
   - build-on:
-    - name: ubuntu
-      channel: "22.04"
+      - name: ubuntu
+        channel: "22.04"
     run-on:
-    - name: ubuntu
-      channel: "22.04"
+      - name: ubuntu
+        channel: "22.04"
