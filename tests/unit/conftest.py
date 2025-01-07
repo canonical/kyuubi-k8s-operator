@@ -1,12 +1,12 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
 from ops import pebble
-from scenario import Container, Context, Model, Mount, Relation
-from scenario.state import next_relation_id
+from ops.testing import Container, Context, Model, Mount, Relation
 
 from charm import KyuubiCharm
 from constants import (
@@ -53,14 +53,14 @@ def kyuubi_container(tmp_path):
         }
     )
 
-    opt = Mount("/opt/", tmp_path)
-    etc = Mount("/etc", tmp_path)
+    opt = Mount(location="/opt/", source=tmp_path)
+    etc = Mount(location="/etc", source=tmp_path)
 
     return Container(
         name=KYUUBI_CONTAINER_NAME,
         can_connect=True,
         layers={"base": layer},
-        service_status={"kyuubi": pebble.ServiceStatus.ACTIVE},
+        service_statuses={"kyuubi": pebble.ServiceStatus.ACTIVE},
         mounts={"opt": opt, "etc": etc},
     )
 
@@ -68,13 +68,15 @@ def kyuubi_container(tmp_path):
 @pytest.fixture
 def s3_relation():
     """Provide fixture for the S3 relation."""
-    relation_id = next_relation_id(update=True)
-
-    return Relation(
+    relation = Relation(
         endpoint=S3_INTEGRATOR_REL,
         interface="s3",
         remote_app_name="s3-integrator",
-        relation_id=relation_id,
+    )
+    relation_id = relation.id
+
+    return replace(
+        relation,
         local_app_data={"bucket": f"relation-{relation_id}"},
         remote_app_data={
             "access-key": "access-key",
@@ -90,13 +92,10 @@ def s3_relation():
 @pytest.fixture
 def spark_service_account_relation():
     """Provide fixture for the S3 relation."""
-    relation_id = next_relation_id(update=True)
-
     return Relation(
         endpoint=SPARK_SERVICE_ACCOUNT_REL,
         interface="spark-service-account",
         remote_app_name="integration-hub",
-        relation_id=relation_id,
         local_app_data={"service-account": "kyuubi", "namespace": "spark"},
         remote_app_data={"service-account": "kyuubi", "namespace": "spark"},
     )
@@ -105,13 +104,10 @@ def spark_service_account_relation():
 @pytest.fixture
 def zookeeper_relation():
     """Provide fixture for the Zookeeper relation."""
-    relation_id = next_relation_id(update=True)
-
     return Relation(
         endpoint=ZOOKEEPER_REL,
         interface="zookeeper",
         remote_app_name="zookeeper-k8s",
-        relation_id=relation_id,
         local_app_data={"database": "/kyuubi"},
         remote_app_data={
             "uris": "host1:2181,host2:2181,host3:2181",
