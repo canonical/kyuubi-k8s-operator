@@ -77,7 +77,7 @@ class KyuubiManager(WithLogging):
                         tls_info=tls_info,
                         workload=self.workload,
                     ).contents,
-                    self.workload.paths.spark_properties,
+                    self.workload.paths.kyuubi_properties,
                 ),
             ]
         ):
