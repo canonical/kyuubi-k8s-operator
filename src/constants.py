@@ -45,3 +45,5 @@ DEPENDENCIES = {
         "version": "1.9",
     },
 }
+
+SECRETS_APP = []

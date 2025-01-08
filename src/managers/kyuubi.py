@@ -74,7 +74,7 @@ class KyuubiManager(WithLogging):
                     KyuubiConfig(
                         db_info=auth_db_info,
                         zookeeper_info=zookeeper_info,
-                        tls=tls_info,
+                        tls_info=tls_info,
                         workload=self.workload,
                     ).contents,
                     self.workload.paths.spark_properties,
