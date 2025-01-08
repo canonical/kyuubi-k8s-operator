@@ -87,7 +87,7 @@ class ServiceManager(WithLogging):
 
         return service
 
-    def get_service_endpoint(self, expose_external: str):
+    def get_service_endpoint(self):
         """Returns the endpoint that can be used to connect to the service."""
         service = self.get_service()
         if not service:
@@ -227,3 +227,22 @@ class ServiceManager(WithLogging):
             if addresses.type in ["ExternalIP", "InternalIP", "Hostname"]:
                 return addresses.address
         return ""
+
+    def get_loadbalancer(self) -> str:
+        """Gets the LoadBalancer address for the service via the K8s API."""
+        if not (service := self.get_service()):
+            raise Exception("Unable to find Service")
+
+        if (
+            not service.status
+            or not (lb_status := service.status.loadBalancer)
+            or not lb_status.ingress
+        ):
+            raise Exception("Could not find Service status or LoadBalancer")
+
+        lb: lightkube.models.core_v1.LoadBalancerIngress
+        for lb in lb_status.ingress:
+            if lb.ip is not None:
+                return lb.ip
+
+        raise Exception(f"Unable to find LoadBalancer ingress for the {service} service")

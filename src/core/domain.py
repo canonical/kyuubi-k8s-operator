@@ -378,6 +378,11 @@ class KyuubiServer(RelationState):
         return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
 
     @property
+    def external_address(self) -> str:
+        """The external address for the unit, for external communication."""
+        return self.k8s.get_service_endpoint()
+
+    @property
     def pod_name(self) -> str:
         """The name of the K8s Pod for the unit.
 
@@ -399,8 +404,7 @@ class KyuubiServer(RelationState):
 
         K8s-only.
         """
-        # TODO fix when external access is merged.
-        return ""
+        return self.k8s.get_loadbalancer()
 
 
 class KyuubiCluster(RelationState):

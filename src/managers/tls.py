@@ -28,13 +28,22 @@ class TLSManager:
         sans_ip = [str(self.context.bind_address)]
         if node_ip := self.context.unit_server.node_ip:
             sans_ip.append(node_ip)
-        # TODO add loadbalancer ip when external access is merged. A retry logic with tenacity will be needed.
+        try:
+            sans_ip.append(self.context.unit_server.loadbalancer_ip)
+        except Exception:
+            pass
+        logger.info(
+            f"Dns: {self.context.unit_server.internal_address.split('.')[0]} , {self.context.unit_server.internal_address},{self.context.unit_server.external_address}"
+        )
         return SANs(
             sans_ip=sorted(sans_ip),
             sans_dns=sorted(
                 [
                     self.context.unit_server.internal_address.split(".")[0],
                     self.context.unit_server.internal_address,
+                    self.context.unit_server.external_address,
+                    # self.context.unit_server.external_address.split("//")[1],
+                    self.context.unit_server.external_address.split(":")[0],
                     socket.getfqdn(),
                 ]
             ),
@@ -47,6 +56,7 @@ class TLSManager:
 
         command = ["openssl", "x509", "-noout", "-ext", "subjectAltName", "-in", "server.pem"]
         try:
+            logger.debug(f"c: {' '.join(command)} wd: {self.workload.paths.conf_path}")
             sans_lines = self.workload.exec(
                 command=" ".join(command), working_dir=self.workload.paths.conf_path
             ).splitlines()

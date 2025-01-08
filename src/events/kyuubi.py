@@ -76,9 +76,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update()
 
         # Check the newly created service is connectable
-        if not self.service_manager.get_service_endpoint(
-            expose_external=self.charm.config.expose_external
-        ):
+        if not self.service_manager.get_service_endpoint():
             self.logger.info(
                 "Managed K8s service is not available yet; deferring config-changed event now..."
             )
