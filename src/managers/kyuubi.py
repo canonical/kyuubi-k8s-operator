@@ -48,6 +48,7 @@ class KyuubiManager(WithLogging):
         set_service_account_none: bool = False,
         set_zookeeper_none: bool = False,
         set_tls_none: bool = False,
+        force_restart: bool = False,
     ):
         """Update Kyuubi service and restart it."""
         s3_info = None if set_s3_none else self.context.s3
@@ -79,6 +80,7 @@ class KyuubiManager(WithLogging):
                     ).contents,
                     self.workload.paths.kyuubi_properties,
                 ),
+                force_restart,
             ]
         ):
             self.workload.restart()

@@ -42,7 +42,6 @@ class TLSManager:
                     self.context.unit_server.internal_address.split(".")[0],
                     self.context.unit_server.internal_address,
                     self.context.unit_server.external_address,
-                    # self.context.unit_server.external_address.split("//")[1],
                     self.context.unit_server.external_address.split(":")[0],
                     socket.getfqdn(),
                 ]
@@ -58,18 +57,19 @@ class TLSManager:
         try:
             logger.debug(f"c: {' '.join(command)} wd: {self.workload.paths.conf_path}")
             sans_lines = self.workload.exec(
-                command=" ".join(command), working_dir=self.workload.paths.conf_path
+                command=" ".join(command), working_dir=str(self.workload.paths.conf_path)
             ).splitlines()
         except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
             logger.error(e.stdout)
             raise e
+        logger.info(f"sans line: {sans_lines}")
         for line in sans_lines:
             if "DNS" in line and "IP" in line:
                 break
         sans_ip = []
         sans_dns = []
         for item in line.split(", "):
-            san_type, san_value = item.split(":")
+            san_type, san_value = item.split(":", maxsplit=1)
             if san_type.strip() == "DNS":
                 sans_dns.append(san_value)
             if san_type.strip() == "IP Address":

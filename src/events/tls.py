@@ -123,7 +123,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.tls_manager.set_truststore()
         self.tls_manager.set_p12_keystore()
 
-        self.kyuubi.update()
+        self.kyuubi.update(force_restart=True)
 
     @compute_status
     def _on_certificate_expiring(self, _: EventBase) -> None:

@@ -47,7 +47,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
-        self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
+        # self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
 
         # Peer relation events
         self.framework.observe(
