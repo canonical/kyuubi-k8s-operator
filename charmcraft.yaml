@@ -23,7 +23,7 @@ parts:
       /root/.local/bin/poetry export --only main,charm-libs --output requirements.txt
 
       craftctl default
-    charm-strict-dependencies: true
+    charm-strict-dependencies: false
     charm-requirements: [requirements.txt]
   libpq:
     build-packages:
