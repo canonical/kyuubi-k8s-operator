@@ -22,7 +22,7 @@ from utils.logging import WithLogging
 
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
-    """Class implementing Kyuubih related event hooks."""
+    """Class implementing Kyuubi related event hooks."""
 
     def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
         super().__init__(charm, "kyuubi")
@@ -41,13 +41,11 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         self.tls_manager = TLSManager(context=self.context, workload=self.workload)
 
-        # self.tls_events = TLSEvents(self.charm, self.context, self.workload)
-
         self.framework.observe(self.charm.on.install, self._on_install)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
-        # self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
+        self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
 
         # Peer relation events
         self.framework.observe(
@@ -86,6 +84,41 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.logger.info(
             "Managed K8s service is available; completed handling config-changed event."
         )
+
+        self.check_if_certificate_needs_reload()
+
+    def check_if_certificate_needs_reload(self):
+        """Handle if the certificate needs to be generated again due to change in the sans."""
+        # update sans of the certificate if needed
+        current_sans = self.tls_manager.get_current_sans()
+
+        current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
+        expected_sans_ip = set(self.tls_manager.build_sans().sans_ip) if current_sans else set()
+        sans_ip_changed = current_sans_ip ^ expected_sans_ip
+
+        current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
+        expected_sans_dns = set(self.tls_manager.build_sans().sans_dns) if current_sans else set()
+        sans_dns_changed = current_sans_dns ^ expected_sans_dns
+        # TODO properly test this function when external access is merged.
+        if sans_ip_changed or sans_dns_changed:
+            self.logger.info(
+                (
+                    f'SERVER {self.charm.unit.name.split("/")[1]} updating certificate SANs - '
+                    f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
+                    f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
+                    f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
+                    f"NEW SANs DNS = {expected_sans_dns - current_sans_dns}"
+                )
+            )
+            self.charm.tls_events.certificates.on.certificate_expiring.emit(  # type: ignore
+                certificate=self.context.unit_server.certificate,
+                expiry=datetime.now().isoformat(),
+            )  # new cert will eventually be dynamically loaded by the server
+            self.context.unit_server.update(
+                {"certificate": ""}
+            )  # ensures only single requested new certs, will be replaced on new certificate-available event
+
+            return  # early return here to ensure new node cert arrives before updating the clients
 
     @compute_status
     def _update_event(self, event):
@@ -135,33 +168,5 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     def _on_peer_relation_changed(self, event: ops.RelationDepartedEvent):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")
-
-        current_sans = self.tls_manager.get_current_sans()
-
-        current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
-        expected_sans_ip = set(self.tls_manager.build_sans().sans_ip) if current_sans else set()
-        sans_ip_changed = current_sans_ip ^ expected_sans_ip
-
-        current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
-        expected_sans_dns = set(self.tls_manager.build_sans().sans_dns) if current_sans else set()
-        sans_dns_changed = current_sans_dns ^ expected_sans_dns
-        # TODO properly test this function when external access is merged.
-        if sans_ip_changed or sans_dns_changed:
-            self.logger.info(
-                (
-                    f'SERVER {self.charm.unit.name.split("/")[1]} updating certificate SANs - '
-                    f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
-                    f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
-                    f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
-                    f"NEW SANs DNS = {expected_sans_dns - current_sans_dns}"
-                )
-            )
-            self.charm.tls_events.certificates.on.certificate_expiring.emit(  # type: ignore
-                certificate=self.context.unit_server.certificate,
-                expiry=datetime.now().isoformat(),
-            )  # new cert will eventually be dynamically loaded by the server
-            self.context.unit_server.update(
-                {"certificate": ""}
-            )  # ensures only single requested new certs, will be replaced on new certificate-available event
-
-            return  # early return here to ensure new node cert arrives before updating the clients
+        # check if certificate need to be reloaded
+        self.check_if_certificate_needs_reload()
