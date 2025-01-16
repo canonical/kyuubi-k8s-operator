@@ -7,7 +7,6 @@
 
 from constants import AUTHENTICATION_TABLE_NAME
 from core.domain import DatabaseConnectionInfo, TLSInfo, ZookeeperInfo
-from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
 
@@ -19,12 +18,12 @@ class KyuubiConfig(WithLogging):
         db_info: DatabaseConnectionInfo | None,
         zookeeper_info: ZookeeperInfo | None,
         tls_info: TLSInfo | None,
-        workload: KyuubiWorkloadBase,
+        keystore_path: str,
     ):
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
         self.tls = tls_info
-        self.workload = workload
+        self.keystore_path = keystore_path
 
     def _get_db_connection_url(self) -> str:
         endpoint = self.db_info.endpoint
@@ -74,12 +73,12 @@ class KyuubiConfig(WithLogging):
             return {}
         return {
             "kyuubi.frontend.ssl.keystore.password": self.tls.keystore_password,
-            "kyuubi.frontend.ssl.keystore.path": self.workload.paths.keystore,
+            "kyuubi.frontend.ssl.keystore.path": self.keystore_path,
             "kyuubi.frontend.ssl.keystore.type": "PKCS12",
             "kyuubi.frontend.thrift.binary.ssl.enabled": "true",
             # enable thrift http frontend with certificate
             "kyuubi.frontend.thrift.http.ssl.keystore.password": self.tls.keystore_password,
-            "kyuubi.frontend.thrift.http.ssl.keystore.path": self.workload.paths.keystore,
+            "kyuubi.frontend.thrift.http.ssl.keystore.path": self.keystore_path,
             "kyuubi.frontend.thrift.http.use.SSL": "true",
         }
 

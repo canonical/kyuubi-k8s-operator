@@ -147,6 +147,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     assert "TLSv1.3" in response
     assert "CN = kyuubi" in response
 
+    # TODO when the credentials will be shared with a proper interface the certificate should be passed to the data-integrator.
     # get issued certificates
     logger.info("Get certificate from self-signed certificate operator")
     self_signed_certificate_unit = ops_test.model.applications[

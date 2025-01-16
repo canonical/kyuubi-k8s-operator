@@ -32,9 +32,7 @@ class TLSManager:
             sans_ip.append(self.context.unit_server.loadbalancer_ip)
         except Exception:
             pass
-        logger.info(
-            f"Dns: {self.context.unit_server.internal_address.split('.')[0]} , {self.context.unit_server.internal_address},{self.context.unit_server.external_address}"
-        )
+
         return SANs(
             sans_ip=sorted(sans_ip),
             sans_dns=sorted(
@@ -55,7 +53,6 @@ class TLSManager:
 
         command = ["openssl", "x509", "-noout", "-ext", "subjectAltName", "-in", "server.pem"]
         try:
-            logger.debug(f"c: {' '.join(command)} wd: {self.workload.paths.conf_path}")
             sans_lines = self.workload.exec(
                 command=" ".join(command), working_dir=str(self.workload.paths.conf_path)
             ).splitlines()
