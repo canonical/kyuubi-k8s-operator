@@ -31,7 +31,7 @@ python = ">=3.10,<4.0"
 ops = ">=2.4.1"
 boto3 = "^1.26.75"
 lightkube = "^0.15.2"
-psycopg2-binary = "^2.9.9"
+psycopg2 = "^2.9.9"
 tenacity = ">=8.0.1"
 spark8t = { git = "https://github.com/canonical/spark-k8s-toolkit-py.git", tag = "v0.0.7", python = ">3.8,<4.0" }
 cryptography = ">42.0.5"
