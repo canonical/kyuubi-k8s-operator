@@ -5,6 +5,8 @@
 """Module containing all business logic related to the workload."""
 
 import re
+import secrets
+import string
 
 import ops.pebble
 from ops.model import Container
@@ -15,8 +17,12 @@ from constants import (
     KYUUBI_SERVICE_NAME,
 )
 from core.domain import User
-from core.workload import KyuubiWorkloadBase
+from core.workload import KyuubiPaths, KyuubiWorkloadBase
 from utils.logging import WithLogging
+
+KYUUBI_CONF_PATH = "/opt/kyuubi/conf"
+SPARK_CONF_PATH = "/etc/spark8t/conf"
+KYUUBI_ROOT = "/opt/kyuubi"
 
 
 class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
@@ -25,6 +31,12 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def __init__(self, container: Container, user: User = User()):
         self.container = container
         self.user = user
+        self.paths = KyuubiPaths(
+            conf_path=KYUUBI_CONF_PATH,
+            spark_conf_path=SPARK_CONF_PATH,
+            kyuubi_root=KYUUBI_CONF_PATH,
+            keytool="keytool",
+        )
 
     @property
     def _kyuubi_server_layer(self):
@@ -46,9 +58,9 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         self.logger.info("Kyuubi is starting.")
         self.logger.info(f"Pebble services: {services}")
 
-        if not self.exists(self.SPARK_PROPERTIES_FILE):
-            self.logger.error(f"{self.SPARK_PROPERTIES_FILE} not found")
-            raise FileNotFoundError(self.SPARK_PROPERTIES_FILE)
+        if not self.exists(self.paths.spark_properties):
+            self.logger.error(f"{self.paths.spark_properties} not found")
+            raise FileNotFoundError(self.paths.spark_properties)
 
         if services[KYUUBI_SERVICE_NAME].startup != "enabled":
             self.logger.info("Adding kyuubi pebble layer...")
@@ -79,8 +91,16 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
     def kyuubi_version(self):
         """Return the version of Kyuubi."""
         version_pattern = r"Kyuubi (?P<version>[\d\.]+)"
-        for line in self.read(self.KYUUBI_VERSION_FILE).splitlines():
+        for line in self.read(self.paths.kyuubi_version_file).splitlines():
             version = re.search(version_pattern, line)
             if version:
                 return version.group("version")
         return ""
+
+    def generate_password(self) -> str:
+        """Creates randomized string for use as app passwords.
+
+        Returns:
+            String of 32 randomized letter+digit characters
+        """
+        return "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(32)])

@@ -31,6 +31,7 @@ from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.s3 import S3Events
+from events.tls import TLSEvents
 from events.upgrade import KyuubiDependencyModel, UpgradeEvents
 from events.zookeeper import ZookeeperEvents
 
@@ -63,7 +64,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.action_events = ActionEvents(self, self.context, self.workload)
         self.upgrade_events = UpgradeEvents(self, self.context, self.workload, KyuubiDependencyModel(**DEPENDENCIES))  # type: ignore
-
+        self.tls_events = TLSEvents(self, self.context, self.workload)
         # Monitoring/alerting (COS)
         # Prometheus
         self.metrics_endpoint = MetricsEndpointProvider(

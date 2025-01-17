@@ -49,9 +49,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
             event.fail("The action failed because the charm is not in active state.")
             return
 
-        address = self.service_manager.get_service_endpoint(
-            expose_external=self.charm.config.expose_external
-        )
+        address = self.service_manager.get_service_endpoint()
         if not address:
             event.fail(
                 "The action failed because the Kubernetes service is not available at the moment."

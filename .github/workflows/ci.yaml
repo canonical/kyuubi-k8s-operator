@@ -48,7 +48,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v24.0.5
     with:
       path-to-charm-directory: ${{ matrix.path }}
-      cache: true
+      cache: false
 
   integration-test:
     strategy:
@@ -58,8 +58,9 @@ jobs:
           - integration-charm
           - integration-trust
           - integration-ha
-          # - integration-upgrade
           - integration-external-access
+          - integration-upgrade
+          - integration-tls
     name: ${{ matrix.tox-environments }}
     needs:
       - lint

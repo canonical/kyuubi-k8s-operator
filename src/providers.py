@@ -75,9 +75,7 @@ class KyuubiClientProvider(Object):
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
 
-            kyuubi_address = service_manager.get_service_endpoint(
-                expose_external=self.charm.config.expose_external
-            )
+            kyuubi_address = service_manager.get_service_endpoint()
             endpoint = f"jdbc:hive2://{kyuubi_address}/" if kyuubi_address else ""
 
             # Set the JDBC endpoint.

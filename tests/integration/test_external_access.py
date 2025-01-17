@@ -12,10 +12,10 @@ from juju.errors import JujuUnitError
 from core.domain import Status
 
 from .helpers import (
+    assert_service_status,
     check_status,
     deploy_minimal_kyuubi_setup,
     fetch_jdbc_endpoint,
-    get_k8s_service,
     is_entire_cluster_responding_requests,
     run_sql_test_against_jdbc_endpoint,
 )
@@ -26,35 +26,6 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
-JDBC_PORT = 10009
-JDBC_PORT_NAME = "kyuubi-jdbc"
-NODEPORT_MIN_VALUE = 30000
-NODEPORT_MAX_VALUE = 32767
-
-
-def assert_service_status(
-    namespace,
-    service_type,
-):
-    """Utility function to check status of managed K8s service created by Kyuubi charm."""
-    service_name = f"{APP_NAME}-service"
-    service = get_k8s_service(namespace=namespace, service_name=service_name)
-    logger.info(f"{service=}")
-
-    assert service is not None
-
-    service_spec = service.spec
-    assert service_type == service_spec.type
-    assert service_spec.selector == {"app.kubernetes.io/name": APP_NAME}
-
-    service_port = service_spec.ports[0]
-    assert service_port.port == JDBC_PORT
-    assert service_port.targetPort == JDBC_PORT
-    assert service_port.name == JDBC_PORT_NAME
-    assert service_port.protocol == "TCP"
-
-    if service_type in ("NodePort", "LoadBalancer"):
-        assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
 
 
 @pytest.mark.abort_on_fail

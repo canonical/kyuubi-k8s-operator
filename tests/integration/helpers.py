@@ -1,11 +1,14 @@
 import datetime
 import json
 import logging
+import os
 import re
 import subprocess
 import uuid
 from pathlib import Path
 from subprocess import PIPE, check_output
+from tempfile import NamedTemporaryFile
+from typing import List
 
 import lightkube
 import requests
@@ -29,6 +32,11 @@ ZOOKEEPER_PORT = 2181
 
 PROCESS_NAME_PATTERN = "org.apache.kyuubi.server.KyuubiServer"
 KYUUBI_CONTAINER_NAME = "kyuubi"
+
+NODEPORT_MIN_VALUE = 30000
+NODEPORT_MAX_VALUE = 32767
+JDBC_PORT = 10009
+JDBC_PORT_NAME = "kyuubi-jdbc"
 
 
 def get_random_name():
@@ -594,3 +602,56 @@ def get_k8s_service(namespace: str, service_name: str):
         raise
 
     return service
+
+
+async def run_command_in_pod(ops_test: OpsTest, pod_name: str, pod_command: List[str]) -> None:
+    """Load certificate in the pod."""
+    kubectl_command = [
+        "kubectl",
+        "exec",
+        pod_name,
+        "-c",
+        "kyuubi",
+        "-n",
+        ops_test.model_name,
+        "--",
+        *pod_command,
+    ]
+    process = subprocess.run(kubectl_command, capture_output=True, check=True)
+    logger.info(process.stdout.decode())
+    logger.info(process.stderr.decode())
+    assert process.returncode == 0
+
+
+def umask_named_temporary_file(*args, **kargs):
+    """Return a temporary file descriptor readable by all users."""
+    file_desc = NamedTemporaryFile(*args, **kargs)
+    mask = os.umask(0o666)
+    os.umask(mask)
+    os.chmod(file_desc.name, 0o666 & ~mask)
+    return file_desc
+
+
+def assert_service_status(
+    namespace,
+    service_type,
+):
+    """Utility function to check status of managed K8s service created by Kyuubi charm."""
+    service_name = f"{APP_NAME}-service"
+    service = get_k8s_service(namespace=namespace, service_name=service_name)
+    logger.info(f"{service=}")
+
+    assert service is not None
+
+    service_spec = service.spec
+    assert service_type == service_spec.type
+    assert service_spec.selector == {"app.kubernetes.io/name": APP_NAME}
+
+    service_port = service_spec.ports[0]
+    assert service_port.port == JDBC_PORT
+    assert service_port.targetPort == JDBC_PORT
+    assert service_port.name == JDBC_PORT_NAME
+    assert service_port.protocol == "TCP"
+
+    if service_type in ("NodePort", "LoadBalancer"):
+        assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
