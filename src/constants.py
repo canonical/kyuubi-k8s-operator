@@ -14,7 +14,7 @@ POSTGRESQL_DEFAULT_DATABASE = "postgres"
 
 # Relation names
 PEER_REL = "kyuubi-peers"
-S3_INTEGRATOR_REL = "s3-credentials"
+# S3_INTEGRATOR_REL = "s3-credentials"
 POSTGRESQL_METASTORE_DB_REL = "metastore-db"
 POSTGRESQL_AUTH_DB_REL = "auth-db"
 SPARK_SERVICE_ACCOUNT_REL = "spark-service-account"

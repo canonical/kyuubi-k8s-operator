@@ -14,14 +14,13 @@ from constants import (
     METASTORE_DATABASE_NAME,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
-    S3_INTEGRATOR_REL,
+    # S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
 )
 from core.config import CharmConfig
 from core.domain import (
     DatabaseConnectionInfo,
-    S3ConnectionInfo,
     SparkServiceAccountInfo,
     ZookeeperInfo,
 )
@@ -49,10 +48,10 @@ class Context(WithLogging):
             database_name=HA_ZNODE_NAME,
         )
 
-    @property
-    def _s3_relation(self) -> Relation | None:
-        """The S3 relation."""
-        return self.model.get_relation(S3_INTEGRATOR_REL)
+    # @property
+    # def _s3_relation(self) -> Relation | None:
+    #     """The S3 relation."""
+    #     return self.model.get_relation(S3_INTEGRATOR_REL)
 
     @property
     def _spark_account_relation(self) -> Relation | None:
@@ -66,10 +65,10 @@ class Context(WithLogging):
 
     # --- DOMAIN OBJECTS ---
 
-    @property
-    def s3(self) -> S3ConnectionInfo | None:
-        """The state of S3 connection."""
-        return S3ConnectionInfo(rel, rel.app) if (rel := self._s3_relation) else None
+    # @property
+    # def s3(self) -> S3ConnectionInfo | None:
+    #     """The state of S3 connection."""
+    #     return S3ConnectionInfo(rel, rel.app) if (rel := self._s3_relation) else None
 
     @property
     def metastore_db(self) -> DatabaseConnectionInfo | None:

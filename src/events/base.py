@@ -14,7 +14,8 @@ from core.context import Context
 from core.domain import Status
 from core.workload import KyuubiWorkloadBase
 from managers.k8s import K8sManager
-from managers.s3 import S3Manager
+
+# from managers.s3 import S3Manager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
 
@@ -33,10 +34,10 @@ class BaseEventHandler(Object, WithLogging):
         if not self.workload.ready():
             return Status.WAITING_PEBBLE.value
 
-        if self.context.s3:
-            s3_manager = S3Manager(s3_info=self.context.s3)
-            if not s3_manager.verify():
-                return Status.INVALID_CREDENTIALS.value
+        # if self.context.s3:
+        #     s3_manager = S3Manager(s3_info=self.context.s3)
+        #     if not s3_manager.verify():
+        #         return Status.INVALID_CREDENTIALS.value
 
         if not self.context.service_account:
             return Status.MISSING_INTEGRATION_HUB.value
@@ -52,8 +53,8 @@ class BaseEventHandler(Object, WithLogging):
         # Currently, we do this check on the basis of presence of Spark properties
         # TODO: Rethink on this approach with a more sturdy solution
         if (
-            not self.context.s3
-            and not k8s_manager.is_s3_configured()
+            # not self.context.s3 and
+            not k8s_manager.is_s3_configured()
             and not k8s_manager.is_azure_storage_configured()
         ):
             return Status.MISSING_OBJECT_STORAGE_BACKEND.value

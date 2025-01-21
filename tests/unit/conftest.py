@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +10,7 @@ from ops.testing import Container, Context, Model, Mount, Relation
 from charm import KyuubiCharm
 from constants import (
     KYUUBI_CONTAINER_NAME,
-    S3_INTEGRATOR_REL,
+    # S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
 )
@@ -65,33 +64,33 @@ def kyuubi_container(tmp_path):
     )
 
 
-@pytest.fixture
-def s3_relation():
-    """Provide fixture for the S3 relation."""
-    relation = Relation(
-        endpoint=S3_INTEGRATOR_REL,
-        interface="s3",
-        remote_app_name="s3-integrator",
-    )
-    relation_id = relation.id
+# @pytest.fixture
+# def s3_relation():
+#     """Provide fixture for the S3 relation."""
+#     relation = Relation(
+#         endpoint=S3_INTEGRATOR_REL,
+#         interface="s3",
+#         remote_app_name="s3-integrator",
+#     )
+#     relation_id = relation.id
 
-    return replace(
-        relation,
-        local_app_data={"bucket": f"relation-{relation_id}"},
-        remote_app_data={
-            "access-key": "access-key",
-            "bucket": "my-bucket",
-            "data": f'{{"bucket": "relation-{relation_id}"}}',
-            "endpoint": "https://s3.endpoint",
-            "path": "spark-events",
-            "secret-key": "secret-key",
-        },
-    )
+#     return replace(
+#         relation,
+#         local_app_data={"bucket": f"relation-{relation_id}"},
+#         remote_app_data={
+#             "access-key": "access-key",
+#             "bucket": "my-bucket",
+#             "data": f'{{"bucket": "relation-{relation_id}"}}',
+#             "endpoint": "https://s3.endpoint",
+#             "path": "spark-events",
+#             "secret-key": "secret-key",
+#         },
+#     )
 
 
 @pytest.fixture
 def spark_service_account_relation():
-    """Provide fixture for the S3 relation."""
+    """Provide fixture for the spark-service-account relation."""
     return Relation(
         endpoint=SPARK_SERVICE_ACCOUNT_REL,
         interface="spark-service-account",
