@@ -355,22 +355,9 @@ class KyuubiServer(RelationState):
         return self.relation_data.get("certificate", "")
 
     @property
-    def ca(self) -> str:
-        """The root CA contents for the unit to use for TLS."""
-        # Backwards compatibility
-        # TODO (zkclient): Remove this property and replace by "" in self.ca_cert
-        ca = self.relation_data.get("ca", "")
-        if ca:
-            logger.warning(
-                "Using 'ca' in the databag is deprecated, use 'ca_cert' instead",
-                DeprecationWarning,
-            )
-        return ca
-
-    @property
     def ca_cert(self) -> str:
         """The root CA contents for the unit to use for TLS."""
-        return self.relation_data.get("ca-cert", self.ca)
+        return self.relation_data.get("ca-cert", "")
 
     @property
     def internal_address(self) -> str:
@@ -380,7 +367,9 @@ class KyuubiServer(RelationState):
     @property
     def external_address(self) -> str:
         """The external address for the unit, for external communication."""
-        return self.k8s.get_service_endpoint()
+        return self.k8s.get_service_endpoint(
+            expose_external=self.unit._backend.config_get().get("expose-external")
+        )
 
     @property
     def pod_name(self) -> str:
