@@ -30,7 +30,7 @@ class TLSManager:
             sans_ip.append(node_ip)
 
         if self.context.unit_server.loadbalancer_ip:
-            sans_ip.append(self.context.unit_server.loadbalancer_ip)
+            sans_ip.append(self.context.unit_server.loadbalancer_ip.split(":")[0])
 
         return SANs(
             sans_ip=sorted(sans_ip),
