@@ -28,10 +28,9 @@ class TLSManager:
         sans_ip = [str(self.context.bind_address)]
         if node_ip := self.context.unit_server.node_ip:
             sans_ip.append(node_ip)
-        try:
+
+        if self.context.unit_server.loadbalancer_ip:
             sans_ip.append(self.context.unit_server.loadbalancer_ip)
-        except Exception:
-            pass
 
         return SANs(
             sans_ip=sorted(sans_ip),
