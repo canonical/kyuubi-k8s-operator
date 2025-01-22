@@ -59,6 +59,10 @@ requires:
   logging:
     interface: loki_push_api
     limit: 1
+  certificates:
+    interface: tls-certificates
+    limit: 1
+    optional: true
 
 provides:
   jdbc:

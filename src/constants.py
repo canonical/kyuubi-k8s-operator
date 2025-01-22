@@ -19,6 +19,7 @@ POSTGRESQL_METASTORE_DB_REL = "metastore-db"
 POSTGRESQL_AUTH_DB_REL = "auth-db"
 SPARK_SERVICE_ACCOUNT_REL = "spark-service-account"
 ZOOKEEPER_REL = "zookeeper"
+TLS_REL = "certificates"
 KYUUBI_CLIENT_RELATION_NAME = "jdbc"
 
 COS_METRICS_PORT = 10019
@@ -44,3 +45,5 @@ DEPENDENCIES = {
         "version": "1.9",
     },
 }
+
+SECRETS_APP = []
