@@ -393,7 +393,7 @@ class KyuubiServer(RelationState):
 
         K8s-only.
         """
-        return self.k8s.get_loadbalancer()
+        return self.k8s.get_service_endpoint("loadbalancer")
 
 
 class KyuubiCluster(RelationState):
