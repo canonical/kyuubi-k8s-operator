@@ -189,3 +189,17 @@ class ServiceManager(WithLogging):
         self.create_service(
             service_type=desired_service_type, owner_references=pod0.metadata.ownerReferences
         )
+
+    def get_node_ip(self, pod_name: str) -> str:
+        """Gets the IP Address of the Node of a given Pod via the K8s API."""
+        try:
+            node = self.get_node(pod_name)
+        except lightkube.core.exceptions.ApiError as e:
+            if e.status.code == 403:
+                return ""
+        if not node.status or not node.status.addresses:
+            raise Exception(f"No status found for {node}")
+        for addresses in node.status.addresses:
+            if addresses.type in ["ExternalIP", "InternalIP", "Hostname"]:
+                return addresses.address
+        return ""

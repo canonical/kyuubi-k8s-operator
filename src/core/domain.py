@@ -5,15 +5,23 @@
 
 """Definition of various model classes."""
 
+import json
+import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import MutableMapping
+from functools import cached_property
+from typing import List, MutableMapping
 
-from charms.data_platform_libs.v0.data_interfaces import Data
+from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
+from typing_extensions import override
 
 from common.relation.domain import RelationState
+from constants import SECRETS_APP
+from managers.service import ServiceManager
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -258,3 +266,167 @@ class ZookeeperInfo(RelationState):
     def __bool__(self) -> bool:
         """Return whether this class object has sufficient information."""
         return self.zookeeper_connected
+
+
+@dataclass
+class TLSInfo:
+    """Class representing a information related to tls."""
+
+    keystore_password: str
+    trustore_password: str
+
+
+@dataclass
+class SANs:
+    """Subject Alternative Name (SAN)s used to create multi-domains certificates."""
+
+    sans_ip: list[str]
+    sans_dns: list[str]
+
+
+class KyuubiServer(RelationState):
+    """State collection metadata for a charm unit."""
+
+    def __init__(
+        self,
+        relation: Relation | None,
+        data_interface: Data,
+        component: Unit,
+    ):
+        super().__init__(relation, data_interface, component)
+        self.unit = component
+        self.k8s = ServiceManager(
+            self.unit._backend.model_name, self.unit.name, self.unit.app.name
+        )
+
+    @property
+    def unit_id(self) -> int:
+        """The id of the unit from the unit name.
+
+        e.g kyuubi/2 --> 2
+        """
+        return int(self.unit.name.split("/")[1])
+
+    @property
+    def hostname(self) -> str:
+        """The hostname for the unit."""
+        return self.relation_data.get("hostname", "")
+
+    @property
+    def fqdn(self) -> str:
+        """The Fully Qualified Domain Name for the unit."""
+        return self.relation_data.get("fqdn", "")
+
+    @property
+    def ip(self) -> str:
+        """The IP for the unit."""
+        return self.relation_data.get("ip", "")
+
+    @property
+    def host(self) -> str:
+        """The hostname for the unit."""
+        return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
+
+    # -- TLS --
+
+    @property
+    def private_key(self) -> str:
+        """The private-key contents for the unit to use for TLS."""
+        return self.relation_data.get("private-key", "")
+
+    @property
+    def keystore_password(self) -> str:
+        """The Java Keystore password for the unit to use for TLS."""
+        return self.relation_data.get("keystore-password", "")
+
+    @property
+    def truststore_password(self) -> str:
+        """The Java Truststore password for the unit to use for TLS."""
+        return self.relation_data.get("truststore-password", "")
+
+    @property
+    def csr(self) -> str:
+        """The current certificate signing request contents for the unit."""
+        return self.relation_data.get("csr", "")
+
+    @property
+    def certificate(self) -> str:
+        """The certificate contents for the unit to use for TLS."""
+        return self.relation_data.get("certificate", "")
+
+    @property
+    def ca_cert(self) -> str:
+        """The root CA contents for the unit to use for TLS."""
+        return self.relation_data.get("ca-cert", "")
+
+    @property
+    def internal_address(self) -> str:
+        """The hostname for the unit, for internal communication."""
+        return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
+
+    @property
+    def external_address(self) -> str:
+        """The external address for the unit, for external communication."""
+        return self.k8s.get_service_endpoint(
+            expose_external=self.unit._backend.config_get().get("expose-external")
+        )
+
+    @property
+    def pod_name(self) -> str:
+        """The name of the K8s Pod for the unit.
+
+        K8s-only.
+        """
+        return self.unit.name.replace("/", "-")
+
+    @cached_property
+    def node_ip(self) -> str:
+        """The IPV4/IPV6 IP address of the Node the unit is on.
+
+        K8s-only.
+        """
+        return self.k8s.get_node_ip(self.pod_name)
+
+    @cached_property
+    def loadbalancer_ip(self) -> str:
+        """The IPV4/IPV6 IP address of the LoadBalancer exposing the unit.
+
+        K8s-only.
+        """
+        return self.k8s.get_service_endpoint("loadbalancer")
+
+
+class KyuubiCluster(RelationState):
+    """State collection metadata for the charm application."""
+
+    def __init__(
+        self,
+        relation: Relation | None,
+        data_interface: DataPeerData,
+        component: Application,
+    ):
+        super().__init__(relation, data_interface, component)
+        self.data_interface = data_interface
+        self.app = component
+
+    @override
+    def update(self, items: dict[str, str]) -> None:
+        """Overridden update to allow for same interface, but writing to local app bag."""
+        if not self.relation:
+            return
+
+        for key, value in items.items():
+            if key in SECRETS_APP or key.startswith("relation-"):
+                if value:
+                    self.data_interface.set_secret(self.relation.id, key, value)
+                else:
+                    self.data_interface.delete_secret(self.relation.id, key)
+            else:
+                self.data_interface.update_relation_data(self.relation.id, {key: value})
+
+    # -- TLS --
+
+    @property
+    def tls(self) -> bool:
+        """Flag to check if TLS is enabled for the cluster."""
+        return self.relation_data.get("tls", "") == "enabled"

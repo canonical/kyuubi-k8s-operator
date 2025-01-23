@@ -11,14 +11,15 @@ from ops.testing import Container, Context, Relation, State
 
 from constants import KYUUBI_CONTAINER_NAME, KYUUBI_OCI_IMAGE
 from core.domain import Status
-from core.workload.kyuubi import KyuubiWorkload
 
 logger = logging.getLogger(__name__)
+SPARK_PROPERTIES = "/etc/spark8t/conf/spark-defaults.conf"
+KYUUBI_PROPERTIES = "/opt/kyuubi/conf/kyuubi-defaults.conf"
 
 
 def parse_spark_properties(tmp_path: Path) -> dict[str, str]:
     """Parse and return spark properties from the conf file in the container."""
-    file_path = tmp_path / Path(KyuubiWorkload.SPARK_PROPERTIES_FILE).relative_to("/etc")
+    file_path = tmp_path / Path(SPARK_PROPERTIES).relative_to("/etc")
     with file_path.open("r") as fid:
         return dict(
             row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
@@ -27,7 +28,7 @@ def parse_spark_properties(tmp_path: Path) -> dict[str, str]:
 
 def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
     """Parse and return Kyuubi configurations from the conf file in the container."""
-    file_path = tmp_path / Path(KyuubiWorkload.KYUUBI_CONFIGURATION_FILE).relative_to("/opt")
+    file_path = tmp_path / Path(KYUUBI_PROPERTIES).relative_to("/opt")
     with file_path.open("r") as fid:
         return dict(
             row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())

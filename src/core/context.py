@@ -4,7 +4,13 @@
 
 """Charm Context definition and parsing logic."""
 
-from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerData
+from ipaddress import IPv4Address, IPv6Address
+
+from charms.data_platform_libs.v0.data_interfaces import (
+    DatabaseRequirerData,
+    DataPeerData,
+    DataPeerUnitData,
+)
 from ops import Model, Relation
 
 from common.relation.spark_sa import RequirerData
@@ -12,19 +18,34 @@ from constants import (
     AUTHENTICATION_DATABASE_NAME,
     HA_ZNODE_NAME,
     METASTORE_DATABASE_NAME,
+    PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
     # S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
+    TLS_REL,
     ZOOKEEPER_REL,
 )
 from core.config import CharmConfig
 from core.domain import (
     DatabaseConnectionInfo,
+    KyuubiCluster,
+    KyuubiServer,
+    # S3ConnectionInfo,
     SparkServiceAccountInfo,
+    TLSInfo,
     ZookeeperInfo,
 )
 from utils.logging import WithLogging
+
+SECRETS_UNIT = [
+    "ca-cert",
+    "csr",
+    "certificate",
+    "truststore-password",
+    "keystore-password",
+    "private-key",
+]
 
 
 class Context(WithLogging):
@@ -47,6 +68,10 @@ class Context(WithLogging):
             ZOOKEEPER_REL,
             database_name=HA_ZNODE_NAME,
         )
+        self.peer_app_interface = DataPeerData(self.model, relation_name=PEER_REL)
+        self.peer_unit_interface = DataPeerUnitData(
+            self.model, relation_name=PEER_REL, additional_secret_fields=SECRETS_UNIT
+        )
 
     # @property
     # def _s3_relation(self) -> Relation | None:
@@ -62,6 +87,16 @@ class Context(WithLogging):
     def _zookeeper_relation(self) -> Relation | None:
         """The zookeeper relation."""
         return self.model.get_relation(ZOOKEEPER_REL)
+
+    @property
+    def _peer_relation(self) -> Relation | None:
+        """The cluster peer relation."""
+        return self.model.get_relation(PEER_REL)
+
+    @property
+    def _tls_relation(self) -> Relation | None:
+        """The cluster peer relation."""
+        return self.model.get_relation(TLS_REL)
 
     # --- DOMAIN OBJECTS ---
 
@@ -120,3 +155,41 @@ class Context(WithLogging):
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
         return bool(self.auth_db)
+
+    @property
+    def tls(self) -> TLSInfo | None:
+        """The state of the tls configuration info."""
+        if self._tls_relation:
+            return TLSInfo(
+                self.unit_server.keystore_password, self.unit_server.truststore_password
+            )
+        return None
+
+    # CORE COMPONENTS
+
+    @property
+    def bind_address(self) -> IPv4Address | IPv6Address | str:
+        """The network binding address from the peer relation."""
+        bind_address = None
+        if self._peer_relation:
+            if binding := self.model.get_binding(self._peer_relation):
+                bind_address = binding.network.bind_address
+        return bind_address or ""
+
+    @property
+    def unit_server(self) -> KyuubiServer:
+        """The server state of the current running Unit."""
+        return KyuubiServer(
+            relation=self._peer_relation,
+            data_interface=self.peer_unit_interface,
+            component=self.model.unit,
+        )
+
+    @property
+    def cluster(self) -> KyuubiCluster:
+        """The cluster state of the current running App."""
+        return KyuubiCluster(
+            relation=self._peer_relation,
+            data_interface=self.peer_app_interface,
+            component=self.model.app,
+        )
