@@ -5,12 +5,11 @@
 
 """Definition of various model classes."""
 
-import json
 import logging
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
-from typing import List, MutableMapping
+from typing import MutableMapping
 
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
 from ops import Application, Relation, Unit
