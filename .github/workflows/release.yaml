@@ -21,7 +21,7 @@ jobs:
     with:
       charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
       channel: latest/edge
-      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+      artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
