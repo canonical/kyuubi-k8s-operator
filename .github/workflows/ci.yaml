@@ -45,10 +45,11 @@ jobs:
         path:
           - .
           - tests/integration/app-charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v24.0.5
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: false
+      charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
 
   integration-test:
     strategy:
