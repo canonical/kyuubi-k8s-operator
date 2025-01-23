@@ -9,6 +9,10 @@ concurrency:
 
 on:
   workflow_call:
+    outputs:
+      artifact-prefix:
+        description: build_charm.yaml `artifact-prefix` output
+        value: ${{ jobs.build.outputs.artifact-prefix }}
   pull_request:
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
@@ -48,7 +52,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     with:
       path-to-charm-directory: ${{ matrix.path }}
-      cache: false
+      cache: true
       charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
 
   integration-test:
