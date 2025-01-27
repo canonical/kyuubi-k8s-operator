@@ -42,8 +42,6 @@ peers:
     interface: upgrade
 
 requires:
-  # s3-credentials:
-  #   interface: s3
   metastore-db:
     interface: postgresql_client
     limit: 1

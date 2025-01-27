@@ -10,7 +10,6 @@ from ops.testing import Container, Context, Model, Mount, Relation
 from charm import KyuubiCharm
 from constants import (
     KYUUBI_CONTAINER_NAME,
-    # S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
 )
@@ -62,30 +61,6 @@ def kyuubi_container(tmp_path):
         service_statuses={"kyuubi": pebble.ServiceStatus.ACTIVE},
         mounts={"opt": opt, "etc": etc},
     )
-
-
-# @pytest.fixture
-# def s3_relation():
-#     """Provide fixture for the S3 relation."""
-#     relation = Relation(
-#         endpoint=S3_INTEGRATOR_REL,
-#         interface="s3",
-#         remote_app_name="s3-integrator",
-#     )
-#     relation_id = relation.id
-
-#     return replace(
-#         relation,
-#         local_app_data={"bucket": f"relation-{relation_id}"},
-#         remote_app_data={
-#             "access-key": "access-key",
-#             "bucket": "my-bucket",
-#             "data": f'{{"bucket": "relation-{relation_id}"}}',
-#             "endpoint": "https://s3.endpoint",
-#             "path": "spark-events",
-#             "secret-key": "secret-key",
-#         },
-#     )
 
 
 @pytest.fixture

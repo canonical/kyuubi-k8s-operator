@@ -42,7 +42,6 @@ class KyuubiManager(WithLogging):
 
     def update(
         self,
-        # set_s3_none: bool = False,
         set_metastore_db_none: bool = False,
         set_auth_db_none: bool = False,
         set_service_account_none: bool = False,
@@ -51,7 +50,6 @@ class KyuubiManager(WithLogging):
         force_restart: bool = False,
     ):
         """Update Kyuubi service and restart it."""
-        # s3_info = None if set_s3_none else self.context.s3
         metastore_db_info = None if set_metastore_db_none else self.context.metastore_db
         auth_db_info = None if set_auth_db_none else self.context.auth_db
         service_account_info = None if set_service_account_none else self.context.service_account
@@ -62,10 +60,7 @@ class KyuubiManager(WithLogging):
         if any(
             [
                 self._compare_and_update_file(
-                    SparkConfig(
-                        # s3_info=s3_info,
-                        service_account_info=service_account_info
-                    ).contents,
+                    SparkConfig(service_account_info=service_account_info).contents,
                     self.workload.paths.spark_properties,
                 ),
                 self._compare_and_update_file(

@@ -84,52 +84,6 @@ class StateBase:
         self.relation.data[self.component] = {}
 
 
-# class S3ConnectionInfo(StateBase):
-#     """Class representing credentials and endpoints to connect to S3."""
-
-#     def __init__(self, relation: Relation, component: Application):
-#         super().__init__(relation, component)
-
-#     @property
-#     def endpoint(self) -> str | None:
-#         """Return endpoint of the S3 bucket."""
-#         return self.relation_data.get("endpoint", "")
-
-#     @property
-#     def access_key(self) -> str:
-#         """Return the access key."""
-#         return self.relation_data.get("access-key", "")
-
-#     @property
-#     def secret_key(self) -> str:
-#         """Return the secret key."""
-#         return self.relation_data.get("secret-key", "")
-
-#     @property
-#     def path(self) -> str:
-#         """Return the path in the S3 bucket."""
-#         return self.relation_data.get("path", "")
-
-#     @property
-#     def bucket(self) -> str:
-#         """Return the name of the S3 bucket."""
-#         return self.relation_data.get("bucket", "")
-
-#     @property
-#     def tls_ca_chain(self) -> List[str] | None:
-#         """Return the CA chain (when applicable)."""
-#         return (
-#             json.loads(ca_chain)
-#             if (ca_chain := self.relation_data.get("tls-ca-chain", ""))
-#             else None
-#         )
-
-#     @property
-#     def log_dir(self) -> str:
-#         """Return the full path to the object."""
-#         return f"s3a://{self.bucket}/{self.path}"
-
-
 @dataclass
 class DatabaseConnectionInfo:
     """Class representing a information related to a database connection."""

@@ -63,54 +63,6 @@ def test_pebble_ready(
     assert out.unit_status == Status.MISSING_INTEGRATION_HUB.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=False)
-# @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
-# @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
-# @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-# @patch("config.spark.SparkConfig._sa_conf", return_value={})
-# def test_s3_relation_invalid_credentials(
-#     mock_sa_conf,
-#     mock_get_master,
-#     mock_valid_sa,
-#     mock_valid_ns,
-#     mock_s3_verify,
-#     kyuubi_context: Context,
-#     kyuubi_container: Container,
-#     s3_relation: Relation,
-# ) -> None:
-#     state = State(
-#         relations=[s3_relation],
-#         containers=[kyuubi_container],
-#     )
-#     out = kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
-#     assert out.unit_status == Status.INVALID_CREDENTIALS.value
-
-
-# @patch("managers.s3.S3Manager.verify", return_value=True)
-# @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
-# @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
-# @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-# @patch("config.spark.SparkConfig._sa_conf", return_value={})
-# def test_missing_integration_hub(
-#     mock_sa_conf,
-#     mock_get_master,
-#     mock_valid_sa,
-#     mock_valid_ns,
-#     mock_s3_verify,
-#     tmp_path,
-#     kyuubi_context: Context,
-#     kyuubi_container: Container,
-#     s3_relation: Relation,
-# ) -> None:
-#     state = State(
-#         relations=[s3_relation],
-#         containers=[kyuubi_container],
-#     )
-#     out = kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
-#     assert out.unit_status == Status.MISSING_INTEGRATION_HUB.value
-
-
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=False)
@@ -124,11 +76,9 @@ def test_insufficient_permissions(
     mock_has_cluster_permissions,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     tmp_path,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ) -> None:
     state = State(
@@ -141,7 +91,6 @@ def test_insufficient_permissions(
     assert out.unit_status == Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
@@ -157,10 +106,8 @@ def test_service_unavailable(
     mock_has_cluster_permissions,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ) -> None:
     state = State(
@@ -171,52 +118,6 @@ def test_service_unavailable(
     assert out.unit_status == Status.WAITING_FOR_SERVICE.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
-# @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
-# @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
-# @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
-# @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
-# @patch(
-#     "managers.service.ServiceManager.get_service_endpoint",
-#     return_value="10.10.10.10:10009",
-# )
-# @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-# @patch("config.spark.SparkConfig._sa_conf", return_value={})
-# def test_valid_on_s3(
-#     mock_sa_conf,
-#     mock_get_master,
-#     mock_service_endpoint,
-#     mock_has_cluster_permissions,
-#     mock_s3_configured,
-#     mock_valid_sa,
-#     mock_valid_ns,
-#     mock_s3_verify,
-#     tmp_path,
-#     kyuubi_context: Context,
-#     kyuubi_container: Container,
-#     s3_relation: Relation,
-#     spark_service_account_relation: Relation,
-# ) -> None:
-#     state = State(
-#         relations=[s3_relation, spark_service_account_relation],
-#         containers=[kyuubi_container],
-#     )
-#     out = kyuubi_context.run(kyuubi_context.on.relation_changed(s3_relation), state)
-#     assert out.unit_status == Status.ACTIVE.value
-
-#     # Check containers modifications
-#     assert len(out.get_container(KYUUBI_CONTAINER_NAME).layers) == 1
-
-#     spark_properties = parse_spark_properties(tmp_path)
-#     logger.info(spark_properties)
-#     # Assert one of the keys
-#     assert "spark.hadoop.fs.s3a.endpoint" in spark_properties
-#     assert (
-#         spark_properties["spark.hadoop.fs.s3a.endpoint"] == s3_relation.remote_app_data["endpoint"]
-#     )
-
-
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
@@ -237,7 +138,6 @@ def test_valid_on_service_account(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     tmp_path,
     kyuubi_context: Context,
     kyuubi_container: Container,
@@ -263,7 +163,6 @@ def test_valid_on_service_account(
     assert spark_properties["spark.hadoop.fs.s3a.endpoint"] == "foo.bar"
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=False)
@@ -284,10 +183,8 @@ def test_object_storage_backend_removed(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ) -> None:
     initial_state = State(
@@ -301,7 +198,6 @@ def test_object_storage_backend_removed(
     assert out.unit_status == Status.MISSING_OBJECT_STORAGE_BACKEND.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
@@ -320,11 +216,9 @@ def test_zookeeper_relation_joined(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     tmp_path,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
     zookeeper_relation: Relation,
 ):
@@ -352,7 +246,6 @@ def test_zookeeper_relation_joined(
     )
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.has_cluster_permissions", return_value=True)
@@ -371,11 +264,9 @@ def test_zookeeper_relation_broken(
     mock_has_cluster_permissions,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     tmp_path,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
     zookeeper_relation: Relation,
 ) -> None:
@@ -400,7 +291,6 @@ def test_zookeeper_relation_broken(
     assert "kyuubi.ha.zookeeper.auth.digest" not in kyuubi_configurations
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
@@ -419,10 +309,8 @@ def test_spark_service_account_broken(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ) -> None:
     initial_state = State(
@@ -441,7 +329,6 @@ def test_spark_service_account_broken(
     assert state_after_relation_broken.unit_status == Status.MISSING_INTEGRATION_HUB.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=False)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
@@ -455,10 +342,8 @@ def test_invalid_namespace(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ):
     state = State(
@@ -469,7 +354,6 @@ def test_invalid_namespace(
     assert out.unit_status == Status.INVALID_NAMESPACE.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=False)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
@@ -483,10 +367,8 @@ def test_invalid_service_account(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ) -> None:
     state = State(
@@ -497,7 +379,6 @@ def test_invalid_service_account(
     assert out.unit_status == Status.INVALID_SERVICE_ACCOUNT.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("ops.model.Application.planned_units", return_value=3)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
@@ -513,10 +394,8 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
     mock_valid_sa,
     mock_valid_ns,
     mock_planned_units,
-    # mock_s3_verify,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ) -> None:
     state = State(
@@ -527,7 +406,6 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
     assert out.unit_status == Status.MISSING_ZOOKEEPER.value
 
 
-# @patch("managers.s3.S3Manager.verify", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
@@ -542,7 +420,6 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
     return_value={
         "new_property": "new_value",
         "spark.kubernetes.container.image": "image_from_service_account",
-        # "spark.hadoop.fs.s3a.endpoint": "endpoint_from_service_account",
     },
 )
 def test_spark_property_priorities(
@@ -553,11 +430,9 @@ def test_spark_property_priorities(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    # mock_s3_verify,
     tmp_path,
     kyuubi_context: Context,
     kyuubi_container: Container,
-    # s3_relation: Relation,
     spark_service_account_relation: Relation,
 ):
     state = State(
