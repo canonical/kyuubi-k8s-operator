@@ -104,6 +104,7 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
     access_key = s3_bucket_and_creds["access_key"]
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
+    path = s3_bucket_and_creds["path"]
 
     logger.info("Setting up s3 credentials in s3-integrator charm")
     s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
@@ -122,7 +123,7 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
     await ops_test.model.applications[charm_versions.s3.application_name].set_config(
         {
             "bucket": bucket_name,
-            "path": "testpath",
+            "path": path,
             "endpoint": endpoint_url,
         }
     )
