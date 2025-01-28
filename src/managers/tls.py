@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Manager for building necessary files for Java TLS auth."""
+
 import logging
 import socket
 import subprocess
@@ -114,8 +115,7 @@ class TLSManager:
                     self._rename_ca_in_truststore()
                     self._delete_ca_in_truststore()
                     self._import_ca_in_truststore()
-                except (ops.pebble.ExecError) as e:
-
+                except ops.pebble.ExecError as e:
                     logger.error(str(e.stdout))
                     raise e
 
@@ -212,7 +212,7 @@ class TLSManager:
         try:
             self.workload.exec(
                 " ".join(command),
-                working_dir=self.workload.paths.conf_path,  # type: ignore
+                working_dir=str(self.workload.paths.conf_path),
             )
         except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
             logger.error(str(e.stdout))

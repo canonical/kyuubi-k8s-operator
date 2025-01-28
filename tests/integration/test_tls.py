@@ -17,6 +17,7 @@ from juju.unit import Unit
 from ops import StatusBase
 from pytest_operator.plugin import OpsTest
 
+from constants import TLS_REL
 from core.domain import Status
 
 from .helpers import (
@@ -102,7 +103,7 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
     logger.info(
-        "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
 
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
@@ -225,7 +226,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
 
     logger.info(
-        "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
 
     assert await run_sql_test_against_jdbc_endpoint(
@@ -355,8 +356,34 @@ async def test_loadbalancer_service(
     logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
 
     logger.info(
-        "Testing JDBC endpoint by connecting with beeline" " and executing a few SQL queries..."
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
     assert await run_sql_test_against_jdbc_endpoint(
         ops_test, test_pod, jdbc_endpoint=jdbc_endpoint_ssl
     )
+
+
+@pytest.mark.abort_on_fail
+async def test_disable_tls(ops_test: OpsTest, charm_versions):
+    """Test that we are able to disable TLS by removing the certificates relation."""
+    await ops_test.model.applications[APP_NAME].remove_relation(
+        TLS_REL, f"{charm_versions.tls.name}:{TLS_REL}"
+    )
+
+    async with ops_test.fast_forward(fast_interval="60s"):
+        await ops_test.model.wait_for_idle(
+            apps=[APP_NAME],
+            status="active",
+            timeout=1000,
+            idle_period=30,
+        )
+
+    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    response = subprocess.check_output(
+        f"openssl s_client -showcerts -connect {host}:10009 < /dev/null || true",
+        stderr=subprocess.PIPE,
+        shell=True,
+        universal_newlines=True,
+    )
+
+    assert "No client certificate CA names sent" in response
