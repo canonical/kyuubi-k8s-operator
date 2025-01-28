@@ -21,7 +21,6 @@ from constants import (
     PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
-    S3_INTEGRATOR_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     TLS_REL,
     ZOOKEEPER_REL,
@@ -31,7 +30,6 @@ from core.domain import (
     DatabaseConnectionInfo,
     KyuubiCluster,
     KyuubiServer,
-    S3ConnectionInfo,
     SparkServiceAccountInfo,
     TLSInfo,
     ZookeeperInfo,
@@ -74,11 +72,6 @@ class Context(WithLogging):
         )
 
     @property
-    def _s3_relation(self) -> Relation | None:
-        """The S3 relation."""
-        return self.model.get_relation(S3_INTEGRATOR_REL)
-
-    @property
     def _spark_account_relation(self) -> Relation | None:
         """The integration hub relation."""
         return self.model.get_relation(SPARK_SERVICE_ACCOUNT_REL)
@@ -99,11 +92,6 @@ class Context(WithLogging):
         return self.model.get_relation(TLS_REL)
 
     # --- DOMAIN OBJECTS ---
-
-    @property
-    def s3(self) -> S3ConnectionInfo | None:
-        """The state of S3 connection."""
-        return S3ConnectionInfo(rel, rel.app) if (rel := self._s3_relation) else None
 
     @property
     def metastore_db(self) -> DatabaseConnectionInfo | None:

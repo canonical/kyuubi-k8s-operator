@@ -43,7 +43,7 @@ COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, kyuubi_charm):
+async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm):
     """Test building and deploying the charm without relation with any other charm."""
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
@@ -88,10 +88,8 @@ async def test_build_and_deploy(ops_test: OpsTest, kyuubi_charm):
 
 
 @pytest.mark.abort_on_fail
-async def test_integration_with_s3_integrator(
-    ops_test: OpsTest, charm_versions, s3_bucket_and_creds
-):
-    """Test the charm by integrating it with s3-integrator."""
+async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
+    """Test deploying the s3-integrator charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying s3-integrator charm...")
     await ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
@@ -106,6 +104,7 @@ async def test_integration_with_s3_integrator(
     access_key = s3_bucket_and_creds["access_key"]
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
+    path = s3_bucket_and_creds["path"]
 
     logger.info("Setting up s3 credentials in s3-integrator charm")
     s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
@@ -124,30 +123,19 @@ async def test_integration_with_s3_integrator(
     await ops_test.model.applications[charm_versions.s3.application_name].set_config(
         {
             "bucket": bucket_name,
-            "path": "testpath",
+            "path": path,
             "endpoint": endpoint_url,
         }
     )
 
-    logger.info("Integrating kyuubi charm with s3-integrator charm...")
-    await ops_test.model.integrate(charm_versions.s3.application_name, APP_NAME)
-
-    logger.info("Waiting for s3-integrator and kyuubi charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000
-    )
-
-    # Assert that both kyuubi-k8s and s3-integrator charms are in active state
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
-    )
-
+    logger.info("Waiting for s3-integrator charm to be idle...")
+    await ops_test.model.wait_for_idle(apps=[charm_versions.s3.application_name], timeout=1000)
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
-async def test_integration_with_integration_hub(ops_test: OpsTest, charm_versions):
-    """Test the integration with integration hub."""
+async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
+    """Test deploying the integration hub charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
@@ -164,6 +152,30 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     )
     _ = await action.wait()
 
+    logger.info("Integrating s3-integrator charm with integration-hub charm...")
+    await ops_test.model.integrate(
+        charm_versions.integration_hub.application_name, charm_versions.s3.application_name
+    )
+
+    logger.info("Waiting for integration_hub and s3-integrator charms to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.s3.application_name, charm_versions.integration_hub.application_name],
+        timeout=1000,
+        status="active",
+        idle_period=20,
+    )
+
+    # Assert that both integration-hub and s3-integrator charms are in active state
+    assert (
+        ops_test.model.applications[charm_versions.integration_hub.application_name].status
+        == "active"
+    )
+    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+
+@pytest.mark.abort_on_fail
+async def test_integration_with_integration_hub(ops_test: OpsTest, charm_versions):
+    """Test the integration with integration hub."""
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
 
@@ -175,13 +187,13 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
         idle_period=20,
     )
 
-    # Assert that both kyuubi-k8s and s3-integrator charms are in active state
+    # Assert that both kyuubi-k8s, integration-hub and s3-integrator charms are in active state
     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-
     assert (
         ops_test.model.applications[charm_versions.integration_hub.application_name].status
         == "active"
     )
+    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
@@ -891,7 +903,7 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_ver
 
     logger.info("Waiting for zookeeper-k8s and kyuubi charms to be idle idle...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.s3.application_name], timeout=1000, status="active"
+        apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
     )
 
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")

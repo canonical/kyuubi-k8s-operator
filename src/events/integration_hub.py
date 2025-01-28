@@ -57,5 +57,4 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
     def _on_account_gone(self, _: ServiceAccountGoneEvent):
         """Handle the `ServiceAccountGoneEvent` event from integration hub."""
         self.logger.info("Service account deleted")
-        self.logger.info(self.context.s3)
         self.kyuubi.update(set_service_account_none=True)

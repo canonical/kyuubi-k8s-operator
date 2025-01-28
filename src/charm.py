@@ -30,7 +30,6 @@ from events.auth import AuthenticationEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
-from events.s3 import S3Events
 from events.tls import TLSEvents
 from events.upgrade import KyuubiDependencyModel, UpgradeEvents
 from events.zookeeper import ZookeeperEvents
@@ -57,7 +56,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         # Event handlers
         self.kyuubi_events = KyuubiEvents(self, self.context, self.workload)
-        self.s3_events = S3Events(self, self.context, self.workload)
         self.hub_events = SparkIntegrationHubEvents(self, self.context, self.workload)
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
