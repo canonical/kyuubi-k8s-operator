@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-name: Release to charmhub
+name: Release to Charmhub
 
 on:
   push:
@@ -13,16 +13,15 @@ jobs:
     uses: ./.github/workflows/ci.yaml
     secrets: inherit
 
-  publish:
+  release:
     name: Release charm
     needs:
       - ci-tests
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
     with:
-      charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
       channel: latest/edge
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      contents: write # Needed to create GitHub release
+      contents: write  # Needed to create git tags
