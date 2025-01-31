@@ -10,14 +10,13 @@ import ops
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops import SecretChangedEvent
 
-from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL
+from constants import PEER_REL
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
-from providers import KyuubiClientProvider
 from utils.logging import WithLogging
 
 
@@ -32,7 +31,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
-        self.kyuubi_client = KyuubiClientProvider(self.charm, KYUUBI_CLIENT_RELATION_NAME)
         self.service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
