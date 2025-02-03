@@ -2,9 +2,11 @@
 
 Charmed Apache Kyuubi K8s, an open-source [Kubernetes charm](https://juju.is/docs/olm/charmed-operator) for Apache Kyuubi, is a distributed and multi-tenant gateway to provide serverless SQL on Data Warehouses and Lakehouses built with the Charmed Apache Spark solution.
 
-Charmed Apache Kyuubi K8s provides users with a JDBC-compliant endpoint which can be used by JDBC-compliant tools and analytics platforms to execute SQL queries on the Charmed Spark cluster.It is part of an open source, end-to-end, production-ready data platform on top of cloud native technologies provided by Canonical.
+Charmed Apache Kyuubi K8s provides users with a JDBC-compliant endpoint which can be used by JDBC-compliant tools and analytics platforms to execute SQL queries on the Charmed Spark cluster.
+It is part of an open source, end-to-end, production-ready data platform on top of cloud native technologies provided by Canonical.
 
-Charmed Apache Kyuubi K8s is developed and supported by [Canonical](https://canonical.com/), as part of its commitment to provide open-source, self-driving solutions, seamlessly integrated using the Operator Framework Juju. Please refer to [Charmhub](https://charmhub.io/), for more charmed operators that can be integrated by [Juju](https://juju.is/).
+Charmed Apache Kyuubi K8s is developed and supported by [Canonical](https://canonical.com/), as part of its commitment to provide open-source, self-driving solutions, seamlessly integrated using the Operator Framework Juju.
+Please refer to [Charmhub](https://charmhub.io/), for more charmed operators that can be integrated by [Juju](https://juju.is/).
 
 <!--IF YOU WANT TO SEE THIS DOC AS WELL AS FURTHER DOCS IN THE SIDE NAVIGATION OF THE DESCRIPTION TAB OF YOUR CHARM'S PAGE ON CHARMHUB: UNCOMMENT AND UPDATE THE NAVIGATION TABLE BELOW.
 
