@@ -2,6 +2,8 @@
 # See LICENSE file for licensing details.
 
 type: charm
+links:
+  documentation: https//discourse.charmhub.io/t/<discourse-id>  # TODO(docs): Update once we create the topic
 platforms:
   ubuntu@22.04:amd64:
 # Files implicitly created by charmcraft without a part:
