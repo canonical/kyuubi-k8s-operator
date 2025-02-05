@@ -12,7 +12,7 @@ on:
 jobs:
   ci-tests:
     uses: ./.github/workflows/ci.yaml
-    secrets: inherits
+    secrets: inherit
 
 
   release:
