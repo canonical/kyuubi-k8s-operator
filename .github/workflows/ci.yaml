@@ -1,0 +1,123 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: Tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_call:
+    outputs:
+      artifact-prefix:
+        description: build_charm.yaml `artifact-prefix` output
+        value: ${{ jobs.build.outputs.artifact-prefix }}
+  pull_request:
+  schedule:
+    - cron: "53 0 * * *" # Daily at 00:53 UTC
+
+jobs:
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Install tox
+  #       run: pipx install tox
+  #     - name: Run linters
+  #       run: tox run -e lint
+
+  # unit-test:
+  #   name: Unit tests
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Install tox
+  #       run: pipx install tox
+  #     - name: Run tests
+  #       run: tox run -e unit
+
+  build:
+    strategy:
+      matrix:
+        path:
+          - .
+          - tests/integration/app-charm
+    name: Build charm | ${{ matrix.path }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
+    with:
+      path-to-charm-directory: ${{ matrix.path }}
+
+  # integration-test:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       tox-environments:
+  #         - integration-charm
+  #         - integration-trust
+  #         - integration-ha
+  #         - integration-external-access
+  #         - integration-upgrade
+  #         - integration-tls
+  #   name: ${{ matrix.tox-environments }}
+  #   needs:
+  #     - lint
+  #     - unit-test
+  #     - build
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 120
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Install Java
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         distribution: "temurin"
+  #         java-version: "17"
+  #     - name: Get prefsrc
+  #       run: |
+  #         echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
+  #     - name: Setup operator environment
+  #       # TODO: Replace with custom image on self-hosted runner
+  #       uses: charmed-kubernetes/actions-operator@main
+  #       with:
+  #         juju-channel: 3.4/stable
+  #         provider: microk8s
+  #         channel: 1.30-strict/stable
+  #         microk8s-group: snap_microk8s
+  #         microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
+  #     - name: Download packed charm(s)
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+  #         merge-multiple: true
+  #     - id: cache-image
+  #       name: Cache Spark Image Locally
+  #       run: |
+  #         # Download image for avoiding time out
+  #         IMAGE=$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
+  #         docker pull $IMAGE
+  #         docker save $IMAGE -o image.tar
+  #         sudo microk8s ctr images import --base-name $IMAGE image.tar
+  #         docker rmi $IMAGE
+  #         rm image.tar
+  #     - name: Select tests
+  #       id: select-tests
+  #       run: |
+  #         if [ "${{ github.event_name }}" == "schedule" ]
+  #         then
+  #           echo Running unstable and stable tests
+  #           echo "mark_expression=" >> $GITHUB_OUTPUT
+  #         else
+  #           echo Skipping unstable tests
+  #           echo "mark_expression=not unstable" >> $GITHUB_OUTPUT
+  #         fi
+  #     - name: Run integration tests
+  #       run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}'
+  #       env:
+  #         CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
