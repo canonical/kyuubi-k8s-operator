@@ -11,6 +11,33 @@ It is part of an open source, end-to-end, production-ready data platform on top 
 SEE TEMPLATE
 -->
 
+## Usage
+
+<!--TODO: Remove this entire section once we have a dedicated page-->
+
+To deploy this charm, use:
+
+```shell
+juju add-model <my-model>
+juju deploy s3-integrator --channel latest/edge
+juju deploy spark-integration-hub-k8s --channel edge
+juju relate spark-integration-hub-k8s s3-integrator
+juju deploy kyuubi-k8s --channel edge
+juju relate spark-integration-hub-k8s kyuubi-k8s
+```
+
+[note type=information]
+You may use a different object storage, such as `azure-storage-integrator`.
+[/note]
+
+The Integration Hub charm will take care of adding relevant configuration to the
+Charmed Spark properties.
+Get the JDBC endpoint with the following:
+
+```shell
+juju run kyuubi-k8s/leader get-jdbc-endpoint
+```
+
 ## Project and community
 
 Charmed Apache Kyuubi K8s is a member of the Ubuntu family. It’s an open-source project that warmly welcomes community projects, contributions, suggestions, fixes and constructive feedback.
