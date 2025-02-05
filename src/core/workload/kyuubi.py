@@ -34,7 +34,7 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         self.paths = KyuubiPaths(
             conf_path=KYUUBI_CONF_PATH,
             spark_conf_path=SPARK_CONF_PATH,
-            kyuubi_root=KYUUBI_CONF_PATH,
+            kyuubi_root=KYUUBI_ROOT,
             keytool="keytool",
         )
 

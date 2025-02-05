@@ -88,6 +88,19 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
 
             # Set the database version.
             self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
+
+            # Set username and password
+            self.database_provides.set_credentials(
+                relation_id=event.relation.id, 
+                username=username, 
+                password=password
+            )
+
+            self.database_provides.set_database(event.relation.id, event.database)
+            self.database_provides.set_tls(event.relation.id, "True" if self.context.cluster.tls else "False")
+            if self.context.cluster.tls:
+                self.database_provides.set_tls_ca(event.relation.id, self.context.unit_server.ca_cert)
+
         except (Exception) as e:
             logger.exception(e)
             self.charm.unit.status = BlockedStatus(str(e))
