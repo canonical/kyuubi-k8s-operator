@@ -1,13 +1,12 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-name: Temporary Release to Charmhub
+name: Release to Charmhub
 
 on:
   push:
     branches:
       - main
-      - data-integrator
 
 jobs:
   ci-tests:
@@ -21,7 +20,7 @@ jobs:
       - ci-tests
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
     with:
-      channel: latest/edge/bikalpa 
+      channel: latest/edge
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
