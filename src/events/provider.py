@@ -75,31 +75,36 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
 
-            kyuubi_address = service_manager.get_service_endpoint(
+            kyuubi_endpoint = service_manager.get_service_endpoint(
                 expose_external=self.charm.config.expose_external
             )
-            endpoint = f"jdbc:hive2://{kyuubi_address}/" if kyuubi_address else ""
+            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint}/" if kyuubi_endpoint else ""
 
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
                 event.relation.id,
-                endpoint,
+                kyuubi_endpoint,
             )
+
+            # Set the JDBC URI
+            self.database_provides.set_uris(event.relation.id, jdbc_uri)
 
             # Set the database version.
             self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
 
             # Set username and password
             self.database_provides.set_credentials(
-                relation_id=event.relation.id, 
-                username=username, 
-                password=password
+                relation_id=event.relation.id, username=username, password=password
             )
 
             self.database_provides.set_database(event.relation.id, event.database)
-            self.database_provides.set_tls(event.relation.id, "True" if self.context.cluster.tls else "False")
+            self.database_provides.set_tls(
+                event.relation.id, "True" if self.context.cluster.tls else "False"
+            )
             if self.context.cluster.tls:
-                self.database_provides.set_tls_ca(event.relation.id, self.context.unit_server.ca_cert)
+                self.database_provides.set_tls_ca(
+                    event.relation.id, self.context.unit_server.ca_cert
+                )
 
         except (Exception) as e:
             logger.exception(e)
