@@ -2,6 +2,8 @@
 # See LICENSE file for licensing details.
 
 type: charm
+links:
+  documentation: https://discourse.charmhub.io/t/16755
 platforms:
   ubuntu@22.04:amd64:
 # Files implicitly created by charmcraft without a part:
