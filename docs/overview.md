@@ -3,7 +3,7 @@
 Charmed Apache Kyuubi K8s is an open-source [Kubernetes charm](https://juju.is/docs/olm/charmed-operator) for Apache Kyuubi, which is a distributed and multi-tenant gateway to provide serverless SQL capabilities on Data Warehouses and Lakehouses leveraging on Apache Spark computational engines.
 
 Charmed Apache Kyuubi K8s provides a JDBC endpoint which can be used by JDBC-compliant tools to execute SQL queries on a Charmed Apache Spark cluster. 
-It is part of an open source, end-to-end, production-ready data platform on top of cloud native technologies provided by Canonical.
+It is part of an open source, end-to-end, production-ready [data platform](https://canonical.com/data) on top of cloud native technologies provided by Canonical.
 
 Using Charmed Apache Kyuubi K8s minimizes the barriers and costs for end-users to use Charmed Apache Spark at the client side. At the server-side, multi-tenant architecture of Apache Kyuubi provides the administrators a way to achieve computing resource isolation, data security, high availability, high client concurrency, etc.
 
