@@ -1,9 +1,13 @@
 # Charmed Apache Kyuubi K8s
 
-Charmed Apache Kyuubi K8s, an open-source [Kubernetes charm](https://juju.is/docs/olm/charmed-operator) for Apache Kyuubi, is a distributed and multi-tenant gateway to provide serverless SQL on Data Warehouses and Lakehouses built with the Charmed Apache Spark solution.
+Charmed Apache Kyuubi K8s is an open-source [Kubernetes charm](https://juju.is/docs/olm/charmed-operator) for Apache Kyuubi, which is a distributed and multi-tenant gateway to provide serverless SQL capabilities on Data Warehouses and Lakehouses leveraging on Apache Spark computational engines.
 
-Charmed Apache Kyuubi K8s provides users with a JDBC-compliant endpoint which can be used by JDBC-compliant tools and analytics platforms to execute SQL queries on the Charmed Spark cluster.
+Charmed Apache Kyuubi K8s provides a JDBC endpoint which can be used by JDBC-compliant tools to execute SQL queries on a Charmed Apache Spark cluster. 
 It is part of an open source, end-to-end, production-ready data platform on top of cloud native technologies provided by Canonical.
+
+Using Charmed Apache Kyuubi K8s minimizes the barriers and costs for end-users to use Charmed Apache Spark at the client side. At the server-side, multi-tenant architecture of Apache Kyuubi provides the administrators a way to achieve computing resource isolation, data security, high availability, high client concurrency, etc.
+
+Charmed Apache Kyuubi K8s is useful for administrators of Charmed Apache Spark solutions who want to provide serverless SQL query capability or multi-tenancy for their end-users.
 
 <!--
 # Navigation
@@ -26,9 +30,7 @@ juju deploy kyuubi-k8s --channel edge
 juju relate spark-integration-hub-k8s kyuubi-k8s
 ```
 
-[note type=information]
-You may use a different object storage, such as `azure-storage-integrator`.
-[/note]
+> **Note**: You may use a different object storage, such as `azure-storage-integrator`.
 
 The Integration Hub charm will take care of adding relevant configuration to the
 Charmed Spark properties.
