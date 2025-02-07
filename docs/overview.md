@@ -34,10 +34,17 @@ juju relate spark-integration-hub-k8s kyuubi-k8s
 
 The Integration Hub charm will take care of adding relevant configuration to the
 Charmed Spark properties.
-Get the JDBC endpoint with the following:
+Get the JDBC endpoint and its credentials with the following:
 
 ```shell
 juju run kyuubi-k8s/leader get-jdbc-endpoint
+juju run kyuubi-k8s/leader get-password
+```
+
+You may use the endpoint with a JDBC-compliant client, such as `beeline`:
+
+```shell
+beeline -u "<jdbc-endpoint>" -n admin -p <password>
 ```
 
 ## Project and community
