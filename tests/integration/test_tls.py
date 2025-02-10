@@ -148,7 +148,6 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     assert "TLSv1.3" in response
     assert "CN = kyuubi" in response
 
-    # TODO when the credentials will be shared with a proper interface the certificate should be passed to the data-integrator.
     # get issued certificates
     logger.info("Get certificate from self-signed certificate operator")
     self_signed_certificate_unit = ops_test.model.applications[
@@ -160,9 +159,9 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     result = await action.wait()
     items = ast.literal_eval(result.results.get("certificates"))
     certificates = json.loads(items[0])
-    cert = certificates["certificate"]
+    ca_cert = certificates["ca"]
 
-    logger.info(f"Copy the certificate to the testpod in this location: {CERTIFICATE_LOCATION}")
+    logger.info(f"Copy the CA certificate to the testpod in this location: {CERTIFICATE_LOCATION}")
     with umask_named_temporary_file(
         mode="w",
         prefix="cert-",
@@ -170,7 +169,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
         dir=os.path.expanduser("~"),
     ) as temp_file:
         with open(temp_file.name, "w+") as f:
-            f.writelines(cert)
+            f.writelines(ca_cert)
         kubectl_command = [
             "kubectl",
             "cp",

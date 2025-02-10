@@ -11,38 +11,38 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops.charm import RelationBrokenEvent
-from ops.framework import Object
 from ops.model import BlockedStatus
 
+from constants import KYUUBI_CLIENT_RELATION_NAME
+from core.context import Context
+from core.workload import KyuubiWorkloadBase
+from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
 from managers.service import ServiceManager
+from utils.logging import WithLogging
 
 logger = logging.getLogger(__name__)
 
 
-class KyuubiClientProvider(Object):
-    """Defines functionality for the 'provides' side of the 'kyuubi-client' relation.
+class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
+    """Defines event hooks for the provider side of the 'kyuubi-client' relation.
 
     Hook events observed:
         - database-requested
         - relation-broken
     """
 
-    def __init__(self, charm: TypedCharmBase, relation_name: str) -> None:
-        """Constructor for KyuubiClientProvider object.
+    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
+        super().__init__(charm, "kyuubi-client-provider")
 
-        Args:
-            charm: the charm for which this relation is provided
-            relation_name: the name of the relation
-        """
-        super().__init__(charm, relation_name)
-
-        self.relation_name = relation_name
         self.charm = charm
-        self.database_provides = DatabaseProvides(charm, relation_name)
+        self.context = context
+        self.workload = workload
+
+        self.database_provides = DatabaseProvides(charm, KYUUBI_CLIENT_RELATION_NAME)
 
         self.framework.observe(
-            charm.on[self.relation_name].relation_broken, self._on_relation_broken
+            charm.on[KYUUBI_CLIENT_RELATION_NAME].relation_broken, self._on_relation_broken
         )
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_database_requested
@@ -58,13 +58,13 @@ class KyuubiClientProvider(Object):
         if not self.charm.unit.is_leader():
             return
 
-        if not self.charm.context.is_authentication_enabled():
+        if not self.context.is_authentication_enabled():
             raise NotImplementedError(
                 "Authentication has not been enabled yet! "
                 "Please integrate kyuubi-k8s with postgresql-k8s "
                 "over auth-db relation endpoint."
             )
-        auth = AuthenticationManager(self.charm.context.auth_db)
+        auth = AuthenticationManager(self.context.auth_db)
         service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -75,21 +75,37 @@ class KyuubiClientProvider(Object):
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
 
-            kyuubi_address = service_manager.get_service_endpoint(
+            kyuubi_endpoint = service_manager.get_service_endpoint(
                 expose_external=self.charm.config.expose_external
             )
-            endpoint = f"jdbc:hive2://{kyuubi_address}/" if kyuubi_address else ""
+            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint}/" if kyuubi_endpoint else ""
 
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
                 event.relation.id,
-                endpoint,
+                kyuubi_endpoint,
             )
 
+            # Set the JDBC URI
+            self.database_provides.set_uris(event.relation.id, jdbc_uri)
+
             # Set the database version.
-            self.database_provides.set_version(
-                event.relation.id, self.charm.workload.kyuubi_version
+            self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
+
+            # Set username and password
+            self.database_provides.set_credentials(
+                relation_id=event.relation.id, username=username, password=password
             )
+
+            self.database_provides.set_database(event.relation.id, event.database)
+            self.database_provides.set_tls(
+                event.relation.id, "True" if self.context.cluster.tls else "False"
+            )
+            if self.context.cluster.tls:
+                self.database_provides.set_tls_ca(
+                    event.relation.id, self.context.unit_server.ca_cert
+                )
+
         except (Exception) as e:
             logger.exception(e)
             self.charm.unit.status = BlockedStatus(str(e))
@@ -101,7 +117,7 @@ class KyuubiClientProvider(Object):
         if not self.charm.unit.is_leader():
             return
 
-        auth = AuthenticationManager(self.charm.context.auth_db)
+        auth = AuthenticationManager(self.context.auth_db)
         username = f"relation_id_{event.relation.id}"
 
         try:
@@ -109,5 +125,5 @@ class KyuubiClientProvider(Object):
         except Exception as e:
             logger.exception(e)
             self.charm.unit.status = BlockedStatus(
-                f"Failed to delete user during {self.relation_name} relation broken event"
+                f"Failed to delete user during {KYUUBI_CLIENT_RELATION_NAME} relation broken event"
             )
