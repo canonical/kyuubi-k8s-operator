@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Event handler for related applications on the `certificates` relation interface."""
+
 import base64
 import os
 import re
@@ -14,7 +15,7 @@ from charms.tls_certificates_interface.v3.tls_certificates import (
     generate_private_key,
 )
 from ops import CharmBase
-from ops.charm import ActionEvent, RelationCreatedEvent, RelationJoinedEvent
+from ops.charm import ActionEvent, RelationBrokenEvent, RelationCreatedEvent, RelationJoinedEvent
 from ops.framework import EventBase
 
 from core.context import Context
@@ -108,6 +109,10 @@ class TLSEvents(BaseEventHandler, WithLogging):
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
         # avoid setting tls files and restarting
+        if not self.workload.container.can_connect():
+            event.defer()
+            return
+
         if event.certificate_signing_request != self.context.unit_server.csr:
             self.logger.error("Can't use certificate, found unknown CSR")
             return
@@ -151,8 +156,12 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     @defer_when_not_ready
-    def _on_certificates_broken(self, _) -> None:
+    def _on_certificates_broken(self, event: RelationBrokenEvent) -> None:
         """Handler for `certificates_relation_broken` event."""
+        if not self.workload.container.can_connect():
+            event.defer()
+            return
+
         self.context.unit_server.update({"csr": "", "certificate": "", "ca-cert": "", "ca": ""})
         self._cleanup_old_ca_field()
 

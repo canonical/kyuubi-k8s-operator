@@ -7,6 +7,8 @@
 from abc import abstractmethod
 from pathlib import Path
 
+from ops import Container
+
 from common.workload import AbstractWorkload
 
 
@@ -82,6 +84,7 @@ class KyuubiWorkloadBase(AbstractWorkload):
     """Base interface for common workload operations."""
 
     paths: KyuubiPaths
+    container: Container
 
     def restart(self) -> None:
         """Restarts the workload service."""

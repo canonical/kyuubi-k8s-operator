@@ -6,6 +6,7 @@
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerEventHandlers
 from ops import CharmBase
+from ops.charm import RelationChangedEvent
 
 from constants import ZOOKEEPER_REL
 from core.context import Context
@@ -38,8 +39,11 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
         )
 
     @compute_status
-    def _on_zookeeper_changed(self, _):
+    def _on_zookeeper_changed(self, event: RelationChangedEvent):
         self.logger.info("Zookeeper relation changed new...")
+        if not self.workload.container.can_connect():
+            event.defer()
+            return
         self.kyuubi.update()
 
     @compute_status
