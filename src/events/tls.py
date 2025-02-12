@@ -109,7 +109,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
         # avoid setting tls files and restarting
-        if not self.workload.container.can_connect():
+        if not self.workload.ready():
             event.defer()
             return
 
@@ -158,7 +158,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_certificates_broken(self, event: RelationBrokenEvent) -> None:
         """Handler for `certificates_relation_broken` event."""
-        if not self.workload.container.can_connect():
+        if not self.workload.ready():
             event.defer()
             return
 

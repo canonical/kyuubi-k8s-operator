@@ -41,7 +41,7 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
     @compute_status
     def _on_zookeeper_changed(self, event: RelationChangedEvent):
         self.logger.info("Zookeeper relation changed new...")
-        if not self.workload.container.can_connect():
+        if not self.workload.ready():
             event.defer()
             return
         self.kyuubi.update()
@@ -49,7 +49,7 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
     @compute_status
     def _on_zookeeper_broken(self, event: RelationBrokenEvent):
         self.logger.info("Zookeeper relation broken...")
-        if not self.workload.container.can_connect():
+        if not self.workload.ready():
             event.defer()
             return
         self.kyuubi.update(set_zookeeper_none=True)
