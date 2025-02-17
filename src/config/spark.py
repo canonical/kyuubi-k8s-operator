@@ -35,7 +35,7 @@ class SparkConfig(WithLogging):
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
-            "spark.jars.packages": "org.postgresql:postgresql:42.7.2",  # temp: please add postgresql in the main image
+            # "spark.jars.packages": "org.postgresql:postgresql:42.7.2",  # temp: please add postgresql in the main image
         }
 
     def _sa_conf(self):
