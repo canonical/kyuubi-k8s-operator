@@ -28,7 +28,7 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 # Literals related to Kyuubi
 JDBC_PORT = 10009
 
-KYUUBI_OCI_IMAGE = "ghcr.io/welpaolo/charmed-spark@sha256:cd16bae5b8c718724a84dbe8ee10fd28a9c5dfbcf504b7767b8e4f5507135113"
+KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:d096823cac14c716da82a3e26ac82cd96b11a7b9aa0b8e855d0c712547beb3d7"
 DEFAULT_ADMIN_USERNAME = "admin"
 
 # Zookeeper literals
