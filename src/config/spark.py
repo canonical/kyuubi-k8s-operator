@@ -65,7 +65,7 @@ class SparkConfig(WithLogging):
                 "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
                 "spark.executor.resource.gpu.vendor": "nvidia.com",
                 "spark.driver-memory": "2G",
-                "spark.kubernetes.executor.podTemplateFile": "/etc/spark/conf/gpu_executor_template.yaml",
+                "spark.kubernetes.executor.podTemplateFile": "/etc/spark8t/conf/gpu_executor_template.yaml",
             }
             if self.gpu_enabled
             else {}
