@@ -57,6 +57,22 @@ class KyuubiManager(WithLogging):
         tls_info = None if set_tls_none else self.context.tls
 
         # Restart workload only if some configuration has changed.
+
+        # tmp to write yaml
+        gpu_template = """
+apiVersion: v1
+kind: Pod
+spec:
+  ttlSecondsAfterFinished: 300
+  containers:
+    - name: executor
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        """
+
+        self.workload.write(gpu_template, self.workload.paths.gpu_executor_template)
+
         if any(
             [
                 self._compare_and_update_file(
