@@ -59,14 +59,15 @@ jobs:
       matrix:
         tox-environments:
           - integration-charm
-          # - integration-trust
-          # - integration-ha
-          # - integration-external-access
-          # - integration-upgrade
-          # - integration-tls
-          # - integration-iceberg
-          # - integration-metastore
-          # - integration-dynamic-allocation
+          - integration-iceberg
+          - integration-metastore
+          - integration-trust
+          - integration-ha
+          - integration-external-access
+          - integration-upgrade
+          - integration-tls
+          - integration-dynamic-allocation
+          - integration-observability
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
