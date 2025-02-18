@@ -20,10 +20,10 @@ class SparkConfig(WithLogging):
     """Spark Configurations."""
 
     def __init__(
-        self,
-        service_account_info: Optional[SparkServiceAccountInfo],
+        self, service_account_info: Optional[SparkServiceAccountInfo], gpu_enabled: bool = True
     ):
         self.service_account_info = service_account_info
+        self.gpu_enabled = gpu_enabled
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
@@ -35,8 +35,31 @@ class SparkConfig(WithLogging):
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
-            # "spark.jars.packages": "org.postgresql:postgresql:42.7.2",  # temp: please add postgresql in the main image
         }
+
+    def _gpu_conf(self):
+        """Return GPU Spark configurations."""
+        return (
+            {
+                "spark.executor.instances": "1",
+                "spark.executor.resource.gpu.amount": "1",
+                "spark.executor.memory": "4G",
+                "spark.executor.cores": "1",
+                "spark.task.cpus": "1",
+                "spark.task.resource.gpu.amount": "1",
+                "spark.rapids.memory.pinnedPool.size": "1G",
+                "spark.executor.memoryOverhead": "1G",
+                "spark.sql.files.maxPartitionBytes": "512m",
+                "spark.sql.shuffle.partitions": "10",
+                "spark.plugins": "com.nvidia.spark.SQLPlugin",
+                "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
+                "spark.executor.resource.gpu.vendor": "nvidia.com",
+                "spark.driver-memory": "2G",
+                "spark.kubernetes.executor.podTemplateFile": "/etc/spark/conf/gpu_executor_template.yaml",
+            }
+            if self.gpu_enabled
+            else {}
+        )
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""
@@ -65,7 +88,7 @@ class SparkConfig(WithLogging):
             1. Configurations associated with service account read from Spark8t
             2. Base configurations
         """
-        return self._base_conf() | self._sa_conf()
+        return self._base_conf() | self._gpu_conf() | self._sa_conf()
 
     @property
     def contents(self) -> str:
