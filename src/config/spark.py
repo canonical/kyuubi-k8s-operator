@@ -12,7 +12,7 @@ from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from core.config import CharmConfig
-from constants import SPARK_OCI_IMAGE, SPARK_GPU_OCI_IMAGE
+from constants import SPARK_GPU_OCI_IMAGE, SPARK_OCI_IMAGE
 from core.domain import SparkServiceAccountInfo
 from utils.logging import WithLogging
 
