@@ -26,6 +26,6 @@ options:
     description: Timeout for starting the background engine, e.g. SparkSQLEngine.
     default: 'PT30M'
   enable-gpu:
-    type: bool
+    type: boolean
     description: Enable gpu acceleration for the SparkSQLEngine.
     default: false
