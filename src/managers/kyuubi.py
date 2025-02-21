@@ -76,7 +76,10 @@ spec:
         if any(
             [
                 self._compare_and_update_file(
-                    SparkConfig(service_account_info=service_account_info).contents,
+                    SparkConfig(
+                        service_account_info=service_account_info,
+                        gpu_enabled=self.context.config.enable_gpu,
+                    ).contents,
                     self.workload.paths.spark_properties,
                 ),
                 self._compare_and_update_file(
@@ -89,6 +92,7 @@ spec:
                         zookeeper_info=zookeeper_info,
                         tls_info=tls_info,
                         keystore_path=self.workload.paths.keystore,
+                        session_engine_timeout=self.context.config.kyuubi_session_engine_idle_timeout,
                     ).contents,
                     self.workload.paths.kyuubi_properties,
                 ),
