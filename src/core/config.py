@@ -21,3 +21,5 @@ class CharmConfig(BaseConfigModel):
     service_account: str
     expose_external: ExposeExternal
     loadbalancer_extra_annotations: str
+    kyuubi_session_engine_idle_timeout: str
+    enable_gpu: bool
