@@ -11,8 +11,8 @@ from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
-from constants import KYUUBI_OCI_IMAGE
 from core.config import CharmConfig
+from constants import SPARK_OCI_IMAGE, SPARK_GPU_OCI_IMAGE
 from core.domain import SparkServiceAccountInfo
 from utils.logging import WithLogging
 
@@ -35,7 +35,7 @@ class SparkConfig(WithLogging):
         """Return base Spark configurations."""
         conf = {
             "spark.master": self._get_spark_master(),
-            "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
+            "spark.kubernetes.container.image": SPARK_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
         }
         if self.charm_config.enable_dynamic_allocation:
@@ -51,6 +51,7 @@ class SparkConfig(WithLogging):
         """Return GPU Spark configurations."""
         return (
             {
+                # many of those parameters can be further parametrized
                 "spark.executor.instances": "1",
                 "spark.executor.resource.gpu.amount": "1",
                 "spark.executor.memory": "4G",
@@ -66,6 +67,7 @@ class SparkConfig(WithLogging):
                 "spark.executor.resource.gpu.vendor": "nvidia.com",
                 "spark.driver-memory": "2G",
                 "spark.kubernetes.executor.podTemplateFile": "/etc/spark8t/conf/gpu_executor_template.yaml",
+                "spark.kubernetes.container.image": SPARK_GPU_OCI_IMAGE,
             }
             if self.gpu_enabled
             else {}

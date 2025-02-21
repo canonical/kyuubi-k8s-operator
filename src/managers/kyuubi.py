@@ -79,6 +79,7 @@ spec:
                     SparkConfig(
                         charm_config=self.context.config,
                         service_account_info=service_account_info,
+                        gpu_enabled=self.context.config.enable_gpu,
                     ).contents,
                     self.workload.paths.spark_properties,
                 ),
@@ -92,6 +93,7 @@ spec:
                         zookeeper_info=zookeeper_info,
                         tls_info=tls_info,
                         keystore_path=self.workload.paths.keystore,
+                        session_engine_timeout=self.context.config.kyuubi_session_engine_idle_timeout,
                     ).contents,
                     self.workload.paths.kyuubi_properties,
                 ),
