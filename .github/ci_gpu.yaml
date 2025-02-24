@@ -1,0 +1,171 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: GPU Tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_call:
+    outputs:
+      artifact-prefix:
+        description: build_charm.yaml `artifact-prefix` output
+        value: ${{ jobs.build.outputs.artifact-prefix }}
+  pull_request:
+  schedule:
+    - cron: "53 0 * * *" # Daily at 00:53 UTC
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install tox
+        run: pipx install tox
+      - name: Run linters
+        run: tox run -e lint
+
+  unit-test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install tox
+        run: pipx install tox
+      - name: Run tests
+        run: tox run -e unit
+
+  build:
+    strategy:
+      matrix:
+        path:
+          - .
+          - tests/integration/app-charm
+    name: Build charm | ${{ matrix.path }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
+    with:
+      path-to-charm-directory: ${{ matrix.path }}
+
+  start-runner:
+    name: Start self-hosted EC2 runner
+    needs: [build-rock]
+    runs-on: ubuntu-22.04
+    outputs:
+      label: ${{ steps.start-ec2-runner.outputs.label }}
+      ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Start EC2 runner
+        id: start-ec2-runner
+        uses: machulav/ec2-github-runner@v2.3.6
+        with:
+          mode: start
+          github-token: ${{ secrets.WELPAOLO_GITHUB_TOKEN }}
+          ec2-image-id: ${{ vars.AWS_EC2_IMAGE_ID }}
+          ec2-instance-type: ${{ vars.AWS_EC2_INSTANCE_TYPE }}
+          subnet-id: ${{ vars.AWS_DEFAULT_SUBNET_ID }}
+          security-group-id: ${{ vars.AWS_SECURITY_GROUP_ID }}
+
+  integration-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        tox-environments:
+          - integration-charm
+    name: ${{ matrix.tox-environments }}
+    needs:
+      - lint
+      - unit-test
+      - build
+      - start-runner
+    runs-on: ${{ needs.start-runner.outputs.label }}
+    timeout-minutes: 120
+    steps:
+      - name: (GitHub hosted) Free up disk space
+        timeout-minutes: 5
+        run: |
+          printf '\nDisk usage before cleanup\n'
+          df --human-readable
+          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
+          rm -r /usr/share/dotnet
+          rm -r /opt/hostedtoolcache/
+          printf '\nDisk usage after cleanup\n'
+          df --human-readable
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - name: Get prefsrc
+        run: |
+          echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
+      - name: Setup environment
+        run: |
+          # init lxd
+          lxd init --auto
+          # install juju
+          sudo snap install juju --channel=3.6/stable
+          # install charmcraft
+          sudo snap install charmcraft --classic
+          # Configure juju and bootstrap
+          mkdir -p ~/.local/share
+          microk8s config | juju add-k8s my-k8s --client
+          juju bootstrap my-k8s uk8sx
+          # fix lxd/docker access 
+          sudo iptables  -I DOCKER-USER -i lxdbr0 -j ACCEPT
+          sudo iptables  -I DOCKER-USER -o lxdbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      - name: Download packed charm(s)
+        uses: actions/download-artifact@v4
+        with:
+          artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+          merge-multiple: true
+      - name: Select tests
+        id: select-tests
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ]
+          then
+            echo Running unstable and stable tests
+            echo "mark_expression=" >> $GITHUB_OUTPUT
+          else
+            echo Skipping unstable tests
+            echo "mark_expression=not unstable" >> $GITHUB_OUTPUT
+          fi
+      - name: Run integration tests
+        run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }} --test-gpu=true'
+        env:
+          CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+  stop-runner:
+    name: Stop self-hosted EC2 runner
+    needs:
+      - start-runner 
+      - integration-test
+    runs-on: ubuntu-22.04
+    if: ${{ always() }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Stop EC2 runner
+        uses: machulav/ec2-github-runner@v2.3.6
+        with:
+          mode: stop
+          github-token: ${{ secrets.WELPAOLO_GITHUB_TOKEN }}
+          label: ${{ needs.start-runner.outputs.label }}
+          ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id }}

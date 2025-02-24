@@ -35,7 +35,7 @@ COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm):
+async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm, test_gpu):
     """Test building and deploying the charm without relation with any other charm."""
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
@@ -65,6 +65,14 @@ async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm):
     await ops_test.model.applications[APP_NAME].set_config(
         {"namespace": namespace, "service-account": username}
     )
+
+    # Enable options to run Kyuubi with GPU enabled
+    if test_gpu:
+        logger.info("Test GPU")
+        await ops_test.model.applications[APP_NAME].set_config(
+            # reduce timeout to 1 minute be able to use 1 GPU for the whole test
+            {"enable-gpu": "true", "kyuubi_session_engine_idle_timeout": "PT1M"}
+        )
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     await ops_test.model.wait_for_idle(
