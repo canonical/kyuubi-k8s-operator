@@ -112,6 +112,7 @@ jobs:
           sudo chown -f -R root /root/.kube
           sudo chown -f -R ubuntu /root/.kube
           sudo microk8s config | tee /root/.kube/config
+          sudo chmod 777 /root/.kube/config
     
       - name: Install required packages/snaps
         run: |
@@ -131,6 +132,8 @@ jobs:
         run: |
           id
           echo "here"
+          ls -larth /root/.kube/
+          ls -larth /root/.kube/config
           whoami
           # init lxd
           lxd init --auto
