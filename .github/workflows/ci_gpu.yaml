@@ -108,6 +108,10 @@ jobs:
           mkdir -p /home/ubuntu/.kube
           sudo chown -f -R ubuntu /home/ubuntu/.kube
           sudo microk8s config | tee /home/ubuntu/.kube/config
+          mkdir -p /home/root/.kube
+          sudo chown -f -R root /home/root/.kube
+          sudo chown -f -R ubuntu /home/root/.kube
+          sudo microk8s config | tee /home/root/.kube/config
     
       - name: Install required packages/snaps
         run: |
