@@ -129,6 +129,9 @@ jobs:
           echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
       - name: Setup environment
         run: |
+          id
+          echo "here"
+          whoami
           # init lxd
           lxd init --auto
           # install juju
