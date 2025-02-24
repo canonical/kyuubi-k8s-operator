@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 name: GPU Tests
@@ -8,11 +8,6 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  workflow_call:
-    outputs:
-      artifact-prefix:
-        description: build_charm.yaml `artifact-prefix` output
-        value: ${{ jobs.build.outputs.artifact-prefix }}
   pull_request:
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
