@@ -92,7 +92,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup environment
         run: |
-          sudo -E bash ./tests/integration/setup/setup-environment.sh
+          sudo -E bash ./tests/integration/setup/setup-enviroment.sh
         env:
           MICROK8S_CHANNEL: 1.28/stable
       - name: Setup microk8s
