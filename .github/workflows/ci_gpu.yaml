@@ -88,18 +88,33 @@ jobs:
     runs-on: ${{ needs.start-runner.outputs.label }}
     timeout-minutes: 120
     steps:
-      - name: (GitHub hosted) Free up disk space
-        timeout-minutes: 5
-        run: |
-          printf '\nDisk usage before cleanup\n'
-          df --human-readable
-          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
-          rm -r /usr/share/dotnet
-          rm -r /opt/hostedtoolcache/
-          printf '\nDisk usage after cleanup\n'
-          df --human-readable
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup environment
+        run: |
+          sudo -E bash ./tests/integration/setup/setup-environment.sh
+        env:
+          MICROK8S_CHANNEL: 1.28/stable
+      - name: Setup microk8s
+        timeout-minutes: 30
+        run: sudo -E /bin/bash ./tests/integration/setup/config-microk8s-gpu.sh
+        env:
+          MICROK8S_ADDONS: "hostpath-storage dns rbac gpu minio"
+      - name: Configure microk8s
+        timeout-minutes: 5
+        run: |
+          sudo microk8s.status
+          sudo snap alias microk8s.kubectl kubectl
+          mkdir -p /home/ubuntu/.kube
+          sudo chown -f -R ubuntu /home/ubuntu/.kube
+          sudo microk8s config | tee /home/ubuntu/.kube/config
+    
+      - name: Install required packages/snaps
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential -yqq
+          sudo snap install yq
+      
       - name: Install Java
         uses: actions/setup-java@v4
         with:
