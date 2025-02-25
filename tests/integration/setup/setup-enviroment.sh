@@ -11,7 +11,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -yqq
 apt-get install -yqq python3-pip
 # pip3 install tox
-
+export HOME=/root
 # Restart the systemd service
 systemctl restart snapd.service
 sleep 30
