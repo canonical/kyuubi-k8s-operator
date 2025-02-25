@@ -151,7 +151,7 @@ jobs:
           mkdir -p ~/.local/share/juju
           sudo microk8s config > ~/.local/share/config
           export KUBECONFIG='~/.local/share/config'
-          sudo microk8s config | juju add-k8s my-k8s --client
+          cat ~/.local/share/config | juju add-k8s my-k8s --client
           juju bootstrap my-k8s uk8sx
           # fix lxd/docker access 
           sudo iptables  -I DOCKER-USER -i lxdbr0 -j ACCEPT
