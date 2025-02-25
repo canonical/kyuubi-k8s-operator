@@ -99,7 +99,8 @@ jobs:
         timeout-minutes: 30
         run: sudo -E /bin/bash ./tests/integration/setup/config-microk8s-gpu.sh
         env:
-          MICROK8S_ADDONS: "hostpath-storage dns rbac gpu minio"
+          # MICROK8S_ADDONS: "hostpath-storage dns rbac gpu minio"
+          MICROK8S_ADDONS: "hostpath-storage dns rbac minio"
       - name: Configure microk8s
         timeout-minutes: 5
         run: |
@@ -130,6 +131,7 @@ jobs:
           echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
       - name: Setup environment
         run: |
+          set -x 
           id
           echo "here"
           ls -larth /root/.kube/
@@ -143,7 +145,7 @@ jobs:
           sudo snap install charmcraft --classic
           # Configure juju and bootstrap
           mkdir -p ~/.local/share
-          microk8s config | juju add-k8s my-k8s --client
+          sudo microk8s config | juju add-k8s my-k8s --client
           juju bootstrap my-k8s uk8sx
           # fix lxd/docker access 
           sudo iptables  -I DOCKER-USER -i lxdbr0 -j ACCEPT
