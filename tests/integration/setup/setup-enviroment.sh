@@ -10,14 +10,13 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -yqq
 apt-get install -yqq python3-pip
-pip3 install tox
+# pip3 install tox
 
 # Restart the systemd service
 systemctl restart snapd.service
-
+sleep 30
 # Microk8s setup
 echo "Installing microk8s: $MICROK8S_CHANNEL"
 snap install microk8s --channel=$MICROK8S_CHANNEL --classic
-sleep 30
 usermod -a -G microk8s ubuntu
 newgrp microk8s
