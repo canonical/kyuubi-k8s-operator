@@ -21,3 +21,4 @@ class CharmConfig(BaseConfigModel):
     service_account: str
     expose_external: ExposeExternal
     loadbalancer_extra_annotations: str
+    enable_dynamic_allocation: bool
