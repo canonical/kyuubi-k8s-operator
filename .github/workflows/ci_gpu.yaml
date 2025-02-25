@@ -150,6 +150,10 @@ jobs:
           # fix lxd/docker access 
           sudo iptables  -I DOCKER-USER -i lxdbr0 -j ACCEPT
           sudo iptables  -I DOCKER-USER -o lxdbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 20
       - name: Download packed charm(s)
         uses: actions/download-artifact@v4
         with:
