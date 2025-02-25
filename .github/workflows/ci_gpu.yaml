@@ -132,7 +132,7 @@ jobs:
       - name: Setup environment
         run: |
           set -x 
-          export HOME=/home/ubuntu/
+          export HOME=/root
           id
           echo "here"
           ls -larth /root/.kube/
