@@ -11,8 +11,6 @@ from tempfile import NamedTemporaryFile
 from typing import List
 
 import lightkube
-import lightkube.resources
-import lightkube.resources.core_v1
 import requests
 import yaml
 from juju.application import Application
@@ -39,8 +37,6 @@ NODEPORT_MIN_VALUE = 30000
 NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
-
-KYUUBI_SQL_EXECUTOR_POD_REGEX = r"kyuubi-user-spark-sql-(?P<user>\w+)-(?P<session>\w+)-.*-exec-\d+"
 
 
 def get_random_name():
@@ -438,7 +434,6 @@ async def deploy_minimal_kyuubi_setup(
     charm_versions,
     s3_bucket_and_creds,
     trust: bool = True,
-    enable_dynamic_allocation: bool = False,
     num_units=1,
     integrate_zookeeper=False,
     deploy_from_charmhub=False,
@@ -469,8 +464,6 @@ async def deploy_minimal_kyuubi_setup(
     namespace = ops_test.model.name
     username = "kyuubi-spark-engine"
     charm_config = {"namespace": namespace, "service-account": username}
-    if enable_dynamic_allocation:
-        charm_config.update({"enable-dynamic-allocation": "true"})
 
     await ops_test.model.applications[APP_NAME].set_config(charm_config)
     logger.info("Waiting for kyuubi-k8s app to settle...")
