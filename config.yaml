@@ -18,3 +18,7 @@ options:
     type: string
     description: Optional extra annotations to be supplied to the load balancer service.
     default: ''
+  enable-iceberg:
+    type: boolean
+    description: Enable Apache Iceberg capabilities in Kyuubi.
+    default: false

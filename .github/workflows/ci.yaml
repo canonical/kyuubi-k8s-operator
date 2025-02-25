@@ -64,6 +64,7 @@ jobs:
           - integration-external-access
           - integration-upgrade
           - integration-tls
+          - integration-iceberg
     name: ${{ matrix.tox-environments }}
     needs:
       - lint

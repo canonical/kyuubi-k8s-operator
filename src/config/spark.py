@@ -11,8 +11,9 @@ from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
-from constants import KYUUBI_OCI_IMAGE
-from core.domain import SparkServiceAccountInfo
+from constants import ICEBERG_CATALOG_NAME, KYUUBI_OCI_IMAGE
+from core.config import CharmConfig
+from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
 
 
@@ -21,9 +22,13 @@ class SparkConfig(WithLogging):
 
     def __init__(
         self,
+        charm_config: CharmConfig,
         service_account_info: Optional[SparkServiceAccountInfo],
+        metastore_db_info: Optional[DatabaseConnectionInfo],
     ):
+        self.charm_config = charm_config
         self.service_account_info = service_account_info
+        self.metastore_db_info = metastore_db_info
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
@@ -57,6 +62,21 @@ class SparkConfig(WithLogging):
 
         return {}
 
+    def _iceberg_conf(self):
+        """ "Apache iceberg related configurations."""
+        if not self.charm_config.enable_iceberg:
+            return {}
+
+        return {
+            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+            "spark.sql.defaultCatalog": ICEBERG_CATALOG_NAME,
+            f"spark.sql.catalog.{ICEBERG_CATALOG_NAME}": "org.apache.iceberg.spark.SparkCatalog",
+            f"spark.sql.catalog.{ICEBERG_CATALOG_NAME}.warehouse": "s3a://spark/warehouse",
+            f"spark.sql.catalog.{ICEBERG_CATALOG_NAME}.type": "hive"
+            if self.metastore_db_info
+            else "hadoop",
+        }
+
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file.
 
@@ -64,7 +84,7 @@ class SparkConfig(WithLogging):
             1. Configurations associated with service account read from Spark8t
             2. Base configurations
         """
-        return self._base_conf() | self._sa_conf()
+        return self._base_conf() | self._sa_conf() | self._iceberg_conf()
 
     @property
     def contents(self) -> str:

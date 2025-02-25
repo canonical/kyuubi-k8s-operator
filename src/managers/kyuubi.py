@@ -60,7 +60,11 @@ class KyuubiManager(WithLogging):
         if any(
             [
                 self._compare_and_update_file(
-                    SparkConfig(service_account_info=service_account_info).contents,
+                    SparkConfig(
+                        charm_config=self.context.config,
+                        service_account_info=service_account_info,
+                        metastore_db_info=metastore_db_info,
+                    ).contents,
                     self.workload.paths.spark_properties,
                 ),
                 self._compare_and_update_file(
