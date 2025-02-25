@@ -142,6 +142,7 @@ jobs:
           lxd init --auto
           # install juju
           sudo snap install juju --channel=3.6/stable
+          echo $HOME
           sudo snap connect juju:home :home
           # install charmcraft
           sudo snap install charmcraft --classic
