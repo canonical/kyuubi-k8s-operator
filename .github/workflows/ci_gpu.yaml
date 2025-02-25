@@ -142,10 +142,12 @@ jobs:
           lxd init --auto
           # install juju
           sudo snap install juju --channel=3.6/stable
+          sudo snap connect juju:home :home
           # install charmcraft
           sudo snap install charmcraft --classic
           # Configure juju and bootstrap
           mkdir -p ~/.local/share
+          mkdir -p ~/.local/share/juju
           sudo microk8s config | juju add-k8s my-k8s --client
           juju bootstrap my-k8s uk8sx
           # fix lxd/docker access 
