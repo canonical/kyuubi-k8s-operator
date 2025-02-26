@@ -10,6 +10,8 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -yqq
 apt-get install -yqq python3-pip
+apt-get install -yqq python3-dev
+apt-get install -yqq libpq-dev
 # pip3 install tox
 export HOME=/root
 # Restart the systemd service
