@@ -157,7 +157,7 @@ jobs:
           sudo iptables  -I DOCKER-USER -i lxdbr0 -j ACCEPT
           sudo iptables  -I DOCKER-USER -o lxdbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
       - name: Install tox
-        run: pipx install tox
+        run: pip3 install tox
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
