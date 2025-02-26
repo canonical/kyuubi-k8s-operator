@@ -99,8 +99,7 @@ jobs:
         timeout-minutes: 30
         run: sudo -E /bin/bash ./tests/integration/setup/config-microk8s-gpu.sh
         env:
-          # MICROK8S_ADDONS: "hostpath-storage dns rbac gpu minio"
-          MICROK8S_ADDONS: "hostpath-storage dns rbac minio"
+          MICROK8S_ADDONS: "hostpath-storage dns rbac gpu minio"
       - name: Configure microk8s
         timeout-minutes: 5
         run: |
