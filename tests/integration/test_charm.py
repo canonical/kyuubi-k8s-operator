@@ -138,7 +138,7 @@ async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_buck
     """Test deploying the integration hub charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
 
     logger.info("Waiting for integration_hub app to be idle and active...")
     await ops_test.model.wait_for_idle(
