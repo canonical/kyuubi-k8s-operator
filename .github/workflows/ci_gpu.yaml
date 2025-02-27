@@ -140,7 +140,7 @@ jobs:
           # init lxd
           lxd init --auto
           # install juju
-          sudo snap install juju --channel=3.6/stable --devmode
+          sudo snap install juju --channel=3.5/stable --devmode
           echo $HOME
           sudo snap connect juju:home :home
           # install charmcraft
