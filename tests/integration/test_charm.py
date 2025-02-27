@@ -88,6 +88,46 @@ async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm, test_gpu
 
 
 @pytest.mark.abort_on_fail
+async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
+    """Test deploying the integration hub charm and configuring it."""
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying integration-hub charm...")
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
+
+    logger.info("Waiting for integration_hub app to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
+    )
+
+    # Add configuration key
+    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+    action = await unit.run_action(
+        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+    )
+    _ = await action.wait()
+
+    logger.info("Integrating s3-integrator charm with integration-hub charm...")
+    await ops_test.model.integrate(
+        charm_versions.integration_hub.application_name, charm_versions.s3.application_name
+    )
+
+    logger.info("Waiting for integration_hub and s3-integrator charms to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.s3.application_name, charm_versions.integration_hub.application_name],
+        timeout=1000,
+        status="active",
+        idle_period=20,
+    )
+
+    # Assert that both integration-hub and s3-integrator charms are in active state
+    assert (
+        ops_test.model.applications[charm_versions.integration_hub.application_name].status
+        == "active"
+    )
+    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+
+@pytest.mark.abort_on_fail
 async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
     """Test deploying the s3-integrator charm and configuring it."""
     # Deploy the charm and wait for waiting status
@@ -133,44 +173,44 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
-@pytest.mark.abort_on_fail
-async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
-    """Test deploying the integration hub charm and configuring it."""
-    # Deploy the charm and wait for waiting status
-    logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
+# @pytest.mark.abort_on_fail
+# async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
+#     """Test deploying the integration hub charm and configuring it."""
+#     # Deploy the charm and wait for waiting status
+#     logger.info("Deploying integration-hub charm...")
+#     await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
 
-    logger.info("Waiting for integration_hub app to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
-    )
+#     logger.info("Waiting for integration_hub app to be idle and active...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
+#     )
 
-    # Add configuration key
-    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
-    action = await unit.run_action(
-        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
-    )
-    _ = await action.wait()
+#     # Add configuration key
+#     unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+#     action = await unit.run_action(
+#         action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+#     )
+#     _ = await action.wait()
 
-    logger.info("Integrating s3-integrator charm with integration-hub charm...")
-    await ops_test.model.integrate(
-        charm_versions.integration_hub.application_name, charm_versions.s3.application_name
-    )
+#     logger.info("Integrating s3-integrator charm with integration-hub charm...")
+#     await ops_test.model.integrate(
+#         charm_versions.integration_hub.application_name, charm_versions.s3.application_name
+#     )
 
-    logger.info("Waiting for integration_hub and s3-integrator charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.s3.application_name, charm_versions.integration_hub.application_name],
-        timeout=1000,
-        status="active",
-        idle_period=20,
-    )
+#     logger.info("Waiting for integration_hub and s3-integrator charms to be idle and active...")
+#     await ops_test.model.wait_for_idle(
+#         apps=[charm_versions.s3.application_name, charm_versions.integration_hub.application_name],
+#         timeout=1000,
+#         status="active",
+#         idle_period=20,
+#     )
 
-    # Assert that both integration-hub and s3-integrator charms are in active state
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+#     # Assert that both integration-hub and s3-integrator charms are in active state
+#     assert (
+#         ops_test.model.applications[charm_versions.integration_hub.application_name].status
+#         == "active"
+#     )
+#     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
