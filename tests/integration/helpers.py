@@ -463,9 +463,9 @@ async def deploy_minimal_kyuubi_setup(
     logger.info("Setting configuration for kyuubi-k8s charm...")
     namespace = ops_test.model.name
     username = "kyuubi-spark-engine"
-    await ops_test.model.applications[APP_NAME].set_config(
-        {"namespace": namespace, "service-account": username}
-    )
+    charm_config = {"namespace": namespace, "service-account": username}
+
+    await ops_test.model.applications[APP_NAME].set_config(charm_config)
     logger.info("Waiting for kyuubi-k8s app to settle...")
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", idle_period=20)
     assert check_status(

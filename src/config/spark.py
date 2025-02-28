@@ -12,6 +12,7 @@ from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
+from core.config import CharmConfig
 from core.domain import SparkServiceAccountInfo
 from utils.logging import WithLogging
 
@@ -21,8 +22,10 @@ class SparkConfig(WithLogging):
 
     def __init__(
         self,
+        charm_config: CharmConfig,
         service_account_info: Optional[SparkServiceAccountInfo],
     ):
+        self.charm_config = charm_config
         self.service_account_info = service_account_info
 
     def _get_spark_master(self) -> str:
@@ -31,11 +34,19 @@ class SparkConfig(WithLogging):
 
     def _base_conf(self):
         """Return base Spark configurations."""
-        return {
+        conf = {
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
         }
+        if self.charm_config.enable_dynamic_allocation:
+            conf.update(
+                {
+                    "spark.dynamicAllocation.enabled": "true",
+                    "spark.dynamicAllocation.shuffleTracking.enabled": "true",
+                }
+            )
+        return conf
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""

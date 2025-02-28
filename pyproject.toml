@@ -83,6 +83,7 @@ coverage = { extras = ["toml"], version = ">7.0" }
 pytest-operator = ">0.20"
 boto3 = ">=1.28.0"
 tenacity = "^8.2.2"
+spark-k8s-test = "^0.0.2"
 pytest-operator-cache = { git = "https://github.com/canonical/data-platform-workflows", tag = "v24.0.5", subdirectory = "python/pytest_plugins/pytest_operator_cache" }
 
 [tool.ruff]
