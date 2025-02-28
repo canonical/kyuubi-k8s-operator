@@ -21,6 +21,7 @@ options:
   enable-dynamic-allocation:
     type: boolean
     description: Enable dynamic allocation of pods for Spark jobs.
+    default: false
   kyuubi_session_engine_idle_timeout:
     type: string
     description: Timeout for starting the background engine, e.g. SparkSQLEngine.
