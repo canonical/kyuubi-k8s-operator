@@ -2097,28 +2097,23 @@ files = [
 
 [[package]]
 name = "spark-k8s-test"
-version = "0.0.2a3"
+version = "0.0.2"
 description = "This project provides some utilities function and CLI commands to test Charmed Spark on K8s."
 optional = false
-python-versions = ">=3.10,<4.0"
+python-versions = "<4.0,>=3.10"
 groups = ["integration"]
-files = []
-develop = false
+files = [
+    {file = "spark_k8s_test-0.0.2-py3-none-any.whl", hash = "sha256:9fecc72d5d1e2b31d62cad569f33d1cd32c5b22a075608c36eff5c5c9ccdacde"},
+    {file = "spark_k8s_test-0.0.2.tar.gz", hash = "sha256:32e94c41a9679560b9dc6c6b02daacc08df61953c731b139e8c06bd940acb5e7"},
+]
 
 [package.dependencies]
-azure-storage-blob = "^12.21.0"
+azure-storage-blob = ">=12.21.0,<13.0.0"
 boto3 = ">=1.34.55"
 lightkube = ">=0.11"
-pyhive = {version = "^0.7.0", extras = ["hive-pure-sasl"]}
+pyhive = {version = ">=0.7.0,<0.8.0", extras = ["hive-pure-sasl"]}
 pytest = ">=6.2"
 spark8t = ">=0.0.10"
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/spark-k8s-bundle"
-reference = "add-utils"
-resolved_reference = "348e9243bbf6d03872e28e1f6f3f0c7ec58e7c9d"
-subdirectory = "python"
 
 [[package]]
 name = "spark8t"
