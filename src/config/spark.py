@@ -11,8 +11,8 @@ from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
-from core.config import CharmConfig
 from constants import SPARK_GPU_OCI_IMAGE, SPARK_OCI_IMAGE
+from core.config import CharmConfig
 from core.domain import SparkServiceAccountInfo
 from utils.logging import WithLogging
 
@@ -21,7 +21,10 @@ class SparkConfig(WithLogging):
     """Spark Configurations."""
 
     def __init__(
-        self, charm_config: CharmConfig, service_account_info: Optional[SparkServiceAccountInfo], gpu_enabled: bool = True
+        self,
+        charm_config: CharmConfig,
+        service_account_info: Optional[SparkServiceAccountInfo],
+        gpu_enabled: bool = True,
     ):
         self.charm_config = charm_config
         self.service_account_info = service_account_info
