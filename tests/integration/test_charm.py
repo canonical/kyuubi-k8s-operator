@@ -92,7 +92,7 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
     """Test deploying the s3-integrator charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying s3-integrator charm...")
-    await ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
 
     logger.info("Waiting for s3-integrator app to be idle...")
     await ops_test.model.wait_for_idle(
@@ -144,7 +144,7 @@ async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_buck
     await ops_test.model.wait_for_idle(
         apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
     )
-
+    logger.info("Run action on the integration-hub")
     # Add configuration key
     unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
     action = await unit.run_action(
