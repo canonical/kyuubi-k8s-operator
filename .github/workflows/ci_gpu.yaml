@@ -116,6 +116,7 @@ jobs:
     
       - name: Install required packages/snaps
         run: |
+          sudo apt clean
           # sudo apt-get update
           sudo apt-get install build-essential -yqq
           sudo snap install yq
