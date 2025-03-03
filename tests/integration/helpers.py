@@ -186,9 +186,9 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
         "aux",
     ]
     process = subprocess.run(command, capture_output=True, check=True)
-    assert process.returncode == 0, (
-        f"Command: {command} returned with return code {process.returncode}"
-    )
+    assert (
+        process.returncode == 0
+    ), f"Command: {command} returned with return code {process.returncode}"
 
     for line in process.stdout.decode().splitlines():
         match = re.search(re.escape(PROCESS_NAME_PATTERN), line)
