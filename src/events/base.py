@@ -4,10 +4,11 @@
 
 """Base utilities exposing common functionalities for all Events classes."""
 
-from functools import wraps
-from typing import Callable
+from __future__ import annotations
 
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
+from functools import wraps
+from typing import TYPE_CHECKING, Callable
+
 from ops import EventBase, Object, StatusBase
 
 from core.context import Context
@@ -17,12 +18,15 @@ from managers.k8s import K8sManager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class BaseEventHandler(Object, WithLogging):
     """Base class for all Event Handler classes in the Spark Integration Hub."""
 
     workload: KyuubiWorkloadBase
-    charm: TypedCharmBase
+    charm: KyuubiCharm
     context: Context
 
     def get_app_status(  # noqa: C901
@@ -75,7 +79,7 @@ class BaseEventHandler(Object, WithLogging):
 
 
 def compute_status(
-    hook: Callable[[BaseEventHandler, EventBase], None]
+    hook: Callable[[BaseEventHandler, EventBase], None],
 ) -> Callable[[BaseEventHandler, EventBase], None]:
     """Decorator to automatically compute statuses at the end of the hook."""
 
@@ -92,7 +96,7 @@ def compute_status(
 
 
 def defer_when_not_ready(
-    hook: Callable[[BaseEventHandler, EventBase], None]
+    hook: Callable[[BaseEventHandler, EventBase], None],
 ) -> Callable[[BaseEventHandler, EventBase], None]:
     """Decorator to defer hook is workload is not ready."""
 

@@ -4,7 +4,10 @@
 
 """Action related event handlers."""
 
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ops.charm import ActionEvent
 
 from constants import DEFAULT_ADMIN_USERNAME
@@ -17,11 +20,14 @@ from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class ActionEvents(BaseEventHandler, WithLogging):
     """Class implementing charm action event hooks."""
 
-    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkloadBase):
         super().__init__(charm, "action-events")
 
         self.charm = charm
@@ -42,12 +48,27 @@ class ActionEvents(BaseEventHandler, WithLogging):
 
     def _on_get_jdbc_endpoint(self, event: ActionEvent):
         """Action event handler that returns back with a JDBC endpoint."""
-        if not self.workload.ready():
-            event.fail("The action failed because the workload is not ready yet.")
-            return
-        if self.get_app_status() != Status.ACTIVE.value:
-            event.fail("The action failed because the charm is not in active state.")
-            return
+        failure_conditions = [
+            (
+                lambda: not self.charm.unit.is_leader(),
+                "Action must be ran on the application leader",
+            ),
+            (
+                lambda: not self.workload.ready(),
+                "The action failed because the workload is not ready yet.",
+            ),
+            (
+                lambda: self.get_app_status() != Status.ACTIVE.value,
+                "The action failed because the charm is not in active state.",
+            ),
+        ]
+
+        for check, msg in failure_conditions:
+            if check():
+                self.logger.error(msg)
+                event.set_results({"error": msg})
+                event.fail(msg)
+                return
 
         address = self.service_manager.get_service_endpoint(
             expose_external=self.charm.config.expose_external
@@ -63,46 +84,68 @@ class ActionEvents(BaseEventHandler, WithLogging):
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for admin user."""
-        if not self.context.is_authentication_enabled():
-            event.fail(
+        failure_conditions = [
+            (
+                lambda: not self.charm.unit.is_leader(),
+                "Action must be ran on the application leader",
+            ),
+            (
+                lambda: not self.context.is_authentication_enabled(),
                 "The action can only be run when authentication is enabled. "
-                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
-            )
-            return
-        if not self.workload.ready():
-            event.fail("The action failed because the workload is not ready yet.")
-            return
-        if self.get_app_status() != Status.ACTIVE.value:
-            event.fail("The action failed because the charm is not in active state.")
-            return
+                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s",
+            ),
+            (
+                lambda: not self.workload.ready(),
+                "The action failed because the workload is not ready yet.",
+            ),
+            (
+                lambda: self.get_app_status() != Status.ACTIVE.value,
+                "The action failed because the charm is not in active state.",
+            ),
+        ]
+
+        for check, msg in failure_conditions:
+            if check():
+                self.logger.error(msg)
+                event.set_results({"error": msg})
+                event.fail(msg)
+                return
+
         password = self.auth.get_password(DEFAULT_ADMIN_USERNAME)
         event.set_results({"password": password})
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the admin user."""
-        if not self.context.is_authentication_enabled():
-            event.fail(
+        failure_conditions = [
+            (
+                lambda: not self.charm.unit.is_leader(),
+                "Action must be ran on the application leader",
+            ),
+            (
+                lambda: not self.context.is_authentication_enabled(),
                 "The action can only be run when authentication is enabled. "
-                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s"
-            )
-            return
+                "Please integrate kyuubi-k8s:auth-db with postgresql-k8s",
+            ),
+            (
+                lambda: not self.workload.ready(),
+                "The action failed because the workload is not ready yet.",
+            ),
+            (
+                lambda: self.get_app_status() != Status.ACTIVE.value,
+                "The action failed because the charm is not in active state.",
+            ),
+            (
+                lambda: not self.charm.upgrade_events.idle,
+                f"Cannot set password while upgrading (upgrade_stack: {self.charm.upgrade_events.upgrade_stack})",
+            ),
+        ]
 
-        # Only leader can write the new password
-        if not self.charm.unit.is_leader():
-            event.fail("The action can be run only on leader unit")
-            return
-
-        if not self.workload.ready():
-            event.fail("The action failed because the workload is not ready yet.")
-            return
-        if self.get_app_status() != Status.ACTIVE.value:
-            event.fail("The action failed because the charm is not in active state.")
-            return
-
-        if not self.charm.upgrade_events.idle:  # type: ignore
-            msg = f"Cannot set password while upgrading (upgrade_stack: {self.charm.upgrade_events.upgrade_stack})"  # type: ignore
-            self.logger.error(msg)
-            event.fail(msg)
+        for check, msg in failure_conditions:
+            if check():
+                self.logger.error(msg)
+                event.set_results({"error": msg})
+                event.fail(msg)
+                return
 
         password = self.auth.generate_password()
 
