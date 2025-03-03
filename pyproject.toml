@@ -29,7 +29,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
 ops = "^2.17.1"
-boto3 = "^1.26.75"
+boto3 = "1.35.93"
 lightkube = "^0.15.2"
 psycopg2= "^2.9.9"
 tenacity = ">=8.0.1"
