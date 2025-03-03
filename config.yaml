@@ -22,3 +22,11 @@ options:
     type: boolean
     description: Enable dynamic allocation of pods for Spark jobs.
     default: false
+  kyuubi_session_engine_idle_timeout:
+    type: string
+    description: Timeout for starting the background engine, e.g. SparkSQLEngine.
+    default: 'PT30M'
+  enable-gpu:
+    type: boolean
+    description: Enable gpu acceleration for the SparkSQLEngine.
+    default: false

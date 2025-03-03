@@ -226,3 +226,21 @@ async def kyuubi_charm(ops_test):
     logger.info("Building charm...")
     charm = await ops_test.build_charm(".")
     return charm
+
+
+def pytest_addoption(parser):
+    """Add CLI options to pytest."""
+    parser.addoption(
+        "--test-gpu",
+        nargs="?",
+        const=False,
+        default=False,
+        type=bool,
+        help="Enable tests on GPU.",
+    )
+
+
+@pytest.fixture(scope="module")
+def test_gpu(request) -> bool:
+    """Enable gpu feature on the charm for the tests."""
+    return request.config.getoption("--test-gpu") or False

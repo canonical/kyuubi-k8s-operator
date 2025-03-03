@@ -22,3 +22,5 @@ class CharmConfig(BaseConfigModel):
     expose_external: ExposeExternal
     loadbalancer_extra_annotations: str
     enable_dynamic_allocation: bool
+    kyuubi_session_engine_idle_timeout: str
+    enable_gpu: bool
