@@ -58,7 +58,9 @@ def check_status(entity: Application | Unit, status: StatusBase):
 async def fetch_jdbc_endpoint(ops_test):
     """Return the JDBC endpoint for clients to connect to Kyuubi server."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
+    for unit in ops_test.model.applications[APP_NAME].units:
+        if await unit.is_leader_from_status():
+            kyuubi_unit = unit
     action = await kyuubi_unit.run_action(
         action_name="get-jdbc-endpoint",
     )
@@ -184,9 +186,9 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
         "aux",
     ]
     process = subprocess.run(command, capture_output=True, check=True)
-    assert (
-        process.returncode == 0
-    ), f"Command: {command} returned with return code {process.returncode}"
+    assert process.returncode == 0, (
+        f"Command: {command} returned with return code {process.returncode}"
+    )
 
     for line in process.stdout.decode().splitlines():
         match = re.search(re.escape(PROCESS_NAME_PATTERN), line)
@@ -224,7 +226,7 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
     kyuubi_pods = {
         unit.name.replace("/", "-") for unit in ops_test.model.applications[APP_NAME].units
     }
-    logger.info(f"Nodes in the cluster being tested: " f"{','.join(kyuubi_pods)}")
+    logger.info(f"Nodes in the cluster being tested: {','.join(kyuubi_pods)}")
     pods_that_responded = set()
 
     tries = 0
@@ -246,9 +248,7 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
             *pod_command,
         ]
         command_executed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        logger.info(
-            f"Executing command: {' '.join(kubectl_command)} " f"at {command_executed_at}..."
-        )
+        logger.info(f"Executing command: {' '.join(kubectl_command)} at {command_executed_at}...")
         process = subprocess.run(kubectl_command, capture_output=True, check=True)
         assert process.returncode == 0
 
