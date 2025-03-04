@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# Copyright 2025 Canonical Limited
+# See LICENSE file for licensing details.
+
 import dataclasses
 import json
 import logging
