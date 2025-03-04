@@ -57,12 +57,29 @@ class KyuubiManager(WithLogging):
         tls_info = None if set_tls_none else self.context.tls
 
         # Restart workload only if some configuration has changed.
+
+        # tmp to write yaml
+        gpu_template = """
+apiVersion: v1
+kind: Pod
+spec:
+  ttlSecondsAfterFinished: 300
+  containers:
+    - name: executor
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        """
+
+        self.workload.write(gpu_template, self.workload.paths.gpu_executor_template)
+
         if any(
             [
                 self._compare_and_update_file(
                     SparkConfig(
                         charm_config=self.context.config,
                         service_account_info=service_account_info,
+                        gpu_enabled=self.context.config.enable_gpu,
                     ).contents,
                     self.workload.paths.spark_properties,
                 ),
@@ -76,6 +93,7 @@ class KyuubiManager(WithLogging):
                         zookeeper_info=zookeeper_info,
                         tls_info=tls_info,
                         keystore_path=self.workload.paths.keystore,
+                        session_engine_timeout=self.context.config.kyuubi_session_engine_idle_timeout,
                     ).contents,
                     self.workload.paths.kyuubi_properties,
                 ),

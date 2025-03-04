@@ -19,11 +19,13 @@ class KyuubiConfig(WithLogging):
         zookeeper_info: ZookeeperInfo | None,
         tls_info: TLSInfo | None,
         keystore_path: str,
+        session_engine_timeout: str,
     ):
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
         self.tls = tls_info
         self.keystore_path = keystore_path
+        self.session_engine_timeout = session_engine_timeout
 
     def _get_db_connection_url(self) -> str:
         endpoint = self.db_info.endpoint
@@ -42,6 +44,10 @@ class KyuubiConfig(WithLogging):
         username = self.zookeeper_info.username
         password = self.zookeeper_info.password
         return f"{username}:{password}"
+
+    @property
+    def _base_conf(self) -> dict[str, str]:
+        return {"kyuubi.session.engine.idle.timeout": self.session_engine_timeout}
 
     @property
     def _auth_conf(self) -> dict[str, str]:
@@ -84,7 +90,7 @@ class KyuubiConfig(WithLogging):
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
-        return self._auth_conf | self._ha_conf | self._tls_conf
+        return self._auth_conf | self._ha_conf | self._tls_conf | self._base_conf
 
     @property
     def contents(self) -> str:

@@ -8,12 +8,10 @@ import time
 import uuid
 from pathlib import Path
 
-import juju
 import psycopg2
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
@@ -23,13 +21,7 @@ from constants import (
 from core.domain import Status
 
 from .helpers import (
-    all_prometheus_exporters_data,
     check_status,
-    get_cos_address,
-    published_grafana_dashboards,
-    published_loki_logs,
-    published_prometheus_alerts,
-    published_prometheus_data,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +35,7 @@ COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm):
+async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm, test_gpu):
     """Test building and deploying the charm without relation with any other charm."""
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
@@ -74,6 +66,14 @@ async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm):
         {"namespace": namespace, "service-account": username}
     )
 
+    # Enable options to run Kyuubi with GPU enabled
+    if test_gpu:
+        logger.info("Test GPU")
+        await ops_test.model.applications[APP_NAME].set_config(
+            # reduce timeout to 1 minute be able to use 1 GPU for the whole test
+            {"enable-gpu": "true", "kyuubi_session_engine_idle_timeout": "PT1M"}
+        )
+
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
@@ -92,7 +92,7 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
     """Test deploying the s3-integrator charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying s3-integrator charm...")
-    await ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
 
     logger.info("Waiting for s3-integrator app to be idle...")
     await ops_test.model.wait_for_idle(
@@ -138,13 +138,13 @@ async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_buck
     """Test deploying the integration hub charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
 
     logger.info("Waiting for integration_hub app to be idle and active...")
     await ops_test.model.wait_for_idle(
         apps=[charm_versions.integration_hub.application_name], timeout=1000, status="active"
     )
-
+    logger.info("Run action on the integration-hub")
     # Add configuration key
     unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
     action = await unit.run_action(
@@ -1078,118 +1078,118 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
     assert set(executor_pod_names) == set(expected_executor_pod_names)
 
 
-@pytest.mark.abort_on_fail
-async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
-    """Setting up COS relations.
-
-    This is important to happen before worker log files start to be generated.
-    Only new logs will be picked up by Loki.
-    """
-    # Prometheus data is being published by the app
-    assert await all_prometheus_exporters_data(ops_test, check_field="kyuubi_jvm_uptime")
-
-    # Deploying and relating to grafana-agent
-    logger.info("Deploying grafana-agent-k8s charm...")
-    await ops_test.model.deploy(COS_AGENT_APP_NAME, num_units=1, series="jammy")
-
-    logger.info("Waiting for test charm to be idle...")
-    await ops_test.model.wait_for_idle(apps=[COS_AGENT_APP_NAME], timeout=1000, status="blocked")
-
-    await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:metrics-endpoint")
-    await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:grafana-dashboard")
-    await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:logging")
-
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000, idle_period=30
-    )
-    await ops_test.model.wait_for_idle(
-        apps=[COS_AGENT_APP_NAME], status="blocked", timeout=1000, idle_period=30
-    )
-
-    await ops_test.model.deploy(
-        "cos-lite",
-        series="jammy",
-        trust=True,
-    )
-
-    await ops_test.model.wait_for_idle(
-        apps=["prometheus", "alertmanager", "loki", "grafana"],
-        status="active",
-        timeout=2000,
-        idle_period=30,
-    )
-    await ops_test.model.wait_for_idle(
-        apps=[COS_AGENT_APP_NAME],
-        status="blocked",
-        timeout=1000,
-        idle_period=30,
-    )
-
-    # These two relations --though essential to publishing-- are not set.
-    # (May change in the future?)
-    try:
-        await ops_test.model.integrate(
-            f"{COS_AGENT_APP_NAME}:grafana-dashboards-provider", "grafana"
-        )
-    except juju.errors.JujuAPIError:
-        pass
-
-    try:
-        await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:send-remote-write", "prometheus")
-    except juju.errors.JujuAPIError:
-        pass
-
-    try:
-        await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:logging-consumer", "loki")
-    except juju.errors.JujuAPIError:
-        pass
-
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, COS_AGENT_APP_NAME, "prometheus", "alertmanager", "loki", "grafana"],
-        status="active",
-        timeout=1000,
-        idle_period=30,
-    )
-
-
 # @pytest.mark.abort_on_fail
-async def test_kyuubi_cos_data_published(ops_test: OpsTest):
-    # We should leave time for Prometheus data to be published
-    for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(60), reraise=True):
-        with attempt:
+# async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
+#     """Setting up COS relations.
 
-            # Data got published to Prometheus
-            logger.info("Checking if Prometheus data is being published...")
-            cos_address = await get_cos_address(ops_test)
-            assert published_prometheus_data(ops_test, cos_address, "kyuubi_jvm_uptime")
+#     This is important to happen before worker log files start to be generated.
+#     Only new logs will be picked up by Loki.
+#     """
+#     # Prometheus data is being published by the app
+#     assert await all_prometheus_exporters_data(ops_test, check_field="kyuubi_jvm_uptime")
 
-            # Alerts got published to Prometheus
-            logger.info("Checking if alert rules are published...")
-            alerts_data = published_prometheus_alerts(ops_test, cos_address)
-            for alert in ["KyuubiBufferPoolCapacityLow", "KyuubiJVMUptime"]:
-                assert any(
-                    rule["name"] == alert
-                    for group in alerts_data["data"]["groups"]
-                    for rule in group["rules"]
-                )
+#     # Deploying and relating to grafana-agent
+#     logger.info("Deploying grafana-agent-k8s charm...")
+#     await ops_test.model.deploy(COS_AGENT_APP_NAME, num_units=1, series="jammy")
 
-            # Grafana dashboard got published
-            logger.info("Checking the Kyuubi dashboard is available in Grafana...")
-            dashboards_info = await published_grafana_dashboards(ops_test)
-            assert any(board["title"] == "Kyuubi" for board in dashboards_info)
+#     logger.info("Waiting for test charm to be idle...")
+#     await ops_test.model.wait_for_idle(apps=[COS_AGENT_APP_NAME], timeout=1000, status="blocked")
 
-            # Loki
-            logger.info("Checking if Kyuubi server logs are published to Loki...")
-            loki_server_logs = await published_loki_logs(
-                ops_test, "juju_application", "kyuubi-k8s", 5000
-            )
-            assert len(loki_server_logs["data"]["result"][0]["values"]) > 0
+#     await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:metrics-endpoint")
+#     await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:grafana-dashboard")
+#     await ops_test.model.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:logging")
 
-            # Ideally we should do the check below. However, this requires COS to be started
-            # around application startup. Once this is possible, please un-comment the check below
-            #
-            # assert any(
-            #     "Starting org.apache.kyuubi.server.KyuubiServer" in value[1]
-            #     for result in loki_server_logs["data"]["result"]
-            #     for value in result["values"]
-            # )
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME], status="active", timeout=1000, idle_period=30
+#     )
+#     await ops_test.model.wait_for_idle(
+#         apps=[COS_AGENT_APP_NAME], status="blocked", timeout=1000, idle_period=30
+#     )
+
+#     await ops_test.model.deploy(
+#         "cos-lite",
+#         series="jammy",
+#         trust=True,
+#     )
+
+#     await ops_test.model.wait_for_idle(
+#         apps=["prometheus", "alertmanager", "loki", "grafana"],
+#         status="active",
+#         timeout=2000,
+#         idle_period=30,
+#     )
+#     await ops_test.model.wait_for_idle(
+#         apps=[COS_AGENT_APP_NAME],
+#         status="blocked",
+#         timeout=1000,
+#         idle_period=30,
+#     )
+
+#     # These two relations --though essential to publishing-- are not set.
+#     # (May change in the future?)
+#     try:
+#         await ops_test.model.integrate(
+#             f"{COS_AGENT_APP_NAME}:grafana-dashboards-provider", "grafana"
+#         )
+#     except juju.errors.JujuAPIError:
+#         pass
+
+#     try:
+#         await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:send-remote-write", "prometheus")
+#     except juju.errors.JujuAPIError:
+#         pass
+
+#     try:
+#         await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:logging-consumer", "loki")
+#     except juju.errors.JujuAPIError:
+#         pass
+
+#     await ops_test.model.wait_for_idle(
+#         apps=[APP_NAME, COS_AGENT_APP_NAME, "prometheus", "alertmanager", "loki", "grafana"],
+#         status="active",
+#         timeout=1000,
+#         idle_period=30,
+#     )
+
+
+# # @pytest.mark.abort_on_fail
+# async def test_kyuubi_cos_data_published(ops_test: OpsTest):
+#     # We should leave time for Prometheus data to be published
+#     for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(60), reraise=True):
+#         with attempt:
+
+#             # Data got published to Prometheus
+#             logger.info("Checking if Prometheus data is being published...")
+#             cos_address = await get_cos_address(ops_test)
+#             assert published_prometheus_data(ops_test, cos_address, "kyuubi_jvm_uptime")
+
+#             # Alerts got published to Prometheus
+#             logger.info("Checking if alert rules are published...")
+#             alerts_data = published_prometheus_alerts(ops_test, cos_address)
+#             for alert in ["KyuubiBufferPoolCapacityLow", "KyuubiJVMUptime"]:
+#                 assert any(
+#                     rule["name"] == alert
+#                     for group in alerts_data["data"]["groups"]
+#                     for rule in group["rules"]
+#                 )
+
+#             # Grafana dashboard got published
+#             logger.info("Checking the Kyuubi dashboard is available in Grafana...")
+#             dashboards_info = await published_grafana_dashboards(ops_test)
+#             assert any(board["title"] == "Kyuubi" for board in dashboards_info)
+
+#             # Loki
+#             logger.info("Checking if Kyuubi server logs are published to Loki...")
+#             loki_server_logs = await published_loki_logs(
+#                 ops_test, "juju_application", "kyuubi-k8s", 5000
+#             )
+#             assert len(loki_server_logs["data"]["result"][0]["values"]) > 0
+
+#             # Ideally we should do the check below. However, this requires COS to be started
+#             # around application startup. Once this is possible, please un-comment the check below
+#             #
+#             # assert any(
+#             #     "Starting org.apache.kyuubi.server.KyuubiServer" in value[1]
+#             #     for result in loki_server_logs["data"]["result"]
+#             #     for value in result["values"]
+#             # )

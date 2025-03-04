@@ -11,7 +11,7 @@ from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
-from constants import KYUUBI_OCI_IMAGE
+from constants import SPARK_GPU_OCI_IMAGE, SPARK_OCI_IMAGE
 from core.config import CharmConfig
 from core.domain import SparkServiceAccountInfo
 from utils.logging import WithLogging
@@ -24,9 +24,11 @@ class SparkConfig(WithLogging):
         self,
         charm_config: CharmConfig,
         service_account_info: Optional[SparkServiceAccountInfo],
+        gpu_enabled: bool = True,
     ):
         self.charm_config = charm_config
         self.service_account_info = service_account_info
+        self.gpu_enabled = gpu_enabled
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
@@ -36,7 +38,7 @@ class SparkConfig(WithLogging):
         """Return base Spark configurations."""
         conf = {
             "spark.master": self._get_spark_master(),
-            "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
+            "spark.kubernetes.container.image": SPARK_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
         }
         if self.charm_config.enable_dynamic_allocation:
@@ -47,6 +49,32 @@ class SparkConfig(WithLogging):
                 }
             )
         return conf
+
+    def _gpu_conf(self):
+        """Return GPU Spark configurations."""
+        return (
+            {
+                # many of those parameters can be further parametrized
+                "spark.executor.instances": "1",
+                "spark.executor.resource.gpu.amount": "1",
+                "spark.executor.memory": "4G",
+                "spark.executor.cores": "1",
+                "spark.task.cpus": "1",
+                "spark.task.resource.gpu.amount": "1",
+                "spark.rapids.memory.pinnedPool.size": "1G",
+                "spark.executor.memoryOverhead": "1G",
+                "spark.sql.files.maxPartitionBytes": "512m",
+                "spark.sql.shuffle.partitions": "10",
+                "spark.plugins": "com.nvidia.spark.SQLPlugin",
+                "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
+                "spark.executor.resource.gpu.vendor": "nvidia.com",
+                "spark.driver-memory": "2G",
+                "spark.kubernetes.executor.podTemplateFile": "/etc/spark8t/conf/gpu_executor_template.yaml",
+                "spark.kubernetes.container.image": SPARK_GPU_OCI_IMAGE,
+            }
+            if self.gpu_enabled
+            else {}
+        )
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""
@@ -75,7 +103,7 @@ class SparkConfig(WithLogging):
             1. Configurations associated with service account read from Spark8t
             2. Base configurations
         """
-        return self._base_conf() | self._sa_conf()
+        return self._base_conf() | self._gpu_conf() | self._sa_conf()
 
     @property
     def contents(self) -> str:
