@@ -94,7 +94,7 @@ jobs:
         run: |
           sudo -E bash ./tests/integration/setup/setup-enviroment.sh
         env:
-          MICROK8S_CHANNEL: 1.28/stable
+          MICROK8S_CHANNEL: 1.29/stable
       - name: Setup microk8s
         timeout-minutes: 30
         run: sudo -E /bin/bash ./tests/integration/setup/config-microk8s-gpu.sh
