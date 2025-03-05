@@ -25,7 +25,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     RequirerData,
     RequirerEventHandlers,
 )
-from ops import Model, RelationCreatedEvent, RelationDepartedEvent, SecretChangedEvent
+from ops import Model, RelationCreatedEvent, SecretChangedEvent
 from ops.charm import (
     CharmBase,
     CharmEvents,
@@ -46,6 +46,7 @@ LIBAPI = 0
 # to 0 if you are raising the major API version
 LIBPATCH = 1
 
+SPARK_PROPERTIES_RELATION_FIELD = "spark-properties"
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,8 @@ class IntegrationHubRequirerEvents(ObjectEvents):
 class IntegrationHubProviderData(ProviderData):
     """Provider-side of the Spark Integration Hub relation."""
 
+    RESOURCE_FIELD = "service-account"
+
     def __init__(self, model: Model, relation_name: str) -> None:
         super().__init__(model, relation_name)
 
@@ -164,13 +167,22 @@ class IntegrationHubProviderData(ProviderData):
         self.update_relation_data(relation_id, {"service-account": service_account})
 
     def set_namespace(self, relation_id: int, namespace: str) -> None:
-        """Set the bootstrap server in the application relation databag.
+        """Set the namespace in the application relation databag.
 
         Args:
             relation_id: the identifier for a particular relation.
             namespace: the namespace name.
         """
         self.update_relation_data(relation_id, {"namespace": namespace})
+
+    def set_spark_properties(self, relation_id: int, spark_properties: str) -> None:
+        """Set the Spark properties in the application relation databag.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+            spark_properties: the dictionary that contains key-value for Spark properties.
+        """
+        self.update_relation_data(relation_id, {SPARK_PROPERTIES_RELATION_FIELD: spark_properties})
 
 
 class IntegrationHubProviderEventHandlers(EventHandlers):
@@ -183,8 +195,8 @@ class IntegrationHubProviderEventHandlers(EventHandlers):
         # Just to keep lint quiet, can't resolve inheritance. The same happened in super().__init__() above
         self.relation_data = relation_data
         self.framework.observe(
-            charm.on[self.relation_data.relation_name].relation_departed,
-            self._on_relation_departed,
+            charm.on[self.relation_data.relation_name].relation_broken,
+            self._on_relation_broken,
         )
 
     def _on_relation_changed_event(self, event: RelationChangedEvent) -> None:
@@ -200,8 +212,8 @@ class IntegrationHubProviderEventHandlers(EventHandlers):
                 event.relation, app=event.app, unit=event.unit
             )
 
-    def _on_relation_departed(self, event: RelationDepartedEvent) -> None:
-        """React to the relation changed event by consuming data."""
+    def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
+        """React to the relation broken event by releasing the service account."""
         # Leader only
         if not self.relation_data.local_unit.is_leader():
             return
@@ -229,6 +241,10 @@ class IntegrationHubRequirerData(RequirerData):
         additional_secret_fields: Optional[List[str]] = [],
     ):
         """Manager of Integration Hub relations."""
+        if not additional_secret_fields:
+            additional_secret_fields = []
+        if SPARK_PROPERTIES_RELATION_FIELD not in additional_secret_fields:
+            additional_secret_fields.append(SPARK_PROPERTIES_RELATION_FIELD)
         super().__init__(model, relation_name, additional_secret_fields=additional_secret_fields)
         self.service_account = service_account
         self.namespace = namespace
@@ -300,7 +316,9 @@ class IntegrationHubRequirerEventHandlers(RequirerEventHandlers):
         secret_field_user = self.relation_data._generate_secret_field_name(SECRET_GROUPS.USER)
 
         if (
-            "service-account" in diff.added and "namespace" in diff.added
+            "service-account" in diff.added
+            and "namespace" in diff.added
+            and "spark-properties" in diff.added
         ) or secret_field_user in diff.added:
             getattr(self.on, "account_granted").emit(
                 event.relation, app=event.app, unit=event.unit

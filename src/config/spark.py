@@ -8,8 +8,6 @@
 from typing import Optional
 
 from lightkube import Client
-from lightkube.core.exceptions import ApiError
-from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE
 from core.config import CharmConfig
@@ -53,20 +51,7 @@ class SparkConfig(WithLogging):
         if not self.service_account_info:
             return {}
 
-        interface = LightKube(None, None)
-        registry = K8sServiceAccountRegistry(interface)
-
-        account_id = ":".join(
-            [self.service_account_info.namespace, self.service_account_info.service_account]
-        )
-
-        try:
-            service_account = registry.get(account_id)
-            return service_account.configurations.props
-        except (ApiError, AttributeError):
-            self.logger.warning(f"Could not fetch Spark properties from {account_id}.")
-
-        return {}
+        return self.service_account_info.spark_properties
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file.
