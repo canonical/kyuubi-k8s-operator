@@ -104,3 +104,9 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
             String of 32 randomized letter+digit characters
         """
         return "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(32)])
+
+    def get_spark_properties(self) -> list[str]:
+        """Return a lines of Spark properties from the Spark configuration file in workload."""
+        if not self.exists(self.paths.spark_properties):
+            return []
+        return self.read(self.paths.spark_properties).splitlines()
