@@ -117,11 +117,6 @@ class SparkServiceAccountInfo(RelationState):
         return self.relation_data["service-account"]
 
     @property
-    def namespace(self):
-        """Namespace used for running Spark jobs."""
-        return self.relation_data["namespace"]
-
-    @property
     def spark_properties(self):
         """Spark properties tied up with the service account."""
         props = dict(json.loads(self.relation_data.get("spark-properties", "{}")))

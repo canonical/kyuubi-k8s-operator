@@ -70,8 +70,8 @@ def spark_service_account_relation():
         endpoint=SPARK_SERVICE_ACCOUNT_REL,
         interface="spark-service-account",
         remote_app_name="integration-hub",
-        local_app_data={"service-account": "kyuubi", "namespace": "spark"},
-        remote_app_data={"service-account": "kyuubi", "namespace": "spark"},
+        local_app_data={"service-account": "spark:kyuubi"},
+        remote_app_data={"service-account": "spark:kyuubi"},
     )
 
 

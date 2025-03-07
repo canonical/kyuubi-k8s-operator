@@ -13,6 +13,7 @@
 # limitations under the License.
 
 r"""A library for creating service accounts that are configured to run Spark jobs."""
+
 import json
 import logging
 from collections import namedtuple
@@ -107,24 +108,16 @@ class ServiceAccountEvent(RelationEvent):
 
         return self.relation.data[self.relation.app].get("service-account", "")
 
-    @property
-    def namespace(self) -> Optional[str]:
-        """Returns the namespace that was requested."""
-        if not self.relation.app:
-            return None
-
-        return self.relation.data[self.relation.app].get("namespace", "")
-
 
 class ServiceAccountRequestedEvent(ServiceAccountEvent):
-    """Event emitted when a set of service account/namespace is requested for use on this relation."""
+    """Event emitted when a set of service account is requested for use on this relation."""
 
 
 class ServiceAccountReleasedEvent(ServiceAccountEvent):
-    """Event emitted when a set of service account/namespace is released."""
+    """Event emitted when a set of service account is released."""
 
 
-class IntegrationHubProviderEvents(CharmEvents):
+class SparkServiceAccountProviderEvents(CharmEvents):
     """Event descriptor for events raised by ServiceAccountProvider."""
 
     account_requested = EventSource(ServiceAccountRequestedEvent)
@@ -139,18 +132,15 @@ class ServiceAccountGoneEvent(RelationEvent):
     """Event emitted when service account are removed from this relation."""
 
 
-class IntegrationHubRequirerEvents(ObjectEvents):
+class SparkServiceAccountRequirerEvents(ObjectEvents):
     """Event descriptor for events raised by the Requirer."""
 
     account_granted = EventSource(ServiceAccountGrantedEvent)
     account_gone = EventSource(ServiceAccountGoneEvent)
 
 
-# Integration Hub Provider and Requirer
-
-
-class IntegrationHubProviderData(ProviderData):
-    """Provider-side of the Spark Integration Hub relation."""
+class SparkServiceAccountProviderData(ProviderData):
+    """Provider-side of the Spark Service Account relation."""
 
     RESOURCE_FIELD = "service-account"
 
@@ -166,15 +156,6 @@ class IntegrationHubProviderData(ProviderData):
         """
         self.update_relation_data(relation_id, {"service-account": service_account})
 
-    def set_namespace(self, relation_id: int, namespace: str) -> None:
-        """Set the namespace in the application relation databag.
-
-        Args:
-            relation_id: the identifier for a particular relation.
-            namespace: the namespace name.
-        """
-        self.update_relation_data(relation_id, {"namespace": namespace})
-
     def set_spark_properties(self, relation_id: int, spark_properties: str) -> None:
         """Set the Spark properties in the application relation databag.
 
@@ -185,12 +166,12 @@ class IntegrationHubProviderData(ProviderData):
         self.update_relation_data(relation_id, {SPARK_PROPERTIES_RELATION_FIELD: spark_properties})
 
 
-class IntegrationHubProviderEventHandlers(EventHandlers):
-    """Provider-side of the Integration Hub relation."""
+class SparkServiceAccountProviderEventHandlers(EventHandlers):
+    """Provider-side of the Spark Service Account relation."""
 
-    on = IntegrationHubProviderEvents()  # pyright: ignore [reportAssignmentType]
+    on = SparkServiceAccountProviderEvents()  # pyright: ignore [reportAssignmentType]
 
-    def __init__(self, charm: CharmBase, relation_data: IntegrationHubProviderData) -> None:
+    def __init__(self, charm: CharmBase, relation_data: SparkServiceAccountProviderData) -> None:
         super().__init__(charm, relation_data)
         # Just to keep lint quiet, can't resolve inheritance. The same happened in super().__init__() above
         self.relation_data = relation_data
@@ -207,7 +188,7 @@ class IntegrationHubProviderEventHandlers(EventHandlers):
 
         diff = self._diff(event)
         # emit on account requested if service account name is provided by the requirer application
-        if "service-account" in diff.added and "namespace" in diff.added:
+        if "service-account" in diff.added:
             getattr(self.on, "account_requested").emit(
                 event.relation, app=event.app, unit=event.unit
             )
@@ -221,33 +202,33 @@ class IntegrationHubProviderEventHandlers(EventHandlers):
         getattr(self.on, "account_released").emit(event.relation, app=event.app, unit=event.unit)
 
 
-class IntegrationHubProvider(IntegrationHubProviderData, IntegrationHubProviderEventHandlers):
-    """Provider-side of the Integration Hub relation."""
+class SparkServiceAccountProvider(
+    SparkServiceAccountProviderData, SparkServiceAccountProviderEventHandlers
+):
+    """Provider-side of the Spark Service Account relation."""
 
     def __init__(self, charm: CharmBase, relation_name: str) -> None:
-        IntegrationHubProviderData.__init__(self, charm.model, relation_name)
-        IntegrationHubProviderEventHandlers.__init__(self, charm, self)
+        SparkServiceAccountProviderData.__init__(self, charm.model, relation_name)
+        SparkServiceAccountProviderEventHandlers.__init__(self, charm, self)
 
 
-class IntegrationHubRequirerData(RequirerData):
-    """Requirer-side of the Integration Hub relation."""
+class SparkServiceAccountRequirerData(RequirerData):
+    """Requirer-side of the Spark Service Account relation."""
 
     def __init__(
         self,
         model: Model,
         relation_name: str,
         service_account: str,
-        namespace: str,
         additional_secret_fields: Optional[List[str]] = [],
     ):
-        """Manager of Integration Hub relations."""
+        """Manager of Spark Service Account relations."""
         if not additional_secret_fields:
             additional_secret_fields = []
         if SPARK_PROPERTIES_RELATION_FIELD not in additional_secret_fields:
             additional_secret_fields.append(SPARK_PROPERTIES_RELATION_FIELD)
         super().__init__(model, relation_name, additional_secret_fields=additional_secret_fields)
         self.service_account = service_account
-        self.namespace = namespace
 
     @property
     def service_account(self):
@@ -258,22 +239,13 @@ class IntegrationHubRequirerData(RequirerData):
     def service_account(self, value):
         self._service_account = value
 
-    @property
-    def namespace(self):
-        """Namespace used for running Spark jobs."""
-        return self._namespace
 
-    @namespace.setter
-    def namespace(self, value):
-        self._namespace = value
+class SparkServiceAccountRequirerEventHandlers(RequirerEventHandlers):
+    """Requirer-side of the Spark Service Account relation."""
 
+    on = SparkServiceAccountRequirerEvents()  # pyright: ignore [reportAssignmentType]
 
-class IntegrationHubRequirerEventHandlers(RequirerEventHandlers):
-    """Requirer-side of the Integration Hub relation."""
-
-    on = IntegrationHubRequirerEvents()  # pyright: ignore [reportAssignmentType]
-
-    def __init__(self, charm: CharmBase, relation_data: IntegrationHubRequirerData) -> None:
+    def __init__(self, charm: CharmBase, relation_data: SparkServiceAccountRequirerData) -> None:
         super().__init__(charm, relation_data)
         # Just to keep lint quiet, can't resolve inheritance. The same happened in super().__init__() above
         self.relation_data = relation_data
@@ -283,16 +255,15 @@ class IntegrationHubRequirerEventHandlers(RequirerEventHandlers):
         )
 
     def _on_relation_created_event(self, event: RelationCreatedEvent) -> None:
-        """Event emitted when the Integration Hub relation is created."""
+        """Event emitted when the Spark Service Account relation is created."""
         super()._on_relation_created_event(event)
 
         if not self.relation_data.local_unit.is_leader():
             return
 
-        # Sets service_account, namespace in the relation
+        # Sets service_account in the relation
         relation_data = {
-            f: getattr(self.relation_data, f.replace("-", "_"), "")
-            for f in ["service-account", "namespace"]
+            f: getattr(self.relation_data, f.replace("-", "_"), "") for f in ["service-account"]
         }
 
         self.relation_data.update_relation_data(event.relation.id, relation_data)
@@ -302,12 +273,10 @@ class IntegrationHubRequirerEventHandlers(RequirerEventHandlers):
         pass
 
     def _on_relation_changed_event(self, event: RelationChangedEvent) -> None:
-        """Event emitted when the Integration Hub relation has changed."""
-        logger.info("On Integration Hub relation changed")
+        """Event emitted when the Spark Service Account relation has changed."""
+        logger.info("On Spark Service Account relation changed")
         # Check which data has changed to emit customs events.
         diff = self._diff(event)
-
-        # Check if the service-account is created in the desired namespace
 
         # Register all new secrets with their labels
         if any(newval for newval in diff.added if self.relation_data._is_secret_field(newval)):
@@ -316,9 +285,7 @@ class IntegrationHubRequirerEventHandlers(RequirerEventHandlers):
         secret_field_user = self.relation_data._generate_secret_field_name(SECRET_GROUPS.USER)
 
         if (
-            "service-account" in diff.added
-            and "namespace" in diff.added
-            and "spark-properties" in diff.added
+            "service-account" in diff.added and "spark-properties" in diff.added
         ) or secret_field_user in diff.added:
             getattr(self.on, "account_granted").emit(
                 event.relation, app=event.app, unit=event.unit
@@ -326,27 +293,27 @@ class IntegrationHubRequirerEventHandlers(RequirerEventHandlers):
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Notify the charm about a broken service account relation."""
-        logger.info("On Integration Hub relation gone")
+        logger.info("On Spark Service Account relation gone")
         getattr(self.on, "account_gone").emit(event.relation, app=event.app, unit=event.unit)
 
 
-class IntegrationHubRequirer(IntegrationHubRequirerData, IntegrationHubRequirerEventHandlers):
-    """Provider-side of the Integration Hub relation."""
+class SparkServiceAccountRequirer(
+    SparkServiceAccountRequirerData, SparkServiceAccountRequirerEventHandlers
+):
+    """Requirer side of the Spark Service Account relation."""
 
     def __init__(
         self,
         charm: CharmBase,
         relation_name: str,
         service_account: str,
-        namespace: str,
         additional_secret_fields: Optional[List[str]] = [],
     ) -> None:
-        IntegrationHubRequirerData.__init__(
+        SparkServiceAccountRequirerData.__init__(
             self,
             charm.model,
             relation_name,
             service_account,
-            namespace,
             additional_secret_fields,
         )
-        IntegrationHubRequirerEventHandlers.__init__(self, charm, self)
+        SparkServiceAccountRequirerEventHandlers.__init__(self, charm, self)

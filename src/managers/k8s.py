@@ -21,8 +21,7 @@ class K8sManager(WithLogging):
     """Class that encapsulates various utilities related to K8s."""
 
     def __init__(self, service_account_info: SparkServiceAccountInfo, workload: KyuubiWorkload):
-        self.namespace = service_account_info.namespace
-        self.service_account = service_account_info.service_account
+        self.namespace, self.service_account = service_account_info.service_account.split(":")
         self.workload = workload
 
     def is_namespace_valid(self):
