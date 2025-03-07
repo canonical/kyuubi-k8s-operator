@@ -7,9 +7,9 @@
 from ops import CharmBase, RelationChangedEvent
 
 from common.relation.spark_sa import (
-    SparkServiceAccountRequirer,
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
+    SparkServiceAccountRequirer,
 )
 from constants import (
     SPARK_SERVICE_ACCOUNT_REL,
@@ -42,8 +42,12 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             f"{namespace}:{service_account}",
         )
 
-        self.framework.observe(self.service_account_requirer.on.account_granted, self._on_account_granted)
-        self.framework.observe(self.service_account_requirer.on.account_gone, self._on_account_gone)
+        self.framework.observe(
+            self.service_account_requirer.on.account_granted, self._on_account_granted
+        )
+        self.framework.observe(
+            self.service_account_requirer.on.account_gone, self._on_account_gone
+        )
         self.framework.observe(
             self.charm.on[SPARK_SERVICE_ACCOUNT_REL].relation_changed,
             self._on_spark_properties_changed,
