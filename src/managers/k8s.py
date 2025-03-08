@@ -22,6 +22,7 @@ class K8sManager(WithLogging):
 
     def __init__(self, service_account_info: SparkServiceAccountInfo, workload: KyuubiWorkload):
         self.namespace, self.service_account = service_account_info.service_account.split(":")
+        self.spark_properties = service_account_info.spark_properties
         self.workload = workload
 
     def is_namespace_valid(self):
@@ -46,13 +47,13 @@ class K8sManager(WithLogging):
 
     def is_s3_configured(self) -> bool:
         """Return whether S3 object storage backend has been configured."""
-        pattern = r"spark\.hadoop\.fs\.s3a\.secret\.key=.*"
-        return any(re.match(pattern, prop) for prop in self.workload.get_spark_properties())
+        pattern = r"spark\.hadoop\.fs\.s3a\.secret\.key$"
+        return any(re.match(pattern, prop) for prop in self.spark_properties)
 
     def is_azure_storage_configured(self) -> bool:
         """Return whether Azure object storage backend has been configured."""
-        pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net=.*"
-        return any(re.match(pattern, prop) for prop in self.workload.get_spark_properties())
+        pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net$"
+        return any(re.match(pattern, prop) for prop in self.spark_properties)
 
     def has_cluster_permissions(self) -> bool:
         """Return whether the service account has permission to read Spark configurations from the cluster."""
