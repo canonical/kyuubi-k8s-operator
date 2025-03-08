@@ -9,7 +9,7 @@ from ops import CharmBase, RelationChangedEvent
 from common.relation.spark_sa import (
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
-    SparkServiceAccountRequirer,
+    SparkServiceAccountRequirerEventHandlers,
 )
 from constants import (
     SPARK_SERVICE_ACCOUNT_REL,
@@ -33,13 +33,8 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
 
-        namespace = self.charm.config.namespace if self.charm.config.namespace else self.model.name
-        service_account = self.charm.config.service_account
-
-        self.service_account_requirer = SparkServiceAccountRequirer(
-            self.charm,
-            SPARK_SERVICE_ACCOUNT_REL,
-            f"{namespace}:{service_account}",
+        self.service_account_requirer = SparkServiceAccountRequirerEventHandlers(
+            self.charm, self.context.spark_service_account_interface
         )
 
         self.framework.observe(
