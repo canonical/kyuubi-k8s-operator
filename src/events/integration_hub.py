@@ -4,12 +4,12 @@
 
 """Integration Hub related event handlers."""
 
-from ops import CharmBase
+from ops import CharmBase, RelationChangedEvent
 
 from common.relation.spark_sa import (
-    IntegrationHubRequirer,
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
+    SparkServiceAccountRequirerEventHandlers,
 )
 from constants import (
     SPARK_SERVICE_ACCOUNT_REL,
@@ -33,18 +33,20 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
 
-        namespace = self.charm.config.namespace
-        service_account = self.charm.config.service_account
-
-        self.requirer = IntegrationHubRequirer(
-            self.charm,
-            SPARK_SERVICE_ACCOUNT_REL,
-            service_account,
-            namespace if namespace else self.model.name,
+        self.service_account_requirer = SparkServiceAccountRequirerEventHandlers(
+            self.charm, self.context.spark_service_account_interface
         )
 
-        self.framework.observe(self.requirer.on.account_granted, self._on_account_granted)
-        self.framework.observe(self.requirer.on.account_gone, self._on_account_gone)
+        self.framework.observe(
+            self.service_account_requirer.on.account_granted, self._on_account_granted
+        )
+        self.framework.observe(
+            self.service_account_requirer.on.account_gone, self._on_account_gone
+        )
+        self.framework.observe(
+            self.charm.on[SPARK_SERVICE_ACCOUNT_REL].relation_changed,
+            self._on_spark_properties_changed,
+        )
 
     @compute_status
     @defer_when_not_ready
@@ -58,3 +60,9 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         """Handle the `ServiceAccountGoneEvent` event from integration hub."""
         self.logger.info("Service account deleted")
         self.kyuubi.update(set_service_account_none=True)
+
+    @compute_status
+    def _on_spark_properties_changed(self, _: RelationChangedEvent):
+        """Handle the spark service account relation changed event."""
+        self.logger.info("Spark service account properties changed")
+        self.kyuubi.update()

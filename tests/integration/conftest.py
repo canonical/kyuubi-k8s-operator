@@ -96,7 +96,7 @@ def charm_versions() -> IntegrationTestsCharms:
             **{
                 "name": "spark-integration-hub-k8s",
                 "channel": "latest/edge",
-                "revision": 19,
+                "revision": 40,
                 "series": "jammy",
                 "alias": "integration-hub",
                 "trust": True,
