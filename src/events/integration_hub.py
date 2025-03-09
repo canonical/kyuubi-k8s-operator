@@ -11,9 +11,6 @@ from common.relation.spark_sa import (
     ServiceAccountGrantedEvent,
     SparkServiceAccountRequirerEventHandlers,
 )
-from constants import (
-    SPARK_SERVICE_ACCOUNT_REL,
-)
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
@@ -44,9 +41,12 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             self.service_account_requirer.on.account_gone, self._on_account_gone
         )
         self.framework.observe(
-            self.charm.on[SPARK_SERVICE_ACCOUNT_REL].relation_changed,
-            self._on_spark_properties_changed,
+            self.service_account_requirer.on.properties_changed, self._on_spark_properties_changed
         )
+        # self.framework.observe(
+        #     self.charm.on[SPARK_SERVICE_ACCOUNT_REL].relation_changed,
+        #     self._on_spark_properties_changed,
+        # )
 
     @compute_status
     @defer_when_not_ready
