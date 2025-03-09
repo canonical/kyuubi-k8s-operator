@@ -142,6 +142,7 @@ class SparkServiceAccountRequirerEvents(ObjectEvents):
 
     account_granted = EventSource(ServiceAccountGrantedEvent)
     account_gone = EventSource(ServiceAccountGoneEvent)
+    properties_changed = EventSource(ServiceAccountPropertyChangedEvent)
 
 
 class SparkServiceAccountProviderData(ProviderData):

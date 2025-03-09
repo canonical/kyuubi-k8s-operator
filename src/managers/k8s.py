@@ -13,14 +13,16 @@ from lightkube.resources.core_v1 import Namespace, ServiceAccount
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from core.domain import SparkServiceAccountInfo
-from core.workload.kyuubi import KyuubiWorkload
+from core.workload.kyuubi import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
 
 class K8sManager(WithLogging):
     """Class that encapsulates various utilities related to K8s."""
 
-    def __init__(self, service_account_info: SparkServiceAccountInfo, workload: KyuubiWorkload):
+    def __init__(
+        self, service_account_info: SparkServiceAccountInfo, workload: KyuubiWorkloadBase
+    ):
         self.namespace, self.service_account = service_account_info.service_account.split(":")
         self.spark_properties = service_account_info.spark_properties
         self.workload = workload
