@@ -4,11 +4,12 @@
 
 """Integration Hub related event handlers."""
 
-from ops import CharmBase, RelationChangedEvent
+from ops import CharmBase
 
 from common.relation.spark_sa import (
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
+    ServiceAccountPropertyChangedEvent,
     SparkServiceAccountRequirerEventHandlers,
 )
 from core.context import Context
@@ -43,10 +44,6 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.framework.observe(
             self.service_account_requirer.on.properties_changed, self._on_spark_properties_changed
         )
-        # self.framework.observe(
-        #     self.charm.on[SPARK_SERVICE_ACCOUNT_REL].relation_changed,
-        #     self._on_spark_properties_changed,
-        # )
 
     @compute_status
     @defer_when_not_ready
@@ -56,13 +53,13 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update()
 
     @compute_status
+    def _on_spark_properties_changed(self, _: ServiceAccountPropertyChangedEvent):
+        """Handle the spark service account relation changed event."""
+        self.logger.info("Service account properties changed")
+        self.kyuubi.update()
+
+    @compute_status
     def _on_account_gone(self, _: ServiceAccountGoneEvent):
         """Handle the `ServiceAccountGoneEvent` event from integration hub."""
         self.logger.info("Service account deleted")
         self.kyuubi.update(set_service_account_none=True)
-
-    @compute_status
-    def _on_spark_properties_changed(self, _: RelationChangedEvent):
-        """Handle the spark service account relation changed event."""
-        self.logger.info("Spark service account properties changed")
-        self.kyuubi.update()

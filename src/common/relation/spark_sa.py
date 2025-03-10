@@ -98,7 +98,7 @@ def diff(event: RelationChangedEvent, bucket: Union[Unit, Application]) -> Diff:
     return Diff(added, changed, deleted)
 
 
-class ServiceAccountEvent(RelationEvent):
+class ServiceAccountEvent(RelationEventWithSecret):
     """Base class for Service account events."""
 
     @property
@@ -108,6 +108,19 @@ class ServiceAccountEvent(RelationEvent):
             return None
 
         return self.relation.data[self.relation.app].get("service-account", "")
+
+    @property
+    def spark_properties(self) -> Optional[str]:
+        """Returns the Spark properties associated with service account."""
+        if not self.relation.app:
+            return None
+
+        if self.secrets_enabled:
+            secret = self._get_secret("extra")
+            if secret:
+                return secret.get("spark-properties", "{}")
+
+        return self.relation.data[self.relation.app].get("spark-properties", "{}")
 
 
 class ServiceAccountRequestedEvent(ServiceAccountEvent):
@@ -133,7 +146,7 @@ class ServiceAccountGoneEvent(RelationEvent):
     """Event emitted when service account are removed from this relation."""
 
 
-class ServiceAccountPropertyChangedEvent(RelationEventWithSecret):
+class ServiceAccountPropertyChangedEvent(ServiceAccountEvent):
     """Event emitted when Spark properties for the service account are changed in this relation."""
 
 
@@ -308,9 +321,7 @@ class SparkServiceAccountRequirerEventHandlers(RequirerEventHandlers):
 
         secret_field_user = self.relation_data._generate_secret_field_name(SECRET_GROUPS.USER)
 
-        if (
-            "service-account" in diff.added and "spark-properties" in diff.added
-        ) or secret_field_user in diff.added:
+        if ("service-account" in diff.added) or secret_field_user in diff.added:
             getattr(self.on, "account_granted").emit(
                 event.relation, app=event.app, unit=event.unit
             )

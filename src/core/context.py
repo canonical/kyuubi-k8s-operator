@@ -132,10 +132,11 @@ class Context(WithLogging):
     @property
     def service_account(self) -> SparkServiceAccountInfo | None:
         """The state of service account information."""
-        if account := SparkServiceAccountInfo(
+        if not self._spark_account_relation:
+            return None
+        return SparkServiceAccountInfo(
             self._spark_account_relation, self.spark_service_account_interface, self.model.app
-        ):
-            return account
+        )
 
     @property
     def zookeeper(self) -> ZookeeperInfo | None:

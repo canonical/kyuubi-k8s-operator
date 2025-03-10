@@ -50,8 +50,13 @@ class SparkConfig(WithLogging):
         """Spark configurations read from Spark8t."""
         if not self.service_account_info:
             return {}
-
-        return self.service_account_info.spark_properties
+        namespace, username = self.service_account_info.service_account.split(":")
+        conf = {
+            "spark.kubernetes.namespace": namespace,
+            "spark.kubernetes.authenticate.driver.serviceAccountName": username,
+        }
+        conf.update(self.service_account_info.spark_properties)
+        return conf
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file.

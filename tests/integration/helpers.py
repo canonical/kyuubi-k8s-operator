@@ -17,6 +17,7 @@ from juju.application import Application
 from juju.unit import Unit
 from ops import StatusBase
 from pytest_operator.plugin import OpsTest
+from spark_test.utils import get_spark_drivers
 
 from constants import COS_METRICS_PORT, HA_ZNODE_NAME
 from core.domain import Status
@@ -655,3 +656,10 @@ def assert_service_status(
 
     if service_type in ("NodePort", "LoadBalancer"):
         assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
+
+
+def delete_driver_pods(namespace: str) -> None:
+    """Delete all Spark driver pods from Kubernetes."""
+    driver_pods = get_spark_drivers(namespace=namespace)
+    for pod in driver_pods:
+        pod.delete()
