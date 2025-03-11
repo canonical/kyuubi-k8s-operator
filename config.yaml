@@ -21,4 +21,7 @@ options:
   enable-iceberg:
     type: boolean
     description: Enable Apache Iceberg capabilities in Kyuubi.
+  enable-dynamic-allocation:
+    type: boolean
+    description: Enable dynamic allocation of pods for Spark jobs.
     default: false

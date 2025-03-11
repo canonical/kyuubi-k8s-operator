@@ -36,11 +36,19 @@ class SparkConfig(WithLogging):
 
     def _base_conf(self):
         """Return base Spark configurations."""
-        return {
+        conf = {
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
         }
+        if self.charm_config.enable_dynamic_allocation:
+            conf.update(
+                {
+                    "spark.dynamicAllocation.enabled": "true",
+                    "spark.dynamicAllocation.shuffleTracking.enabled": "true",
+                }
+            )
+        return conf
 
     def _sa_conf(self):
         """Spark configurations read from Spark8t."""

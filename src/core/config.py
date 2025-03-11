@@ -22,3 +22,4 @@ class CharmConfig(BaseConfigModel):
     expose_external: ExposeExternal
     loadbalancer_extra_annotations: str
     enable_iceberg: bool
+    enable_dynamic_allocation: bool

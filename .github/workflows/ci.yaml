@@ -65,6 +65,7 @@ jobs:
           - integration-upgrade
           - integration-tls
           - integration-iceberg
+          - integration-dynamic-allocation
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
