@@ -17,7 +17,7 @@ from juju.application import Application
 from juju.unit import Unit
 from ops import StatusBase
 from pytest_operator.plugin import OpsTest
-from spark_test.utils import get_spark_drivers
+from spark8t.domain import PropertyFile
 
 from constants import COS_METRICS_PORT, HA_ZNODE_NAME
 from core.domain import Status
@@ -605,7 +605,11 @@ def get_k8s_service(namespace: str, service_name: str):
     return service
 
 
-async def run_command_in_pod(ops_test: OpsTest, pod_name: str, pod_command: List[str]) -> None:
+async def run_command_in_pod(
+    ops_test: OpsTest,
+    pod_name: str,
+    pod_command: List[str],
+) -> tuple[str, str]:
     """Load certificate in the pod."""
     kubectl_command = [
         "kubectl",
@@ -619,9 +623,12 @@ async def run_command_in_pod(ops_test: OpsTest, pod_name: str, pod_command: List
         *pod_command,
     ]
     process = subprocess.run(kubectl_command, capture_output=True, check=True)
-    logger.info(process.stdout.decode())
-    logger.info(process.stderr.decode())
+    stdout = process.stdout.decode()
+    stderr = process.stderr.decode()
+    logger.info(stdout)
+    logger.info(stderr)
     assert process.returncode == 0
+    return stdout, stderr
 
 
 def umask_named_temporary_file(*args, **kargs):
@@ -658,8 +665,14 @@ def assert_service_status(
         assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
 
 
-def delete_driver_pods(namespace: str) -> None:
-    """Delete all Spark driver pods from Kubernetes."""
-    driver_pods = get_spark_drivers(namespace=namespace)
-    for pod in driver_pods:
-        pod.delete()
+async def fetch_spark_properties(ops_test: OpsTest, unit_name: str) -> dict[str, str]:
+    pod_name = unit_name.replace("/", "-")
+    command = ["cat", "/etc/spark8t/conf/spark-defaults.conf"]
+    stdout, stderr = await run_command_in_pod(
+        ops_test=ops_test, pod_name=pod_name, pod_command=command
+    )
+    with NamedTemporaryFile(mode="w+") as temp_file:
+        temp_file.write(stdout)
+        temp_file.seek(0)
+        props = PropertyFile.read(temp_file.name).props
+        return props

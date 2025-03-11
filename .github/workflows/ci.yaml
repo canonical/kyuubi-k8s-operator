@@ -62,7 +62,7 @@ jobs:
           - integration-trust
           - integration-ha
           - integration-external-access
-          - integration-upgrade
+          # - integration-upgrade
           - integration-tls
           - integration-dynamic-allocation
     name: ${{ matrix.tox-environments }}

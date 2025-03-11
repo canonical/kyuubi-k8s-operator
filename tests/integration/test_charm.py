@@ -25,6 +25,7 @@ from core.domain import Status
 from .helpers import (
     all_prometheus_exporters_data,
     check_status,
+    fetch_spark_properties,
     get_cos_address,
     published_grafana_dashboards,
     published_loki_logs,
@@ -187,13 +188,112 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
         idle_period=20,
     )
 
-    # Assert that both kyuubi-k8s, integration-hub and s3-integrator charms are in active state
+    # Assert that all kyuubi-k8s, integration-hub and s3-integrator charms are in active state
     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
     assert (
         ops_test.model.applications[charm_versions.integration_hub.application_name].status
         == "active"
     )
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+
+@pytest.mark.abort_on_fail
+async def test_integration_hub_realtime_updates(ops_test: OpsTest, charm_versions):
+    """Test if the updates in integration hub are reflected in real-time in Kyuubi app."""
+    logger.info("Removing relation between s3-integrator and integration-hub charm...")
+    await ops_test.model.applications[f"{charm_versions.s3.application_name}"].remove_relation(
+        f"{charm_versions.s3.application_name}:s3-credentials",
+        f"{charm_versions.integration_hub.application_name}:s3-credentials",
+    )
+    logger.info("Waiting for integration_hub and s3-integrator charms to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[charm_versions.s3.application_name, charm_versions.integration_hub.application_name],
+        timeout=1000,
+        status="active",
+        idle_period=20,
+    )
+    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME],
+        status="blocked",
+        timeout=1000,
+    )
+    # Assert that the charm is in blocked state, waiting for object storage backend
+    assert check_status(
+        ops_test.model.applications[APP_NAME], Status.MISSING_OBJECT_STORAGE_BACKEND.value
+    )
+
+    logger.info("Integrating s3-integrator charm again with integration-hub charm...")
+    await ops_test.model.integrate(
+        charm_versions.integration_hub.application_name, charm_versions.s3.application_name
+    )
+
+    logger.info(
+        "Waiting for integration_hub, kyuubi and s3-integrator charms to be idle and active..."
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[
+            charm_versions.s3.application_name,
+            charm_versions.integration_hub.application_name,
+            APP_NAME,
+        ],
+        timeout=1000,
+        status="active",
+        idle_period=20,
+    )
+
+    # Assert that all kyuubi-k8s, integration-hub and s3-integrator charms are in active state
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    assert (
+        ops_test.model.applications[charm_versions.integration_hub.application_name].status
+        == "active"
+    )
+    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+    # Add a property via integration hub
+    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+    action = await unit.run_action(action_name="add-config", conf="foo=bar")
+    _ = await action.wait()
+
+    logger.info(
+        "Waiting for kyuubi, integration_hub and s3-integrator charms to be idle and active..."
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[
+            APP_NAME,
+            charm_versions.s3.application_name,
+            charm_versions.integration_hub.application_name,
+        ],
+        timeout=1000,
+        status="active",
+        idle_period=20,
+    )
+
+    props = await fetch_spark_properties(ops_test, unit_name=f"{APP_NAME}/0")
+    assert "foo" in props
+    assert props["foo"] == "bar"
+
+    # Remove the property via integration hub
+    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
+    action = await unit.run_action(action_name="remove-config", key="foo")
+    _ = await action.wait()
+
+    logger.info(
+        "Waiting for kyuubi, integration_hub and s3-integrator charms to be idle and active..."
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[
+            APP_NAME,
+            charm_versions.s3.application_name,
+            charm_versions.integration_hub.application_name,
+        ],
+        timeout=1000,
+        status="active",
+        idle_period=20,
+    )
+
+    props = await fetch_spark_properties(ops_test, unit_name=f"{APP_NAME}/0")
+    assert "foo" not in props
 
 
 @pytest.mark.abort_on_fail
