@@ -21,5 +21,5 @@ class CharmConfig(BaseConfigModel):
     service_account: str
     expose_external: ExposeExternal
     loadbalancer_extra_annotations: str
-    enable_iceberg: bool
     enable_dynamic_allocation: bool
+    iceberg_catalog_name: str
