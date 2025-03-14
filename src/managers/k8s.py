@@ -7,14 +7,13 @@
 
 import re
 
-import ops
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.core_v1 import Namespace, ServiceAccount
 from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from core.domain import SparkServiceAccountInfo
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
 
@@ -24,8 +23,8 @@ class K8sManager(WithLogging):
     def __init__(
         self, service_account_info: SparkServiceAccountInfo, workload: KyuubiWorkloadBase
     ):
-        self.namespace = service_account_info.namespace
-        self.service_account = service_account_info.service_account
+        self.namespace, self.service_account = service_account_info.service_account.split(":")
+        self.spark_properties = service_account_info.spark_properties
         self.workload = workload
 
     def is_namespace_valid(self):
@@ -48,38 +47,15 @@ class K8sManager(WithLogging):
         """Verify service account information."""
         return self.is_namespace_valid() and self.is_service_account_valid()
 
-    def get_properties(self) -> list[str]:
-        """Get Spark properties associated with this service account."""
-        command = " ".join(
-            [
-                "python3",
-                "-m",
-                "spark8t.cli.service_account_registry",
-                "get-config",
-                "--username",
-                self.service_account,
-                "--namespace",
-                self.namespace,
-            ]
-        )
-        try:
-            result = self.workload.exec(command)
-            return result.strip().splitlines()
-        except ops.pebble.ExecError:
-            self.logger.warning(
-                f"Could not fetch Spark properties from service account {self.namespace}:{self.service_account}."
-            )
-            return []
-
     def is_s3_configured(self) -> bool:
         """Return whether S3 object storage backend has been configured."""
-        pattern = r"spark\.hadoop\.fs\.s3a\.secret\.key=.*"
-        return any(re.match(pattern, prop) for prop in self.get_properties())
+        pattern = r"spark\.hadoop\.fs\.s3a\.secret\.key$"
+        return any(re.match(pattern, prop) for prop in self.spark_properties)
 
     def is_azure_storage_configured(self) -> bool:
         """Return whether Azure object storage backend has been configured."""
-        pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net=.*"
-        return any(re.match(pattern, prop) for prop in self.get_properties())
+        pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net$"
+        return any(re.match(pattern, prop) for prop in self.spark_properties)
 
     def has_cluster_permissions(self) -> bool:
         """Return whether the service account has permission to read Spark configurations from the cluster."""
