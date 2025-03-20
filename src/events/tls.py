@@ -89,7 +89,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
                 or self.workload.generate_password(),  # type: ignore
             }
         )
-        subject = os.uname()[1]
+        subject = self.tls_manager.get_subject()
         sans = self.tls_manager.build_sans()
 
         self.logger.info(f"ip: {sans.sans_ip} tls: {sans.sans_dns}")

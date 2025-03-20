@@ -5,6 +5,7 @@
 """Manager for building necessary files for Java TLS auth."""
 
 import logging
+import os
 import socket
 import subprocess
 
@@ -12,7 +13,9 @@ import ops.pebble
 
 from core.context import Context
 from core.domain import SANs
+from core.enums import ExposeExternal
 from core.workload.kyuubi import KyuubiWorkload
+from managers.service import LbHost
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +27,31 @@ class TLSManager:
         self.context = context
         self.workload = workload
 
+    def get_subject(self) -> str:
+        """Get subject name for the unit."""
+        if self.context.config.expose_external == ExposeExternal.LOADBALANCER:
+            if isinstance(lb := self.context.unit_server.loadbalancer_endpoint, LbHost):
+                return lb
+
+        return os.uname()[1]
+
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""
         sans_ip = [str(self.context.bind_address)]
         if node_ip := self.context.unit_server.node_ip:
             sans_ip.append(node_ip)
 
-        if self.context.unit_server.loadbalancer_ip:
-            sans_ip.append(self.context.unit_server.loadbalancer_ip.split(":")[0])
+        match self.context.unit_server.loadbalancer_endpoint:
+            case LbHost(loadbalancer):
+                # Do nothing, will be added to sans_dns anyway by 'external_address'
+                # and was added to subject
+                pass
+
+            case str(loadbalancer) if loadbalancer:
+                sans_ip.append(loadbalancer.split(":")[0])
+
+            case _:
+                pass
 
         return SANs(
             sans_ip=sorted(sans_ip),

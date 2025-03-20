@@ -335,18 +335,12 @@ class KyuubiServer(RelationState):
 
     @cached_property
     def node_ip(self) -> str:
-        """The IPV4/IPV6 IP address of the Node the unit is on.
-
-        K8s-only.
-        """
+        """The IPV4/IPV6 IP address of the Node the unit is on."""
         return self.k8s.get_node_ip(self.pod_name)
 
     @cached_property
-    def loadbalancer_ip(self) -> str:
-        """The IPV4/IPV6 IP address of the LoadBalancer exposing the unit.
-
-        K8s-only.
-        """
+    def loadbalancer_endpoint(self) -> str:
+        """The IPV4/IPV6 IP address or hostname of the LoadBalancer exposing the unit."""
         return self.k8s.get_service_endpoint("loadbalancer")
 
 

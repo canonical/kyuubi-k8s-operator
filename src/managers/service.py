@@ -6,9 +6,16 @@ import socket
 import typing
 
 import lightkube
+from lightkube.models.core_v1 import LoadBalancerIngress
 
 from constants import JDBC_PORT
 from utils.logging import WithLogging
+
+
+class LbHost(str):
+    """Enable runtime check on loadbalancer ingress type."""
+
+    pass
 
 
 class _ServiceType(enum.Enum):
@@ -86,7 +93,7 @@ class ServiceManager(WithLogging):
 
         return service
 
-    def get_service_endpoint(self, expose_external: str):
+    def get_service_endpoint(self, expose_external: str) -> str:
         """Returns the endpoint that can be used to connect to the service."""
         service = self.get_service()
         if not service:
@@ -111,9 +118,17 @@ class ServiceManager(WithLogging):
                 node_port = p.nodePort
                 break
             return f"{host}:{node_port}"
+
         elif service_type == _ServiceType.LOAD_BALANCER and service.status.loadBalancer.ingress:
-            for ingress in service.status.loadBalancer.ingress:
-                return f"{ingress.ip}:{port}"
+            lb: LoadBalancerIngress
+            for lb in service.status.loadBalancer.ingress:
+                if lb.ip is not None:
+                    return f"{lb.ip}:{port}"
+                elif lb.hostname is not None:
+                    return LbHost(f"{lb.hostname}:{port}")
+
+                raise Exception(f"Unable to find LoadBalancer ingress for the {service} service")
+
         return ""
 
     def delete_service(self):
