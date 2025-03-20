@@ -13,6 +13,7 @@ import ops.pebble
 from core.context import Context
 from core.domain import SANs
 from core.workload.kyuubi import KyuubiWorkload
+from managers.service import LbDns
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,16 @@ class TLSManager:
         if node_ip := self.context.unit_server.node_ip:
             sans_ip.append(node_ip)
 
-        if self.context.unit_server.loadbalancer_ip:
-            sans_ip.append(self.context.unit_server.loadbalancer_ip.split(":")[0])
+        match self.context.unit_server.loadbalancer_ip:
+            case LbDns(loadbalancer):
+                # Do nothing, will be added to sans_dns anyway by 'external_address'
+                pass
+
+            case str(loadbalancer) if loadbalancer:
+                sans_ip.append(loadbalancer.split(":")[0])
+
+            case _:
+                pass
 
         return SANs(
             sans_ip=sorted(sans_ip),

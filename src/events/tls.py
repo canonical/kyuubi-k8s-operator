@@ -89,6 +89,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
                 or self.workload.generate_password(),  # type: ignore
             }
         )
+        # FIXME: Need to add the hostname based LB if applicable
         subject = os.uname()[1]
         sans = self.tls_manager.build_sans()
 
