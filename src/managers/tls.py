@@ -29,9 +29,9 @@ class TLSManager:
 
     def get_subject(self) -> str:
         """Get subject name for the unit."""
-        if self.context.config.expose_external == ExposeExternal.LOADBALANCER:
+        if self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value:
             if isinstance(lb := self.context.unit_server.loadbalancer_endpoint, LbHost):
-                return lb
+                return lb.partition(":")[0]
 
         return os.uname()[1]
 

@@ -3,10 +3,12 @@
 import enum
 import functools
 import socket
-import typing
 
 import lightkube
-from lightkube.models.core_v1 import LoadBalancerIngress
+from lightkube.core.exceptions import ApiError
+from lightkube.models.core_v1 import LoadBalancerIngress, ServicePort, ServiceSpec
+from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.resources.core_v1 import Node, Pod, Service
 
 from constants import JDBC_PORT
 from utils.logging import WithLogging
@@ -69,24 +71,24 @@ class ServiceManager(WithLogging):
         return host
 
     @functools.cache
-    def get_node(self, unit_name: str) -> lightkube.resources.core_v1.Node:
+    def get_node(self, unit_name: str) -> Node:
         """Return the node for the provided unit name."""
         node_name = self.get_pod(unit_name).spec.nodeName
         return self.lightkube_agent.get(
-            res=lightkube.resources.core_v1.Node,
+            res=Node,
             name=node_name,
             namespace=self.namespace,
         )
 
-    def get_service(self) -> typing.Optional[lightkube.resources.core_v1.Service]:
+    def get_service(self) -> Service | None:
         """Get the managed k8s service."""
         try:
             service = self.lightkube_agent.get(
-                res=lightkube.resources.core_v1.Service,
+                res=Service,
                 name=self.service_name,
                 namespace=self.namespace,
             )
-        except lightkube.core.exceptions.ApiError as e:
+        except ApiError as e:
             if e.status.code == 404:
                 return None
             raise
@@ -96,46 +98,46 @@ class ServiceManager(WithLogging):
     def get_service_endpoint(self, expose_external: str) -> str:
         """Returns the endpoint that can be used to connect to the service."""
         service = self.get_service()
-        if not service:
-            return ""
-
-        port = JDBC_PORT
-        service_type = {
+        expected_service_type = {
             "false": _ServiceType.CLUSTER_IP,
             "nodeport": _ServiceType.NODE_PORT,
             "loadbalancer": _ServiceType.LOAD_BALANCER,
         }[expose_external]
 
-        if service_type != _ServiceType(service.spec.type):
-            # This means, the type of service that's desired has not been created yet
-            return ""
+        match service:
+            case Service(spec=ServiceSpec(type)) if type != expected_service_type:
+                return ""
+            case Service(spec=ServiceSpec(type=_ServiceType.CLUSTER_IP)):
+                return f"{self._host}:{JDBC_PORT}"
 
-        if service_type == _ServiceType.CLUSTER_IP:
-            return f"{self._host}:{port}"
-        elif service_type == _ServiceType.NODE_PORT:
-            host = self._get_node_host()
-            for p in service.spec.ports:
-                node_port = p.nodePort
-                break
-            return f"{host}:{node_port}"
+            case Service(spec=ServiceSpec(type=_ServiceType.NODE_PORT, ports=[*ports])):
+                host = self._get_node_host()
+                for p in ports:
+                    node_port = p.nodePort
+                    break
+                return f"{host}:{node_port}"
 
-        elif service_type == _ServiceType.LOAD_BALANCER and service.status.loadBalancer.ingress:
-            lb: LoadBalancerIngress
-            for lb in service.status.loadBalancer.ingress:
-                if lb.ip is not None:
-                    return f"{lb.ip}:{port}"
-                elif lb.hostname is not None:
-                    return LbHost(f"{lb.hostname}:{port}")
+            case Service(spec=ServiceSpec(type=_ServiceType.LOAD_BALANCER)):
+                if not service.status.loadbalancer.ingress:
+                    return ""
 
+                lb: LoadBalancerIngress
+                for lb in service.status.loadBalancer.ingress:
+                    if lb.ip is not None:
+                        return f"{lb.ip}:{JDBC_PORT}"
+                    elif lb.hostname is not None:
+                        return LbHost(f"{lb.hostname}:{JDBC_PORT}")
                 raise Exception(f"Unable to find LoadBalancer ingress for the {service} service")
 
-        return ""
+            case _:
+                # Covers k8s connectivity error, mismatched services
+                return ""
 
     def delete_service(self):
         """Delete the existing managed K8s service."""
         try:
             self.lightkube_agent.delete(
-                res=lightkube.resources.core_v1.Service,
+                res=Service,
                 name=self.service_name,
                 namespace=self.namespace,
             )
@@ -144,26 +146,26 @@ class ServiceManager(WithLogging):
             self.logger.warning("Cannot delete service %s, Reason: %s", self.service_name, str(e))
 
     @functools.cache
-    def get_pod(self, unit_name: str) -> lightkube.resources.core_v1.Pod:
+    def get_pod(self, unit_name: str) -> Pod:
         """Get the pod for the provided unit name."""
         return self.lightkube_agent.get(
-            res=lightkube.resources.core_v1.Pod,
+            res=Pod,
             name=unit_name.replace("/", "-"),
             namespace=self.namespace,
         )
 
     def create_service(self, service_type, owner_references):
         """Create the Kubernetes service with desired service type."""
-        desired_service = lightkube.resources.core_v1.Service(
-            metadata=lightkube.models.meta_v1.ObjectMeta(
+        desired_service = Service(
+            metadata=ObjectMeta(
                 name=self.service_name,
                 namespace=self.namespace,
                 ownerReferences=owner_references,  # the stateful set
                 labels={"app.kubernetes.io/name": self.app_name},
             ),
-            spec=lightkube.models.core_v1.ServiceSpec(
+            spec=ServiceSpec(
                 ports=[
-                    lightkube.models.core_v1.ServicePort(
+                    ServicePort(
                         name="kyuubi-jdbc",
                         port=JDBC_PORT,
                         targetPort=JDBC_PORT,
@@ -209,7 +211,7 @@ class ServiceManager(WithLogging):
         """Gets the IP Address of the Node of a given Pod via the K8s API."""
         try:
             node = self.get_node(pod_name)
-        except lightkube.core.exceptions.ApiError as e:
+        except ApiError as e:
             if e.status.code == 403:
                 return ""
         if not node.status or not node.status.addresses:
