@@ -96,9 +96,7 @@ def test_relation_joined_request_tls_cert_not_exposed(
     state_in: State = dataclasses.replace(base_state, relations=[cluster_peer, tls_relation])
 
     # When
-    with (
-        ctx(ctx.on.relation_joined(tls_relation), state_in) as manager,
-    ):
+    with ctx(ctx.on.relation_joined(tls_relation), state_in) as manager:
         state_out = manager.run()
 
         # Then
