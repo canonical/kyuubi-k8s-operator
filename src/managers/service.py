@@ -6,7 +6,13 @@ import socket
 
 import lightkube
 from lightkube.core.exceptions import ApiError
-from lightkube.models.core_v1 import LoadBalancerIngress, ServicePort, ServiceSpec
+from lightkube.models.core_v1 import (
+    LoadBalancerIngress,
+    LoadBalancerStatus,
+    ServicePort,
+    ServiceSpec,
+    ServiceStatus,
+)
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Node, Pod, Service
 
@@ -117,12 +123,12 @@ class ServiceManager(WithLogging):
                     break
                 return f"{host}:{node_port}"
 
-            case Service(spec=ServiceSpec(type=_ServiceType.LOAD_BALANCER.value)):
-                if not service.status.loadbalancer.ingress:
-                    return ""
-
+            case Service(
+                spec=ServiceSpec(type=_ServiceType.LOAD_BALANCER.value),
+                status=ServiceStatus(loadBalancer=LoadBalancerStatus(ingress=[*ingress])),
+            ):
                 lb: LoadBalancerIngress
-                for lb in service.status.loadBalancer.ingress:
+                for lb in ingress:
                     if lb.ip is not None:
                         return f"{lb.ip}:{JDBC_PORT}"
                     elif lb.hostname is not None:
