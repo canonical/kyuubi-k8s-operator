@@ -105,19 +105,19 @@ class ServiceManager(WithLogging):
         }[expose_external]
 
         match service:
-            case Service(spec=ServiceSpec(type)) if type != expected_service_type:
+            case Service(spec=ServiceSpec(type=type)) if type != expected_service_type.value:
                 return ""
-            case Service(spec=ServiceSpec(type=_ServiceType.CLUSTER_IP)):
+            case Service(spec=ServiceSpec(type=_ServiceType.CLUSTER_IP.value)):
                 return f"{self._host}:{JDBC_PORT}"
 
-            case Service(spec=ServiceSpec(type=_ServiceType.NODE_PORT, ports=[*ports])):
+            case Service(spec=ServiceSpec(type=_ServiceType.NODE_PORT.value, ports=[*ports])):
                 host = self._get_node_host()
                 for p in ports:
                     node_port = p.nodePort
                     break
                 return f"{host}:{node_port}"
 
-            case Service(spec=ServiceSpec(type=_ServiceType.LOAD_BALANCER)):
+            case Service(spec=ServiceSpec(type=_ServiceType.LOAD_BALANCER.value)):
                 if not service.status.loadbalancer.ingress:
                     return ""
 
@@ -131,6 +131,9 @@ class ServiceManager(WithLogging):
 
             case _:
                 # Covers k8s connectivity error, mismatched services
+                self.logger.debug(
+                    f"Unable to access service: expected {expected_service_type}, got {service}"
+                )
                 return ""
 
     def delete_service(self):
