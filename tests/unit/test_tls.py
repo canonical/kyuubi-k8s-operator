@@ -16,7 +16,8 @@ from ops.testing import Context, PeerRelation, Relation, State
 from pytest import fixture
 
 from charm import KyuubiCharm
-from managers.service import LbHost
+from constants import JDBC_PORT
+from managers.service import DNSEndpoint
 
 PEER = "kyuubi-peers"
 CERTS_REL_NAME = "certificates"
@@ -137,7 +138,7 @@ def test_relation_joined_request_tls_cert_loadbalancer(
         patch(
             "core.domain.KyuubiServer.loadbalancer_endpoint",
             new_callable=PropertyMock,
-            return_value=LbHost(expected_endpoint),
+            return_value=DNSEndpoint(expected_endpoint, JDBC_PORT),
         ),
         ctx(ctx.on.relation_joined(tls_relation), state_in) as manager,
     ):

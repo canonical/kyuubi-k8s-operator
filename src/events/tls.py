@@ -4,9 +4,12 @@
 
 """Event handler for related applications on the `certificates` relation interface."""
 
+from __future__ import annotations
+
 import base64
 import os
 import re
+from typing import TYPE_CHECKING
 
 from charms.tls_certificates_interface.v3.tls_certificates import (
     CertificateAvailableEvent,
@@ -14,7 +17,6 @@ from charms.tls_certificates_interface.v3.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
-from ops import CharmBase
 from ops.charm import ActionEvent, RelationBrokenEvent, RelationCreatedEvent, RelationJoinedEvent
 from ops.framework import EventBase
 
@@ -25,11 +27,14 @@ from managers.kyuubi import KyuubiManager
 from managers.tls import TLSManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class TLSEvents(BaseEventHandler, WithLogging):
     """Event handlers for related applications on the `certificates` relation interface."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkload):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload):
         super().__init__(charm, "tls")
         self.charm = charm
         self.context = context

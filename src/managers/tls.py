@@ -15,7 +15,7 @@ from core.context import Context
 from core.domain import SANs
 from core.enums import ExposeExternal
 from core.workload.kyuubi import KyuubiWorkload
-from managers.service import LbHost
+from managers.service import DNSEndpoint, IPEndpoint
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class TLSManager:
     def get_subject(self) -> str:
         """Get subject name for the unit."""
         if self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value:
-            if isinstance(lb := self.context.unit_server.loadbalancer_endpoint, LbHost):
-                return lb.partition(":")[0]
+            if isinstance(lb := self.context.unit_server.loadbalancer_endpoint, DNSEndpoint):
+                return lb.host
 
         return os.uname()[1]
 
@@ -42,28 +42,34 @@ class TLSManager:
             sans_ip.append(node_ip)
 
         match self.context.unit_server.loadbalancer_endpoint:
-            case LbHost(loadbalancer):
+            case DNSEndpoint():
                 # Do nothing, will be added to sans_dns anyway by 'external_address'
                 # and was added to subject
                 pass
 
-            case str(loadbalancer) if loadbalancer:
-                sans_ip.append(loadbalancer.split(":")[0])
+            case IPEndpoint(host=host_ip):
+                sans_ip.append(host_ip)
 
             case _:
                 pass
 
+        sans_dns = [
+            self.context.unit_server.internal_address.split(".")[0],
+            self.context.unit_server.internal_address,
+            socket.getfqdn(),
+        ]
+
+        if (ext_address := self.context.unit_server.external_address) is not None:
+            sans_dns.extend(
+                [
+                    f"{ext_address.host}:{ext_address.port}",
+                    ext_address.host,
+                ]
+            )
+
         return SANs(
             sans_ip=sorted(sans_ip),
-            sans_dns=sorted(
-                [
-                    self.context.unit_server.internal_address.split(".")[0],
-                    self.context.unit_server.internal_address,
-                    self.context.unit_server.external_address,
-                    self.context.unit_server.external_address.split(":")[0],
-                    socket.getfqdn(),
-                ]
-            ),
+            sans_dns=sorted(sans_dns),
         )
 
     def get_current_sans(self) -> SANs | None:

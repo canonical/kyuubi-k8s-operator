@@ -3,6 +3,7 @@
 import enum
 import functools
 import socket
+from dataclasses import dataclass
 
 import lightkube
 from lightkube.core.exceptions import ApiError
@@ -20,8 +21,22 @@ from constants import JDBC_PORT
 from utils.logging import WithLogging
 
 
-class LbHost(str):
-    """Enable runtime check on loadbalancer ingress type."""
+@dataclass
+class Endpoint:
+    """Endpoint type."""
+
+    host: str
+    port: int
+
+
+class DNSEndpoint(Endpoint):
+    """DNS endpoint type."""
+
+    pass
+
+
+class IPEndpoint(Endpoint):
+    """IP endpoint type."""
 
     pass
 
@@ -61,7 +76,7 @@ class ServiceManager(WithLogging):
         # Example: kyuubi-k8s-service.my-model.svc.cluster.local
         return f"{self.service_name}.{self.model_service_domain}"
 
-    def _get_node_host(self) -> set[str]:
+    def _get_node_host(self) -> str:
         """Return the node ports of nodes where units of this app are scheduled."""
 
         def _get_node_address(node) -> str:
@@ -71,6 +86,7 @@ class ServiceManager(WithLogging):
                 for address in node.status.addresses:
                     if address.type == typ:
                         return address.address
+            raise RuntimeError("Could not find node port address")
 
         node = self.get_node(self.unit_name)
         host = _get_node_address(node)
@@ -101,7 +117,7 @@ class ServiceManager(WithLogging):
 
         return service
 
-    def get_service_endpoint(self, expose_external: str) -> str:
+    def get_service_endpoint(self, expose_external: str) -> Endpoint | None:
         """Returns the endpoint that can be used to connect to the service."""
         service = self.get_service()
         expected_service_type = {
@@ -112,16 +128,17 @@ class ServiceManager(WithLogging):
 
         match service:
             case Service(spec=ServiceSpec(type=type)) if type != expected_service_type.value:
-                return ""
+                return None
             case Service(spec=ServiceSpec(type=_ServiceType.CLUSTER_IP.value)):
-                return f"{self._host}:{JDBC_PORT}"
+                return IPEndpoint(self._host, JDBC_PORT)
 
             case Service(spec=ServiceSpec(type=_ServiceType.NODE_PORT.value, ports=[*ports])):
                 host = self._get_node_host()
                 for p in ports:
-                    node_port = p.nodePort
-                    break
-                return f"{host}:{node_port}"
+                    if isinstance(p.nodePort, int):
+                        node_port = p.nodePort
+                        break
+                return IPEndpoint(host, node_port)
 
             case Service(
                 spec=ServiceSpec(type=_ServiceType.LOAD_BALANCER.value),
@@ -130,9 +147,9 @@ class ServiceManager(WithLogging):
                 lb: LoadBalancerIngress
                 for lb in ingress:
                     if lb.ip is not None:
-                        return f"{lb.ip}:{JDBC_PORT}"
+                        return IPEndpoint(lb.ip, JDBC_PORT)
                     elif lb.hostname is not None:
-                        return LbHost(f"{lb.hostname}:{JDBC_PORT}")
+                        return DNSEndpoint(lb.hostname, JDBC_PORT)
                 raise Exception(f"Unable to find LoadBalancer ingress for the {service} service")
 
             case _:
@@ -140,7 +157,7 @@ class ServiceManager(WithLogging):
                 self.logger.debug(
                     f"Unable to access service: expected {expected_service_type}, got {service}"
                 )
-                return ""
+                return None
 
     def delete_service(self):
         """Delete the existing managed K8s service."""
