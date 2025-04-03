@@ -4,14 +4,14 @@
 
 """Integration Hub related event handlers."""
 
-from ops import CharmBase
-
-from common.relation.spark_sa import (
+from charms.data_platform_libs.v0.spark_service_account import (
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
     ServiceAccountPropertyChangedEvent,
     SparkServiceAccountRequirerEventHandlers,
 )
+from ops import CharmBase
+
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
