@@ -62,10 +62,13 @@ class SparkConfig(WithLogging):
 
     def _iceberg_conf(self):
         """Apache iceberg related configurations."""
+        sa_conf = self._sa_conf()
+        if not sa_conf or not sa_conf.get("spark.sql.warehouse.dir"):
+            return {}
         catalog_name = self.charm_config.iceberg_catalog_name
         conf = {
             "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-            f"spark.sql.catalog.{catalog_name}.warehouse": "s3a://warehouse",
+            f"spark.sql.catalog.{catalog_name}.warehouse": sa_conf["spark.sql.warehouse.dir"],
             f"spark.sql.catalog.{catalog_name}.type": "hive" if self.metastore_db_info else "hadoop",
         }
         if catalog_name == SPARK_DEFAULT_CATALOG_NAME:

@@ -62,7 +62,7 @@ async def test_deploy_kyuubi_setup(
 
 
 @pytest.mark.abort_on_fail
-async def test_iceberg_table(ops_test):
+async def test_iceberg_with_iceberg_catalog(ops_test):
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
@@ -76,5 +76,32 @@ async def test_iceberg_table(ops_test):
         cursor.execute("CREATE TABLE itable (id BIGINT) USING iceberg;")
         cursor.execute("INSERT INTO itable VALUES (12345);")
         cursor.execute("SELECT * FROM itable;")
+        results = cursor.fetchall()
+        assert len(results) == 1
+
+@pytest.mark.abort_on_fail
+async def test_iceberg_with_spark_catalog(ops_test):
+    """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
+    logger.info("Changing Iceberg catalog to default spark_catalog...")
+    await ops_test.model.applications[APP_NAME].set_config({"iceberg-catalog-name": "spark_catalog"})
+    logger.info("Waiting for kyuubi-k8s app to be active and idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME],
+        status="active",
+        timeout=1000,
+    )
+
+    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    port = 10009
+
+    # Put some load by executing some Kyuubi SQL queries
+    kyuubi_client = KyuubiClient(host=host, port=int(port))
+
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        cursor.execute("USE spark_catalog;")
+        cursor.execute("CREATE DATABASE sdb;")
+        cursor.execute("CREATE TABLE stable (id BIGINT) USING iceberg;")
+        cursor.execute("INSERT INTO stable VALUES (12345);")
+        cursor.execute("SELECT * FROM stable;")
         results = cursor.fetchall()
         assert len(results) == 1
