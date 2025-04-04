@@ -8,8 +8,6 @@
 from typing import Optional
 
 from lightkube import Client
-from lightkube.core.exceptions import ApiError
-from spark8t.services import K8sServiceAccountRegistry, LightKube
 
 from constants import KYUUBI_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
 from core.config import CharmConfig
@@ -54,21 +52,13 @@ class SparkConfig(WithLogging):
         """Spark configurations read from Spark8t."""
         if not self.service_account_info:
             return {}
-
-        interface = LightKube(None, None)
-        registry = K8sServiceAccountRegistry(interface)
-
-        account_id = ":".join(
-            [self.service_account_info.namespace, self.service_account_info.service_account]
-        )
-
-        try:
-            service_account = registry.get(account_id)
-            return service_account.configurations.props
-        except (ApiError, AttributeError):
-            self.logger.warning(f"Could not fetch Spark properties from {account_id}.")
-
-        return {}
+        namespace, username = self.service_account_info.service_account.split(":")
+        conf = {
+            "spark.kubernetes.namespace": namespace,
+            "spark.kubernetes.authenticate.driver.serviceAccountName": username,
+        }
+        conf.update(self.service_account_info.spark_properties)
+        return conf
 
     def _iceberg_conf(self):
         """Apache iceberg related configurations."""

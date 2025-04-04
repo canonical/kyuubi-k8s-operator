@@ -13,7 +13,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from ops import Model, Relation
 
-from common.relation.spark_sa import RequirerData
+from common.relation.spark_sa import SparkServiceAccountRequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     HA_ZNODE_NAME,
@@ -71,6 +71,14 @@ class Context(WithLogging):
             self.model, relation_name=PEER_REL, additional_secret_fields=SECRETS_UNIT
         )
 
+        namespace = self.config.namespace if self.config.namespace else self.model.name
+        service_account = self.config.service_account
+        self.spark_service_account_interface = SparkServiceAccountRequirerData(
+            self.model,
+            relation_name=SPARK_SERVICE_ACCOUNT_REL,
+            service_account=f"{namespace}:{service_account}",
+        )
+
     @property
     def _spark_account_relation(self) -> Relation | None:
         """The integration hub relation."""
@@ -124,12 +132,11 @@ class Context(WithLogging):
     @property
     def service_account(self) -> SparkServiceAccountInfo | None:
         """The state of service account information."""
-        data_interface = RequirerData(self.model, SPARK_SERVICE_ACCOUNT_REL)
-
-        if account := SparkServiceAccountInfo(
-            self._spark_account_relation, data_interface, self.model.app
-        ):
-            return account
+        if not self._spark_account_relation:
+            return None
+        return SparkServiceAccountInfo(
+            self._spark_account_relation, self.spark_service_account_interface, self.model.app
+        )
 
     @property
     def zookeeper(self) -> ZookeeperInfo | None:
