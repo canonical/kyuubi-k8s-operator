@@ -79,11 +79,14 @@ async def test_iceberg_with_iceberg_catalog(ops_test):
         results = cursor.fetchall()
         assert len(results) == 1
 
+
 @pytest.mark.abort_on_fail
 async def test_iceberg_with_spark_catalog(ops_test):
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
     logger.info("Changing Iceberg catalog to default spark_catalog...")
-    await ops_test.model.applications[APP_NAME].set_config({"iceberg-catalog-name": "spark_catalog"})
+    await ops_test.model.applications[APP_NAME].set_config(
+        {"iceberg-catalog-name": "spark_catalog"}
+    )
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],

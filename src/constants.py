@@ -35,6 +35,9 @@ DEFAULT_ADMIN_USERNAME = "admin"
 # Zookeeper literals
 HA_ZNODE_NAME = "/kyuubi"
 
+# Literals related to metastore
+HIVE_SCHEMA_VERSION = "2.3.0"
+
 # Upgrade policies
 
 DEPENDENCIES = {

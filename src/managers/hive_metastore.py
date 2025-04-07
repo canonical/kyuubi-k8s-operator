@@ -5,14 +5,19 @@
 
 """Hive metastore schema manager."""
 
+from core.workload import KyuubiWorkloadBase
 from utils.logging import WithLogging
 
 
 class HiveMetastoreManager(WithLogging):
     """Manager encapsulating utility methods to apply Hive metastore schema."""
 
-    HIVE_SCHEMA_SCRIPTS = [
-        "hive-schema-1.2.0.postgres.sql",
-        "upgrade-1.2.0-to-2.0.0.postgres.sql",
-        "upgrade-2.0.0-to-2.1.0.postgres.sql"
-    ]
+    def __init__(self, workload: KyuubiWorkloadBase):
+        self.workload = workload
+
+    def initialize_schema(self, schema_version: str) -> None:
+        """Initialize Hive Schema."""
+        self.workload.exec(
+            f"/opt/hive/bin/schematool -dbType postgres -initSchemaTo {schema_version}"
+        )
+        self.workload.restart()

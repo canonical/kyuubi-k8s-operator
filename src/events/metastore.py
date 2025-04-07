@@ -10,9 +10,11 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from ops import CharmBase
 
+from constants import HIVE_SCHEMA_VERSION
 from core.context import Context
 from core.workload import KyuubiWorkloadBase
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from managers.hive_metastore import HiveMetastoreManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
@@ -28,6 +30,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.metstore_manager = HiveMetastoreManager(self.workload)
         self.metatstore_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.metastore_db_requirer
         )
@@ -48,6 +51,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         """Handle event when metastore database is created."""
         self.logger.info("Metastore database created...")
         self.kyuubi.update()
+        self.metstore_manager.initialize_schema(schema_version=HIVE_SCHEMA_VERSION)
 
     @compute_status
     def _on_metastore_db_relation_removed(self, event) -> None:

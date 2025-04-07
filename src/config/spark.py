@@ -69,18 +69,23 @@ class SparkConfig(WithLogging):
         conf = {
             "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
             f"spark.sql.catalog.{catalog_name}.warehouse": sa_conf["spark.sql.warehouse.dir"],
-            f"spark.sql.catalog.{catalog_name}.type": "hive" if self.metastore_db_info else "hadoop",
+            f"spark.sql.catalog.{catalog_name}.type": "hive"
+            if self.metastore_db_info
+            else "hadoop",
         }
         if catalog_name == SPARK_DEFAULT_CATALOG_NAME:
-            conf.update({
-                f"spark.sql.catalog.{catalog_name}": "org.apache.iceberg.spark.SparkSessionCatalog",
-            })
+            conf.update(
+                {
+                    f"spark.sql.catalog.{catalog_name}": "org.apache.iceberg.spark.SparkSessionCatalog",
+                }
+            )
         else:
-            conf.update({
-                f"spark.sql.catalog.{catalog_name}": "org.apache.iceberg.spark.SparkCatalog",
-            })
+            conf.update(
+                {
+                    f"spark.sql.catalog.{catalog_name}": "org.apache.iceberg.spark.SparkCatalog",
+                }
+            )
         return conf
-
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file.
