@@ -19,7 +19,7 @@ from typing_extensions import override
 
 from common.relation.domain import RelationState
 from constants import SECRETS_APP
-from managers.service import ServiceManager
+from managers.service import Endpoint, ServiceManager
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +319,7 @@ class KyuubiServer(RelationState):
         return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
 
     @property
-    def external_address(self) -> str:
+    def external_address(self) -> Endpoint | None:
         """The external address for the unit, for external communication."""
         return self.k8s.get_service_endpoint(
             expose_external=self.unit._backend.config_get().get("expose-external")
@@ -335,18 +335,12 @@ class KyuubiServer(RelationState):
 
     @cached_property
     def node_ip(self) -> str:
-        """The IPV4/IPV6 IP address of the Node the unit is on.
-
-        K8s-only.
-        """
+        """The IPV4/IPV6 IP address of the Node the unit is on."""
         return self.k8s.get_node_ip(self.pod_name)
 
     @cached_property
-    def loadbalancer_ip(self) -> str:
-        """The IPV4/IPV6 IP address of the LoadBalancer exposing the unit.
-
-        K8s-only.
-        """
+    def loadbalancer_endpoint(self) -> Endpoint | None:
+        """The IPV4/IPV6 IP address or hostname of the LoadBalancer exposing the unit."""
         return self.k8s.get_service_endpoint("loadbalancer")
 
 

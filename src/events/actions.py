@@ -73,12 +73,12 @@ class ActionEvents(BaseEventHandler, WithLogging):
         address = self.service_manager.get_service_endpoint(
             expose_external=self.charm.config.expose_external
         )
-        if not address:
+        if address is None:
             event.fail(
                 "The action failed because the Kubernetes service is not available at the moment."
             )
             return
-        endpoint = f"jdbc:hive2://{address}/"
+        endpoint = f"jdbc:hive2://{address.host}:{address.port}/"
         result = {"endpoint": endpoint}
         event.set_results(result)
 
