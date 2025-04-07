@@ -112,11 +112,11 @@ async def test_iceberg_external_metastore(ops_test, charm_versions):
     kyuubi_client = KyuubiClient(host=host, port=int(port))
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
-        cursor.execute("USE spark_catalog;")
-        cursor.execute("CREATE DATABASE sdb;")
-        cursor.execute("CREATE TABLE stable (id BIGINT) USING iceberg;")
-        cursor.execute("INSERT INTO stable VALUES (12345);")
-        cursor.execute("SELECT * FROM stable;")
+        cursor.execute("USE iceberg;")
+        cursor.execute("CREATE DATABASE idb2;")
+        cursor.execute("CREATE TABLE itable2 (id BIGINT) USING iceberg;")
+        cursor.execute("INSERT INTO itable2 VALUES (12345);")
+        cursor.execute("SELECT * FROM itable2;")
         results = cursor.fetchall()
         assert len(results) == 1
 
