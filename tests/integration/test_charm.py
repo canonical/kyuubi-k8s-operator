@@ -336,7 +336,7 @@ async def test_integration_with_postgresql_over_metastore_db(ops_test: OpsTest, 
     """Test the charm by integrating it with postgresql-k8s charm."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying postgresql-k8s charm...")
-    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     await ops_test.model.wait_for_idle(
