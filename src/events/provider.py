@@ -83,7 +83,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
                 event.relation.id,
-                kyuubi_endpoint,
+                str(kyuubi_endpoint),
             )
 
             # Set the JDBC URI
@@ -106,7 +106,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                     event.relation.id, self.context.unit_server.ca_cert
                 )
 
-        except (Exception) as e:
+        except Exception as e:
             logger.exception(e)
             self.charm.unit.status = BlockedStatus(str(e))
 
