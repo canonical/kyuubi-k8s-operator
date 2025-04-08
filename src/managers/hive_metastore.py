@@ -18,6 +18,6 @@ class HiveMetastoreManager(WithLogging):
     def initialize_schema(self, schema_version: str) -> None:
         """Initialize Hive Schema."""
         self.workload.exec(
-            f"/opt/hive/bin/schematool -dbType postgres -initSchemaTo {schema_version}"
+            f"/opt/hive/bin/schematool.sh -dbType postgres -initSchemaTo {schema_version}"
         )
         self.workload.restart()
