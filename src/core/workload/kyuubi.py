@@ -23,6 +23,7 @@ from utils.logging import WithLogging
 KYUUBI_CONF_PATH = "/opt/kyuubi/conf"
 SPARK_CONF_PATH = "/etc/spark8t/conf"
 KYUUBI_ROOT = "/opt/kyuubi"
+HIVE_ROOT = "/opt/hive"
 
 
 class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
@@ -35,6 +36,7 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
             conf_path=KYUUBI_CONF_PATH,
             spark_conf_path=SPARK_CONF_PATH,
             kyuubi_root=KYUUBI_ROOT,
+            hive_root=HIVE_ROOT,
             keytool="keytool",
         )
 

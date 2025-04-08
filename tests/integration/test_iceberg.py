@@ -73,6 +73,7 @@ async def test_iceberg_with_iceberg_catalog(ops_test):
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         cursor.execute("USE iceberg;")
         cursor.execute("CREATE DATABASE idb;")
+        cursor.execute("USE idb;")
         cursor.execute("CREATE TABLE itable (id BIGINT) USING iceberg;")
         cursor.execute("INSERT INTO itable VALUES (12345);")
         cursor.execute("SELECT * FROM itable;")
@@ -113,10 +114,11 @@ async def test_iceberg_external_metastore(ops_test, charm_versions):
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         cursor.execute("USE iceberg;")
-        cursor.execute("CREATE DATABASE idb2;")
-        cursor.execute("CREATE TABLE itable2 (id BIGINT) USING iceberg;")
-        cursor.execute("INSERT INTO itable2 VALUES (12345);")
-        cursor.execute("SELECT * FROM itable2;")
+        cursor.execute("CREATE DATABASE dbi;")
+        cursor.execute("USE dbi;")
+        cursor.execute("CREATE TABLE tablei (id BIGINT) USING iceberg;")
+        cursor.execute("INSERT INTO tablei VALUES (12345);")
+        cursor.execute("SELECT * FROM tablei;")
         results = cursor.fetchall()
         assert len(results) == 1
 
@@ -144,6 +146,7 @@ async def test_iceberg_with_spark_catalog(ops_test):
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         cursor.execute("USE spark_catalog;")
         cursor.execute("CREATE DATABASE sdb;")
+        cursor.execute("USE sdb;")
         cursor.execute("CREATE TABLE stable (id BIGINT) USING iceberg;")
         cursor.execute("INSERT INTO stable VALUES (12345);")
         cursor.execute("SELECT * FROM stable;")
