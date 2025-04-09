@@ -164,6 +164,27 @@ async def test_disconnect_and_reconnect_external_metastore(ops_test, charm_versi
         assert len(results) == 1
 
 
+# Test normal tables can be written / read using the iceberg catalog
+@pytest.mark.abort_on_fail
+async def test_normal_table_format_with_iceberg_catalog(ops_test):
+    """Test that tables using non-iceberg format can be read and written using iceberg catalog."""
+    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    port = 10009
+
+    kyuubi_client = KyuubiClient(host=host, port=int(port))
+
+    # Verify that the data can be read and written using default (non-iceberg) table format
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        cursor.execute("USE iceberg;")
+        cursor.execute("CREATE DATABASE normal_idb;")
+        cursor.execute("USE normal_idb;")
+        cursor.execute("CREATE TABLE normal_itable (id INT);")
+        cursor.execute("INSERT INTO normal_itable VALUES (12345);")
+        cursor.execute("SELECT * FROM normal_itable;")
+        results = cursor.fetchall()
+        assert len(results) == 1
+
+
 @pytest.mark.abort_on_fail
 async def test_iceberg_with_spark_catalog(ops_test):
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
@@ -197,7 +218,7 @@ async def test_iceberg_with_spark_catalog(ops_test):
 
 @pytest.mark.abort_on_fail
 async def test_reading_table_written_by_other_catalog(ops_test):
-    """Test whether one is able to read data written using iceberg catalog  previously using spark_catalog."""
+    """Test whether one is able to read data written using iceberg catalog using spark_catalog."""
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
@@ -208,5 +229,25 @@ async def test_reading_table_written_by_other_catalog(ops_test):
         cursor.execute("USE spark_catalog;")
         cursor.execute("USE dbi;")
         cursor.execute("SELECT * FROM tablei;")
+        results = cursor.fetchall()
+        assert len(results) == 1
+
+
+@pytest.mark.abort_on_fail
+async def test_normal_table_format_with_iceberg_enabled_spark_catalog(ops_test):
+    """Test that tables using non-iceberg format can be read and written using iceberg enabled spark_catalog."""
+    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    port = 10009
+
+    kyuubi_client = KyuubiClient(host=host, port=int(port))
+
+    # Verify that the data can be read and written using default (non-iceberg) table format
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        cursor.execute("USE spark_catalog;")
+        cursor.execute("CREATE DATABASE normal_sdb;")
+        cursor.execute("USE normal_sdb;")
+        cursor.execute("CREATE TABLE normal_stable (id INT);")
+        cursor.execute("INSERT INTO normal_stable VALUES (12345);")
+        cursor.execute("SELECT * FROM normal_stable;")
         results = cursor.fetchall()
         assert len(results) == 1
