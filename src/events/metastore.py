@@ -30,7 +30,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
-        self.metstore_manager = HiveMetastoreManager(self.workload)
+        self.metastore_manager = HiveMetastoreManager(self.workload)
         self.metatstore_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.metastore_db_requirer
         )
@@ -51,7 +51,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         """Handle event when metastore database is created."""
         self.logger.info("Metastore database created...")
         self.kyuubi.update()
-        self.metstore_manager.initialize_schema(schema_version=HIVE_SCHEMA_VERSION)
+        self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
 
     @compute_status
     def _on_metastore_db_relation_removed(self, event) -> None:

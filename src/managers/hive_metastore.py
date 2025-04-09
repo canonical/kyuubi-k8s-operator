@@ -6,7 +6,6 @@
 """Hive metastore schema manager."""
 
 import logging
-import subprocess
 
 import ops
 
@@ -24,20 +23,53 @@ class HiveMetastoreManager(WithLogging):
     def __init__(self, workload: KyuubiWorkloadBase):
         self.workload = workload
 
-    def initialize_schema(self, schema_version: str) -> None:
-        """Initialize Hive Schema."""
-        command = " ".join(
-            [
-                self.workload.paths.schematool_bin,
-                "-dbType",
-                self.METASTORE_DB_TYPE,
-                "-initSchemaTo",
-                schema_version,
-            ]
-        )
+    def _run_schematool_command(self, *args, dry_run: bool = False) -> tuple[int, str, str]:
+        command_args = [self.workload.paths.schematool_bin, "-dbType", self.METASTORE_DB_TYPE]
+        if dry_run:
+            command_args.append("-dryRun")
+        if len(args) > 0:
+            command_args.extend(args)
+
         try:
-            self.workload.exec(command)
-            self.workload.restart()
-        except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
-            logger.error(str(e.stderr))
-            raise e
+            out = self.workload.exec(" ".join(command_args))
+            return 0, out, ""
+        except ops.pebble.ExecError as e:
+            # ExceError is raised when the return code is not 0
+            return 1, e.stdout or "", e.stderr or ""
+        except Exception as e:
+            logger.exception(e)
+            return 1, "", str(e)
+
+    def is_metastore_valid(self) -> bool:
+        """Validate the metastore schema and return if it is valid."""
+        retcode, stdout, stderr = self._run_schematool_command("-validate")
+        return retcode == 0
+
+    def initialize(self, schema_version: str) -> None:
+        """Initialize the Hive schema."""
+        # First check that if the metastore schema is already valid
+        if self.is_metastore_valid():
+            logger.info(
+                "Metastore schema is already initialized and valid. Skipping initialization"
+            )
+            return
+
+        # Attempt initialization with dry run first
+        retcode, stdout, stderr = self._run_schematool_command(
+            "-initSchemaTo", schema_version, dry_run=True
+        )
+        if retcode != 0:
+            logger.error(
+                f"Cannot safely initialize Hive schema in metastore database. stdout={stdout}; stderr={stderr}"
+            )
+            return
+
+        # Attempt actual initialization
+        retcode, stdout, stderr = self._run_schematool_command("-initSchemaTo", schema_version)
+        if retcode != 0:
+            logger.error(
+                f"Hive schema initialization failed for metastore database. stdout={stdout}; stderr={stderr}"
+            )
+            return
+
+        logger.info(f"Metastore database initialized with Hive schema {schema_version}")

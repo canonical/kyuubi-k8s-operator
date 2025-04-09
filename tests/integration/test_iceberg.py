@@ -63,7 +63,7 @@ async def test_deploy_kyuubi_setup(
 
 @pytest.mark.abort_on_fail
 async def test_iceberg_with_iceberg_catalog(ops_test):
-    """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
+    """Test Iceberg capabilities using the `iceberg` catalog created by default."""
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
@@ -124,6 +124,47 @@ async def test_iceberg_external_metastore(ops_test, charm_versions):
 
 
 @pytest.mark.abort_on_fail
+async def test_disconnect_and_reconnect_external_metastore(ops_test, charm_versions):
+    """Test disconnecting external metastore and reconnecting to it again and read old data."""
+    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
+    await ops_test.model.applications[APP_NAME].remove_relation(
+        f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
+    )
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm again...")
+    await ops_test.model.integrate(
+        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
+    )
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+    )
+
+    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
+
+    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    port = 10009
+
+    kyuubi_client = KyuubiClient(host=host, port=int(port))
+
+    # Verify that the previously inserted rows are readable
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        cursor.execute("USE iceberg;")
+        cursor.execute("USE dbi;")
+        cursor.execute("SELECT * FROM tablei;")
+        results = cursor.fetchall()
+        assert len(results) == 1
+
+
+@pytest.mark.abort_on_fail
 async def test_iceberg_with_spark_catalog(ops_test):
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
     logger.info("Changing Iceberg catalog to default spark_catalog...")
@@ -150,5 +191,22 @@ async def test_iceberg_with_spark_catalog(ops_test):
         cursor.execute("CREATE TABLE stable (id BIGINT) USING iceberg;")
         cursor.execute("INSERT INTO stable VALUES (12345);")
         cursor.execute("SELECT * FROM stable;")
+        results = cursor.fetchall()
+        assert len(results) == 1
+
+
+@pytest.mark.abort_on_fail
+async def test_reading_table_written_by_other_catalog(ops_test):
+    """Test whether one is able to read data written using iceberg catalog  previously using spark_catalog."""
+    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    port = 10009
+
+    kyuubi_client = KyuubiClient(host=host, port=int(port))
+
+    # Verify that the previously inserted rows are readable
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        cursor.execute("USE spark_catalog;")
+        cursor.execute("USE dbi;")
+        cursor.execute("SELECT * FROM tablei;")
         results = cursor.fetchall()
         assert len(results) == 1
