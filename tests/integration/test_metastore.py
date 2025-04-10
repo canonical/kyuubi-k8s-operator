@@ -37,11 +37,11 @@ async def validate_sql_queries_with_kyuubi(
         table_name = uuid.uuid4()
     if not query:
         query = (
-            f"CREATE DATABASE {db_name}; "
-            f"USE {db_name}; "
-            f"CREATE TABLE {table_name} (id INT); "
-            f"INSERT INTO {table_name} VALUES (12345); "
-            f"SELECT * FROM {table_name}; "
+            f"CREATE DATABASE `{db_name}`; "
+            f"USE `{db_name}`; "
+            f"CREATE TABLE `{table_name}` (id INT); "
+            f"INSERT INTO `{table_name}` VALUES (12345); "
+            f"SELECT * FROM `{table_name}`; "
         )
     kyuubi_client = KyuubiClient(host=kyuubi_host, port=int(kyuubi_port))
 
