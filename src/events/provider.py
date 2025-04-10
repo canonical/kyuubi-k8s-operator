@@ -57,20 +57,21 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
 
         if not self.charm.unit.is_leader():
             return
-
-        if not self.context.is_authentication_enabled():
-            raise NotImplementedError(
-                "Authentication has not been enabled yet! "
-                "Please integrate kyuubi-k8s with postgresql-k8s "
-                "over auth-db relation endpoint."
-            )
-        auth = AuthenticationManager(self.context.auth_db)
-        service_manager = ServiceManager(
-            namespace=self.charm.model.name,
-            unit_name=self.charm.unit.name,
-            app_name=self.charm.app.name,
-        )
         try:
+            if not self.context.is_authentication_enabled():
+                raise NotImplementedError(
+                    "Authentication has not been enabled yet! "
+                    "Please integrate kyuubi-k8s with postgresql-k8s "
+                    "over auth-db relation endpoint."
+                )
+
+            auth = AuthenticationManager(self.context.auth_db)
+            service_manager = ServiceManager(
+                namespace=self.charm.model.name,
+                unit_name=self.charm.unit.name,
+                app_name=self.charm.app.name,
+            )
+
             username = f"relation_id_{event.relation.id}"
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
@@ -78,12 +79,16 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             kyuubi_endpoint = service_manager.get_service_endpoint(
                 expose_external=self.charm.config.expose_external
             )
-            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint}/" if kyuubi_endpoint else ""
+            jdbc_uri = (
+                f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
+                if kyuubi_endpoint
+                else ""
+            )
 
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
                 event.relation.id,
-                kyuubi_endpoint,
+                f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}",
             )
 
             # Set the JDBC URI
@@ -106,7 +111,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                     event.relation.id, self.context.unit_server.ca_cert
                 )
 
-        except (Exception) as e:
+        except Exception as e:
             logger.exception(e)
             self.charm.unit.status = BlockedStatus(str(e))
 

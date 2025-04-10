@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -146,7 +147,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     )
 
     assert "TLSv1.3" in response
-    assert "CN = kyuubi" in response
+    assert re.search(r"CN\s?=\s?kyuubi", response)
 
     # get issued certificates
     logger.info("Get certificate from self-signed certificate operator")
