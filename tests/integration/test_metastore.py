@@ -27,26 +27,28 @@ INVALID_METASTORE_APP_NAME = "invalid-metastore"
 
 
 async def validate_sql_queries_with_kyuubi(
-    ops_test, kyuubi_host=None, kyuubi_port=10009, query=None, db_name=None, table_name=None
+    ops_test, kyuubi_host=None, kyuubi_port=10009, query_lines=None, db_name=None, table_name=None
 ):
+    """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
     if not kyuubi_host:
         kyuubi_host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     if not db_name:
-        db_name = uuid.uuid4()
+        db_name = str(uuid.uuid4()).replace("-", "_")
     if not table_name:
-        table_name = uuid.uuid4()
-    if not query:
-        query = (
-            f"CREATE DATABASE `{db_name}`; "
-            f"USE `{db_name}`; "
-            f"CREATE TABLE `{table_name}` (id INT); "
-            f"INSERT INTO `{table_name}` VALUES (12345); "
-            f"SELECT * FROM `{table_name}`; "
+        table_name = str(uuid.uuid4()).replace("-", "_")
+    if not query_lines:
+        query_lines = (
+            f"CREATE DATABASE `{db_name}`; ",
+            f"USE `{db_name}`; ",
+            f"CREATE TABLE `{table_name}` (id INT); ",
+            f"INSERT INTO `{table_name}` VALUES (12345); ",
+            f"SELECT * FROM `{table_name}`; ",
         )
     kyuubi_client = KyuubiClient(host=kyuubi_host, port=int(kyuubi_port))
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
-        cursor.execute(query)
+        for line in query_lines:
+            cursor.execute(line)
         results = cursor.fetchall()
         return len(results) == 1
 
@@ -95,7 +97,7 @@ async def test_sql_queries_local_metastore(ops_test):
 
 @pytest.mark.abort_on_fail
 async def test_integrate_external_metastore(ops_test, charm_versions):
-    """Test the charm by integrating it with postgresql-k8s charm."""
+    """Test the Kyuuubi charm by integrating it with external metastore."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying postgresql-k8s charm...")
     await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
@@ -123,7 +125,7 @@ async def test_integrate_external_metastore(ops_test, charm_versions):
         ops_test, app_name=charm_versions.postgres.application_name
     )
     assert postgres_leader is not None
-    postgres_host = get_address(ops_test, unit_name=postgres_leader.name)
+    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
 
     action = await postgres_leader.run_action(
         action_name="get-password",
@@ -156,7 +158,7 @@ async def test_sql_queries_external_metastore(ops_test):
 
 @pytest.mark.abort_on_fail
 async def test_remove_external_metastore(ops_test, charm_versions):
-    """Test running SQL queries with an external metastore."""
+    """Test removal of external metastore."""
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
         f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
@@ -171,7 +173,7 @@ async def test_remove_external_metastore(ops_test, charm_versions):
         ops_test, app_name=charm_versions.postgres.application_name
     )
     assert postgres_leader is not None
-    postgres_host = get_address(ops_test, unit_name=postgres_leader.name)
+    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
 
     action = await postgres_leader.run_action(
         action_name="get-password",
@@ -196,35 +198,23 @@ async def test_remove_external_metastore(ops_test, charm_versions):
 
 @pytest.mark.abort_on_fail
 async def test_run_sql_queries_again_with_local_metastore(ops_test, charm_versions):
-    """Test running SQL queries with an external metastore."""
+    """Test running SQL queries again with local metastore."""
     logger.info(
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
     )
     time.sleep(30)
 
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
-    port = 10009
-
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
-
-    with kyuubi_client.connection as conn, conn.cursor() as cursor:
-        cursor.execute("CREATE DATABASE dblocal2;")
-        cursor.execute("USE dblocal2;")
-        cursor.execute("CREATE TABLE tlocal2 (id INT);")
-        cursor.execute("INSERT INTO tlocal2 VALUES (12345);")
-        cursor.execute("SELECT * FROM tlocal2;")
-        results = cursor.fetchall()
-        assert len(results) == 1
+    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
 
 
 async def test_prepare_metastore_with_invalid_schema(ops_test, charm_versions):
-    """Test running SQL queries with an external metastore."""
+    """Prepare an external metastore with invalid schema."""
     # Deploy the charm and wait for waiting status
     logger.info(
         f"Deploying a new instance of postgresql-k8s charm with alias {INVALID_METASTORE_APP_NAME}..."
     )
     deploy_dict = charm_versions.postgres.deploy_dict()
-    deploy_dict.update({"alias": INVALID_METASTORE_APP_NAME})
+    deploy_dict.update({"application_name": INVALID_METASTORE_APP_NAME})
     await ops_test.model.deploy(**deploy_dict)
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
@@ -256,10 +246,10 @@ async def test_prepare_metastore_with_invalid_schema(ops_test, charm_versions):
     )
 
     # Now attempt to mutate the schema
-
+    logger.info("Mutating metastore schema to make it invalid...")
     postgres_leader = await find_leader_unit(ops_test, app_name=INVALID_METASTORE_APP_NAME)
     assert postgres_leader is not None
-    postgres_host = get_address(ops_test, unit_name=postgres_leader.name)
+    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
 
     action = await postgres_leader.run_action(
         action_name="get-password",
@@ -277,15 +267,15 @@ async def test_prepare_metastore_with_invalid_schema(ops_test, charm_versions):
 
     with connection.cursor() as cursor:
         cursor.execute(""" DROP TABLE "VERSION"; """)
-        cursor.execute(""" DROP TABLE "DBS"; """)
-        cursor.execute(""" DROP TABLE "TBLS"; """)
+        cursor.execute(""" DROP TABLE "DBS" CASCADE; """)
+        connection.commit()
 
     connection.close()
 
 
 @pytest.mark.abort_on_fail
-async def test_integrate_metastore_with_invalid_schema(ops_test, charm_versions):
-    """Test the charm by integrating it with postgresql-k8s charm."""
+async def test_integrate_metastore_with_invalid_schema(ops_test):
+    """Test the charm by integrating it with metastore with invalid schema."""
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s (invalid-metastore) charm...")
     await ops_test.model.integrate(INVALID_METASTORE_APP_NAME, f"{APP_NAME}:metastore-db")
 
@@ -303,20 +293,14 @@ async def test_integrate_metastore_with_invalid_schema(ops_test, charm_versions)
 
 @pytest.mark.abort_on_fail
 async def test_integrate_metastore_with_valid_schema_again(ops_test, charm_versions):
-    """Test running SQL queries with an external metastore."""
+    """Test integration of Kyuubi charm with external metastore with valid schema again."""
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
+        f"{APP_NAME}:metastore-db", f"{INVALID_METASTORE_APP_NAME}:database"
     )
 
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
-
-    # Assert that postgresql-k8s charm is in active state
-    assert ops_test.model.applications[INVALID_METASTORE_APP_NAME].status == "active"
-
+    logger.info("Waiting for kyuubi-k8s app to be idle and active...")
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], timeout=1000, status="active")
     # Assert that Kyuubi charm is in active state again
     assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
 
@@ -338,26 +322,9 @@ async def test_integrate_metastore_with_valid_schema_again(ops_test, charm_versi
 
 
 @pytest.mark.abort_on_fail
-async def test_read_write_with_valid_schema_metastore_again(ops_test, charm_versions):
-    """Test running SQL queries with an external metastore."""
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
-    port = 10009
-
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
-
-    # First check if previously written data is there
-    with kyuubi_client.connection as conn, conn.cursor() as cursor:
-        cursor.execute("USE dbext;")
-        cursor.execute("SELECT * FROM text;")
-        results = cursor.fetchall()
-        assert len(results) == 1
-
-    # Now attempt to write new data
-    with kyuubi_client.connection as conn, conn.cursor() as cursor:
-        cursor.execute("CREATE DATABASE dbext;")
-        cursor.execute("USE dbext;")
-        cursor.execute("CREATE TABLE text (id INT);")
-        cursor.execute("INSERT INTO text VALUES (12345);")
-        cursor.execute("SELECT * FROM text;")
-        results = cursor.fetchall()
-        assert len(results) == 1
+async def test_read_write_with_valid_schema_metastore_again(ops_test):
+    """Test whether previously written data can be read as well as new data can be written."""
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, query_lines=["USE dbext;", "SELECT * FROM text;"]
+    )
+    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
