@@ -64,8 +64,8 @@ jobs:
           # - integration-external-access
           # - integration-upgrade
           # - integration-tls
-          - integration-iceberg
-          # - integration-metastore
+          # - integration-iceberg
+          - integration-metastore
           # - integration-dynamic-allocation
     name: ${{ matrix.tox-environments }}
     needs:
