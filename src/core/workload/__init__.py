@@ -20,6 +20,7 @@ class KyuubiPaths:
         conf_path: Path | str,
         spark_conf_path: Path | str,
         kyuubi_root: Path | str,
+        hive_root: Path | str,
         keytool: str,
     ):
         self.conf_path = conf_path if isinstance(conf_path, Path) else Path(conf_path)
@@ -27,6 +28,7 @@ class KyuubiPaths:
             spark_conf_path if isinstance(spark_conf_path, Path) else Path(spark_conf_path)
         )
         self.kyuubi_root = kyuubi_root if isinstance(kyuubi_root, Path) else Path(kyuubi_root)
+        self.hive_root = hive_root if isinstance(hive_root, Path) else Path(hive_root)
         self.keytool = keytool
 
     @property
@@ -78,6 +80,11 @@ class KyuubiPaths:
     def kyuubi_version_file(self) -> str:
         """The Kyuubi version file."""
         return f"{self.kyuubi_root}/RELEASE"
+
+    @property
+    def schematool_bin(self) -> str:
+        """The path to the schematool binary."""
+        return f"{self.hive_root}/bin/schematool.sh"
 
 
 class KyuubiWorkloadBase(AbstractWorkload):

@@ -63,6 +63,7 @@ class KyuubiManager(WithLogging):
                     SparkConfig(
                         charm_config=self.context.config,
                         service_account_info=service_account_info,
+                        metastore_db_info=metastore_db_info,
                     ).contents,
                     self.workload.paths.spark_properties,
                 ),
