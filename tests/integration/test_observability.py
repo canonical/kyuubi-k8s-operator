@@ -22,7 +22,7 @@ from .helpers import (
     published_loki_logs,
     published_prometheus_alerts,
     published_prometheus_data,
-    run_sql_test_against_jdbc_endpoint,
+    validate_sql_queries_with_kyuubi,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,23 +72,9 @@ async def test_build_and_deploy(
 
 
 @pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod):
-    """Test the JDBC endpoint exposed by the charm."""
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
-    )
-    result = await action.wait()
-
-    jdbc_endpoint = result.results.get("endpoint")
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
-    logger.info(
-        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
-    )
-
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+async def test_run_some_sql_queries(ops_test):
+    """Test running SQL queries without an external metastore."""
+    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
 
 
 @pytest.mark.abort_on_fail

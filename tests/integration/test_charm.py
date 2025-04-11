@@ -4,28 +4,17 @@
 
 import logging
 import subprocess
-import time
-import uuid
 from pathlib import Path
 
-import psycopg2
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
-from thrift.transport.TTransport import TTransportException
 
-from constants import (
-    AUTHENTICATION_DATABASE_NAME,
-    KYUUBI_CLIENT_RELATION_NAME,
-    METASTORE_DATABASE_NAME,
-)
 from core.domain import Status
 
 from .helpers import (
     check_status,
     fetch_spark_properties,
-    find_leader_unit,
-    get_address,
     validate_sql_queries_with_kyuubi,
 )
 
@@ -131,7 +120,7 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
 
 
 @pytest.mark.abort_on_fail
-async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions, s3_bucket_and_creds):
+async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions):
     """Test deploying the integration hub charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
@@ -292,356 +281,7 @@ async def test_integration_hub_realtime_updates(ops_test: OpsTest, charm_version
     assert "foo" not in props
 
 
-@pytest.mark.abort_on_fail
-async def test_integration_with_postgresql_over_metastore_db(ops_test: OpsTest, charm_versions):
-    """Test the charm by integrating it with postgresql-k8s charm."""
-    # Deploy the charm and wait for waiting status
-    logger.info("Deploying postgresql-k8s charm...")
-    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
-
-    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    await ops_test.model.integrate(
-        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
-    )
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
-    )
-
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
-
-
-@pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_with_postgres_metastore(ops_test: OpsTest, charm_versions):
-    """Test the JDBC endpoint exposed by the charm."""
-    db_name = "db_postgres_metastore"
-    table_name = "table_postgres_metastore"
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, db_name=db_name, table_name=table_name
-    )
-
-    # Fetch password for default user from postgresql-k8s
-    postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
-    action = await postgres_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
-
-    # Fetch host address of postgresql-k8s
-    postgres_leader = await find_leader_unit(
-        ops_test, app_name=charm_versions.postgres.application_name
-    )
-    assert postgres_leader is not None
-    postgresql_host_address = await get_address(ops_test, unit_name=postgres_leader.name)
-
-    # Connect to PostgreSQL metastore database
-    connection = psycopg2.connect(
-        host=postgresql_host_address,
-        database=METASTORE_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    # Fetch number of new db and tables that have been added to metastore
-    num_dbs = num_tables = 0
-    with connection.cursor() as cursor:
-        cursor.execute(f""" SELECT * FROM "DBS" WHERE "NAME" = '{db_name}'; """)
-        num_dbs = cursor.rowcount
-        cursor.execute(f""" SELECT * FROM "TBLS" WHERE "TBL_NAME" = '{table_name}'; """)
-        num_tables = cursor.rowcount
-
-    connection.close()
-
-    # Assert that new database and tables have indeed been added to metastore
-    assert num_dbs != 0
-    assert num_tables != 0
-
-
-@pytest.mark.abort_on_fail
-async def test_enable_authentication(ops_test: OpsTest, charm_versions):
-    """Test the the behavior of charm when authentication is enabled."""
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
-
-    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm over auth-db endpoint...")
-    await ops_test.model.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:auth-db")
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
-    )
-
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-
-    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
-
-
-@pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest):
-    """Test the JDBC connection when invalid credentials are provided."""
-    with pytest.raises(TTransportException) as exc:
-        await validate_sql_queries_with_kyuubi(ops_test=ops_test)
-        assert b"Error validating the login" in exc.value.message
-
-
-@pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest):
-    """Test the JDBC connection when invalid credentials are provided."""
-    username = "admin"
-    password = str(uuid.uuid4())
-    with pytest.raises(TTransportException) as exc:
-        await validate_sql_queries_with_kyuubi(
-            ops_test=ops_test, username=username, password=password
-        )
-        assert b"Error validating the login" in exc.value.message
-
-
-@pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest):
-    """Test the JDBC connection when invalid credentials are provided."""
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
-    username = "admin"
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=username, password=password
-    )
-
-
-@pytest.mark.abort_on_fail
-async def test_set_password_action(ops_test: OpsTest, test_pod):
-    """Test set-password action."""
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    kyuubi_unit = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_unit is not None
-    action = await kyuubi_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    old_password = result.results.get("password")
-
-    logger.info("Running action 'set-password' on kyuubi-k8s unit...")
-    password_to_set = str(uuid.uuid4())
-    action = await kyuubi_unit.run_action(action_name="set-password", password=password_to_set)
-    result = await action.wait()
-    assert result.results.get("password") == password_to_set
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    new_password = result.results.get("password")
-
-    assert new_password != old_password
-    assert new_password == password_to_set
-
-    username = "admin"
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=username, password=new_password
-    )
-
-
-@pytest.mark.abort_on_fail
-async def test_kyuubi_client_relation_joined(ops_test: OpsTest, test_pod, charm_versions):
-    logger.info("Building test charm (app-charm)...")
-    app_charm = await ops_test.build_charm(TEST_CHARM_PATH)
-
-    # Deploy the test charm and wait for waiting status
-    logger.info("Deploying test charm...")
-    await ops_test.model.deploy(
-        app_charm,
-        application_name=TEST_CHARM_NAME,
-        num_units=1,
-        series="jammy",
-    )
-
-    logger.info("Waiting for test charm to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
-    )
-
-    # Check number of users before integration
-    # Fetch password for operator user from postgresql-k8s
-    postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
-    action = await postgres_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
-
-    # Fetch host address of postgresql-k8s
-    status = await ops_test.model.get_status()
-    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
-        "units"
-    ][f"{charm_versions.postgres.application_name}/0"]["address"]
-
-    # Connect to PostgreSQL authentication database
-    connection = psycopg2.connect(
-        host=postgresql_host_address,
-        database=AUTHENTICATION_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
-        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
-        num_users = cursor.rowcount
-
-    assert num_users == 0
-
-    logger.info("Integrating test charm with kyuubi-k8s charm...")
-    await ops_test.model.integrate(TEST_CHARM_NAME, APP_NAME)
-
-    logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
-    )
-
-    logger.info(
-        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
-    )
-    time.sleep(30)
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
-        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
-        num_users = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()
-
-    connection.close()
-
-    # Assert that a new user had indeed been created
-    assert num_users != 0
-
-    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
-
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-    )
-
-
-@pytest.mark.abort_on_fail
-async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm_versions):
-
-    logger.info("Waiting for charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
-    )
-
-    # Fetch host address of postgresql-k8s
-    postgres_unit = await find_leader_unit(
-        ops_test, app_name=charm_versions.postgres.application_name
-    )
-    assert postgres_unit is not None
-    postgresql_host_address = await get_address(ops_test, unit_name=postgres_unit.name)
-
-    # Fetch password for operator user from postgresql-k8s
-    action = await postgres_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
-
-    # Connect to PostgreSQL metastore database
-    connection = psycopg2.connect(
-        host=postgresql_host_address,
-        database=AUTHENTICATION_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """ SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin'; """
-        )
-        num_users_before = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()
-
-    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
-    assert num_users_before != 0
-
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-    )
-
-    logger.info("Removing relation between test charm and kyuubi-k8s...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
-        f"{TEST_CHARM_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
-    )
-
-    logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
-    )
-
-    logger.info(
-        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
-    )
-    time.sleep(30)
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
-        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
-        num_users_after = cursor.rowcount
-
-    connection.close()
-
-    # Assert that a new user had indeed been created
-    assert num_users_after == 0
-
-    with pytest.raises(TTransportException) as exc:
-        await validate_sql_queries_with_kyuubi(
-            ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-        )
-        assert b"Error validating the login" in exc.value.message
-
-
-@pytest.mark.abort_on_fail
-async def test_remove_authentication(ops_test: OpsTest, test_pod, charm_versions):
-    """Test the JDBC connection when authentication is disabled."""
-    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s over auth-db endpoint...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:auth-db", f"{charm_versions.postgres.application_name}:database"
-    )
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
-
-    logger.info(
-        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
-    )
-    time.sleep(30)
-
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
-
-
+# TODO: Rewrite this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
 @pytest.mark.abort_on_fail
 async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_versions):
     """Test the charm by integrating it with Zookeeper."""
@@ -665,6 +305,7 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_ver
     assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
 
 
+# TODO: Rewrite this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
 @pytest.mark.abort_on_fail
 async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_versions):
     """Test the charm after the zookeeper relation has been broken."""
