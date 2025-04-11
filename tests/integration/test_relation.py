@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2024 Canonical Limited
+# Copyright 2025 Canonical Limited
 # See LICENSE file for licensing details.
 
 import logging
@@ -73,7 +73,10 @@ async def test_deploy_minimal_kyuubi_setup(
 
 @pytest.mark.abort_on_fail
 async def test_enable_authentication(ops_test: OpsTest, charm_versions):
-    """Test the the behavior of charm when authentication is enabled."""
+    """Enable authentication for Kyuubi."""
+    logger.info("Deploying postgresql-k8s charm...")
+    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
+
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
@@ -94,6 +97,7 @@ async def test_enable_authentication(ops_test: OpsTest, charm_versions):
 
 @pytest.mark.abort_on_fail
 async def test_kyuubi_client_relation_joined(ops_test: OpsTest, charm_versions):
+    """Test behavior of Kyuubi charm when a client application is related to it."""
     logger.info("Building test charm (app-charm)...")
     app_charm = await ops_test.build_charm(TEST_CHARM_PATH)
 
@@ -174,7 +178,7 @@ async def test_kyuubi_client_relation_joined(ops_test: OpsTest, charm_versions):
 
 @pytest.mark.abort_on_fail
 async def test_kyuubi_client_relation_removed(ops_test: OpsTest, charm_versions):
-
+    """Test the behavior of Kyuubi when client application relation is removed from it."""
     logger.info("Waiting for charms to be idle and active...")
     await ops_test.model.wait_for_idle(
         apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
