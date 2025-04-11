@@ -559,19 +559,19 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
         apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
     )
 
+    # Fetch host address of postgresql-k8s
+    postgres_unit = await find_leader_unit(
+        ops_test, app_name=charm_versions.postgres.application_name
+    )
+    assert postgres_unit is not None
+    postgresql_host_address = await get_address(ops_test, unit_name=postgres_unit.name)
+
     # Fetch password for operator user from postgresql-k8s
-    postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
     action = await postgres_unit.run_action(
         action_name="get-password",
     )
     result = await action.wait()
     password = result.results.get("password")
-
-    # Fetch host address of postgresql-k8s
-    status = await ops_test.model.get_status()
-    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
-        "units"
-    ][f"{charm_versions.postgres.application_name}/0"]["address"]
 
     # Connect to PostgreSQL metastore database
     connection = psycopg2.connect(
@@ -583,11 +583,18 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
 
     # Fetch number of users excluding the default admin user
     with connection.cursor() as cursor:
-        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
+        cursor.execute(
+            """ SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin'; """
+        )
         num_users_before = cursor.rowcount
         kyuubi_username, kyuubi_password = cursor.fetchone()
 
+    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
     assert num_users_before != 0
+
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
+    )
 
     logger.info("Removing relation between test charm and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
@@ -615,9 +622,11 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, test_pod, charm
     # Assert that a new user had indeed been created
     assert num_users_after == 0
 
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-    )
+    with pytest.raises(TTransportException) as exc:
+        await validate_sql_queries_with_kyuubi(
+            ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
+        )
+        assert b"Error validating the login" in exc.value.message
 
 
 @pytest.mark.abort_on_fail
