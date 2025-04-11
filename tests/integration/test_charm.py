@@ -281,9 +281,9 @@ async def test_integration_hub_realtime_updates(ops_test: OpsTest, charm_version
     assert "foo" not in props
 
 
-# TODO: Rewrite this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
+# TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
 @pytest.mark.abort_on_fail
-async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_versions):
+async def test_integration_with_zookeeper(ops_test: OpsTest, charm_versions):
     """Test the charm by integrating it with Zookeeper."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying zookeeper-k8s charm...")
@@ -305,9 +305,9 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, test_pod, charm_ver
     assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
 
 
-# TODO: Rewrite this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
+# TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
 @pytest.mark.abort_on_fail
-async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_versions):
+async def test_remove_zookeeper_relation(ops_test: OpsTest, charm_versions):
     """Test the charm after the zookeeper relation has been broken."""
     logger.info("Removing relation between zookeeper-k8s and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
@@ -324,7 +324,7 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, test_pod, charm_vers
 
 @pytest.mark.skip(reason="This tests need re-write and fixes on integration hub level")
 @pytest.mark.abort_on_fail
-async def test_read_spark_properties_from_secrets(ops_test: OpsTest, test_pod):
+async def test_read_spark_properties_from_secrets(ops_test: OpsTest):
     """Test that the spark properties provided via K8s secrets (spark8t library) are picked by Kyuubi."""
     namespace = ops_test.model.name
     sa_name = "custom-sa"

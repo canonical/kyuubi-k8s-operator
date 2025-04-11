@@ -2,6 +2,8 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+# TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
+
 import logging
 from pathlib import Path
 
