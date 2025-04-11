@@ -58,14 +58,14 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          # - integration-charm
+          - integration-charm
           # - integration-trust
           # - integration-ha
           # - integration-external-access
           # - integration-upgrade
           # - integration-tls
           # - integration-iceberg
-          - integration-metastore
+          # - integration-metastore
           # - integration-dynamic-allocation
     name: ${{ matrix.tox-environments }}
     needs:

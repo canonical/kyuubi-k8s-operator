@@ -4,18 +4,22 @@
 
 import logging
 import time
-import uuid
 from pathlib import Path
 
 import psycopg2
 import pytest
 import yaml
-from spark_test.core.kyuubi import KyuubiClient
 
 from constants import METASTORE_DATABASE_NAME
 from core.domain import Status
 
-from .helpers import check_status, deploy_minimal_kyuubi_setup, find_leader_unit, get_address
+from .helpers import (
+    check_status,
+    deploy_minimal_kyuubi_setup,
+    find_leader_unit,
+    get_address,
+    validate_sql_queries_with_kyuubi,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,33 +28,6 @@ APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
 INVALID_METASTORE_APP_NAME = "invalid-metastore"
-
-
-async def validate_sql_queries_with_kyuubi(
-    ops_test, kyuubi_host=None, kyuubi_port=10009, query_lines=None, db_name=None, table_name=None
-):
-    """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
-    if not kyuubi_host:
-        kyuubi_host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
-    if not db_name:
-        db_name = str(uuid.uuid4()).replace("-", "_")
-    if not table_name:
-        table_name = str(uuid.uuid4()).replace("-", "_")
-    if not query_lines:
-        query_lines = (
-            f"CREATE DATABASE `{db_name}`; ",
-            f"USE `{db_name}`; ",
-            f"CREATE TABLE `{table_name}` (id INT); ",
-            f"INSERT INTO `{table_name}` VALUES (12345); ",
-            f"SELECT * FROM `{table_name}`; ",
-        )
-    kyuubi_client = KyuubiClient(host=kyuubi_host, port=int(kyuubi_port))
-
-    with kyuubi_client.connection as conn, conn.cursor() as cursor:
-        for line in query_lines:
-            cursor.execute(line)
-        results = cursor.fetchall()
-        return len(results) == 1
 
 
 @pytest.mark.abort_on_fail
