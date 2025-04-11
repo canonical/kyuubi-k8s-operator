@@ -14,6 +14,7 @@ import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_attempt, wait_fixed
+from thrift.transport.TTransport import TTransportException
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
@@ -391,9 +392,11 @@ async def test_enable_authentication(ops_test: OpsTest, charm_versions):
 
 
 @pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest, test_pod):
+async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest):
     """Test the JDBC connection when invalid credentials are provided."""
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    with pytest.raises(TTransportException) as exc:
+        assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+        assert b"Error validating the login" in exc.value.message
     # logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     # kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
     # action = await kyuubi_unit.run_action(
@@ -426,7 +429,7 @@ async def test_jdbc_endpoint_no_credentials(ops_test: OpsTest, test_pod):
 
 
 @pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest, test_pod):
+async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest):
     """Test the JDBC connection when invalid credentials are provided."""
     username = "admin"
     password = str(uuid.uuid4())
@@ -472,7 +475,7 @@ async def test_jdbc_endpoint_invalid_credentials(ops_test: OpsTest, test_pod):
 
 
 @pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest, charm_versions):
+async def test_jdbc_endpoint_valid_credentials(ops_test: OpsTest):
     """Test the JDBC connection when invalid credentials are provided."""
     kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
     assert kyuubi_leader is not None
