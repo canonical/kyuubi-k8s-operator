@@ -130,18 +130,18 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
         await ops_test.model.integrate(
             f"{COS_AGENT_APP_NAME}:grafana-dashboards-provider", "grafana"
         )
-    except juju.errors.JujuAPIError:
-        pass
+    except juju.errors.JujuAPIError as e:
+        logger.error(e)
 
     try:
         await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:send-remote-write", "prometheus")
-    except juju.errors.JujuAPIError:
-        pass
+    except juju.errors.JujuAPIError as e:
+        logger.error(e)
 
     try:
         await ops_test.model.integrate(f"{COS_AGENT_APP_NAME}:logging-consumer", "loki")
-    except juju.errors.JujuAPIError:
-        pass
+    except juju.errors.JujuAPIError as e:
+        logger.error(e)
 
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, COS_AGENT_APP_NAME, "prometheus", "alertmanager", "loki", "grafana"],
