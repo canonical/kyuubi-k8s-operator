@@ -28,6 +28,8 @@ APP_NAME = METADATA["name"]
 TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
 INVALID_METASTORE_APP_NAME = "invalid-metastore"
+TEST_EXTERNAL_DB_NAME = "dbext"
+TEST_EXTERNAL_TABLE_NAME = "text"
 
 
 @pytest.mark.abort_on_fail
@@ -129,7 +131,7 @@ async def test_integrate_external_metastore(ops_test, charm_versions):
 async def test_sql_queries_external_metastore(ops_test):
     """Test running SQL queries with an external metastore."""
     assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, db_name="dbext", table_name="text"
+        ops_test=ops_test, db_name=TEST_EXTERNAL_DB_NAME, table_name=TEST_EXTERNAL_TABLE_NAME
     )
 
 
@@ -302,6 +304,10 @@ async def test_integrate_metastore_with_valid_schema_again(ops_test, charm_versi
 async def test_read_write_with_valid_schema_metastore_again(ops_test):
     """Test whether previously written data can be read as well as new data can be written."""
     assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, query_lines=["USE dbext;", "SELECT * FROM text;"]
+        ops_test=ops_test,
+        query_lines=[
+            f"USE {TEST_EXTERNAL_DB_NAME};",
+            f"SELECT * FROM {TEST_EXTERNAL_TABLE_NAME};",
+        ],
     )
     assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)

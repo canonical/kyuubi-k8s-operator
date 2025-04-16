@@ -244,7 +244,7 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, charm_versions)
 
     connection.close()
 
-    # Assert that a new user had indeed been created
+    # Assert that relation user created previously has been deleted
     assert num_users_after == 0
 
     with pytest.raises(TTransportException) as exc:

@@ -680,14 +680,14 @@ async def fetch_spark_properties(ops_test: OpsTest, unit_name: str) -> dict[str,
 
 
 async def validate_sql_queries_with_kyuubi(
-    ops_test,
-    kyuubi_host=None,
-    kyuubi_port=10009,
-    username=None,
-    password=None,
-    query_lines=None,
-    db_name=None,
-    table_name=None,
+    ops_test: OpsTest,
+    kyuubi_host: str | None = None,
+    kyuubi_port: str | int = 10009,
+    username: str | None = None,
+    password: str | None = None,
+    query_lines: list[str] | None = None,
+    db_name: str | None = None,
+    table_name: str | None = None,
 ):
     """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
     if not kyuubi_host:
@@ -697,13 +697,13 @@ async def validate_sql_queries_with_kyuubi(
     if not table_name:
         table_name = str(uuid.uuid4()).replace("-", "_")
     if not query_lines:
-        query_lines = (
+        query_lines = [
             f"CREATE DATABASE `{db_name}`; ",
             f"USE `{db_name}`; ",
             f"CREATE TABLE `{table_name}` (id INT); ",
             f"INSERT INTO `{table_name}` VALUES (12345); ",
             f"SELECT * FROM `{table_name}`; ",
-        )
+        ]
     args = {"host": kyuubi_host, "port": int(kyuubi_port)}
     if username:
         args.update({"username": username})

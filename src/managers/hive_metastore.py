@@ -42,7 +42,7 @@ class HiveMetastoreManager(WithLogging):
 
     def is_metastore_valid(self) -> bool:
         """Validate the metastore schema and return if it is valid."""
-        retcode, stdout, stderr = self._run_schematool_command("-validate")
+        retcode, _, _ = self._run_schematool_command("-validate")
         return retcode == 0
 
     def initialize(self, schema_version: str) -> None:
