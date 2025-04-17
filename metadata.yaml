@@ -34,7 +34,7 @@ resources:
   kyuubi-image:
     type: oci-image
     description: OCI image for kyuubi
-    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708
+    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708 # spark-3.4.4, release date 01/01/25
 
 peers:
   kyuubi-peers:
