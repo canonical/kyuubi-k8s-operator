@@ -18,6 +18,7 @@ from juju.unit import Unit
 from ops import StatusBase
 from pytest_operator.plugin import OpsTest
 from spark8t.domain import PropertyFile
+from spark_test.core.kyuubi import KyuubiClient
 
 from constants import COS_METRICS_PORT, HA_ZNODE_NAME
 from core.domain import Status
@@ -676,3 +677,42 @@ async def fetch_spark_properties(ops_test: OpsTest, unit_name: str) -> dict[str,
         temp_file.seek(0)
         props = PropertyFile.read(temp_file.name).props
         return props
+
+
+async def validate_sql_queries_with_kyuubi(
+    ops_test: OpsTest,
+    kyuubi_host: str | None = None,
+    kyuubi_port: str | int = 10009,
+    username: str | None = None,
+    password: str | None = None,
+    query_lines: list[str] | None = None,
+    db_name: str | None = None,
+    table_name: str | None = None,
+):
+    """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
+    if not kyuubi_host:
+        kyuubi_host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    if not db_name:
+        db_name = str(uuid.uuid4()).replace("-", "_")
+    if not table_name:
+        table_name = str(uuid.uuid4()).replace("-", "_")
+    if not query_lines:
+        query_lines = [
+            f"CREATE DATABASE `{db_name}`; ",
+            f"USE `{db_name}`; ",
+            f"CREATE TABLE `{table_name}` (id INT); ",
+            f"INSERT INTO `{table_name}` VALUES (12345); ",
+            f"SELECT * FROM `{table_name}`; ",
+        ]
+    args = {"host": kyuubi_host, "port": int(kyuubi_port)}
+    if username:
+        args.update({"username": username})
+    if password:
+        args.update({"password": password})
+    kyuubi_client = KyuubiClient(**args)
+
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        for line in query_lines:
+            cursor.execute(line)
+        results = cursor.fetchall()
+        return len(results) == 1

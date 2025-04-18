@@ -27,12 +27,16 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 
 # Literals related to Kyuubi
 JDBC_PORT = 10009
+SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
 KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-kyuubi:3.4-22.04_edge@sha256:9268d19a6eef91914e874734b320fab64908faf0f7adb8856be809bc60ecd1d0"
 DEFAULT_ADMIN_USERNAME = "admin"
 
 # Zookeeper literals
 HA_ZNODE_NAME = "/kyuubi"
+
+# Literals related to metastore
+HIVE_SCHEMA_VERSION = "2.3.0"
 
 # Upgrade policies
 
