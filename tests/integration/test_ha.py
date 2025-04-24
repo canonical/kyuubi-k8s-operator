@@ -188,9 +188,9 @@ async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
 
     # Get the current PID of Kyuubi process
     kyuubi_pid_old = await get_kyuubi_pid(ops_test, leader_unit)
-    assert (
-        kyuubi_pid_old is not None
-    ), f"No Kyuubi process found running in the unit {leader_unit.name}"
+    assert kyuubi_pid_old is not None, (
+        f"No Kyuubi process found running in the unit {leader_unit.name}"
+    )
 
     # Kill Kyuubi process inside the leader unit
     await kill_kyuubi_process(ops_test, leader_unit, kyuubi_pid_old)

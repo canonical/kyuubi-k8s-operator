@@ -72,7 +72,6 @@ async def test_build_and_deploy(
 
 @pytest.mark.abort_on_fail
 async def test_provide_clusterwide_trust_permissions(ops_test):
-
     # Add cluster-wisde trust permission on the application
     await ops_test.juju("trust", APP_NAME, "--scope=cluster")
 

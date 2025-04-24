@@ -103,7 +103,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if sans_ip_changed or sans_dns_changed:
             self.logger.info(
                 (
-                    f'SERVER {self.charm.unit.name.split("/")[1]} updating certificate SANs - '
+                    f"SERVER {self.charm.unit.name.split('/')[1]} updating certificate SANs - "
                     f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
                     f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
                     f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "

@@ -156,7 +156,6 @@ async def test_kyuubi_cos_data_published(ops_test: OpsTest):
     # We should leave time for Prometheus data to be published
     for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(60), reraise=True):
         with attempt:
-
             # Data got published to Prometheus
             logger.info("Checking if Prometheus data is being published...")
             cos_address = await get_cos_address(ops_test)

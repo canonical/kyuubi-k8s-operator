@@ -78,7 +78,7 @@ async def test_deploy_s3_integrator(ops_test: OpsTest, charm_versions, s3_bucket
     """Test deploying the s3-integrator charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying s3-integrator charm...")
-    await ops_test.model.deploy(**charm_versions.s3.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
 
     logger.info("Waiting for s3-integrator app to be idle...")
     await ops_test.model.wait_for_idle(
@@ -124,7 +124,7 @@ async def test_deploy_integration_hub(ops_test: OpsTest, charm_versions):
     """Test deploying the integration hub charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
 
     logger.info("Waiting for integration_hub app to be idle and active...")
     await ops_test.model.wait_for_idle(
@@ -287,7 +287,7 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, charm_versions):
     """Test the charm by integrating it with Zookeeper."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying zookeeper-k8s charm...")
-    await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict()),
+    await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
 
     logger.info("Waiting for zookeeper app to be active and idle...")
     await ops_test.model.wait_for_idle(

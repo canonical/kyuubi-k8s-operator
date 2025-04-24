@@ -5,7 +5,6 @@
 
 """Database connection manager."""
 
-
 import psycopg2
 
 from constants import (
