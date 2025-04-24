@@ -81,6 +81,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Get prefsrc
+        # One IP needed to test external access
         run: |
           echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
       - name: Setup operator environment
