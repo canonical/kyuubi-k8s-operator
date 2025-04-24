@@ -278,7 +278,10 @@ def test_zookeeper_relation_broken(
         kyuubi_context.on.relation_changed(zookeeper_relation), state
     )
     state_after_relation_broken = kyuubi_context.run(
-        kyuubi_context.on.relation_broken(zookeeper_relation), state_after_relation_changed
+        kyuubi_context.on.relation_broken(
+            state_after_relation_changed.get_relation(zookeeper_relation.id)
+        ),
+        state_after_relation_changed,
     )
     assert state_after_relation_broken.unit_status == Status.ACTIVE.value
 
@@ -322,7 +325,9 @@ def test_spark_service_account_broken(
         kyuubi_context.on.relation_changed(spark_service_account_relation), initial_state
     )
     state_after_relation_broken = kyuubi_context.run(
-        kyuubi_context.on.relation_broken(spark_service_account_relation),
+        kyuubi_context.on.relation_broken(
+            state_after_relation_changed.get_relation(spark_service_account_relation.id)
+        ),
         state_after_relation_changed,
     )
 
