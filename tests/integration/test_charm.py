@@ -22,14 +22,11 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
-COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm):
+async def test_build_and_deploy_kyuubi(ops_test: OpsTest, kyuubi_charm: Path) -> None:
     """Test building and deploying the charm without relation with any other charm."""
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}

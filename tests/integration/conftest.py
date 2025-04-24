@@ -222,7 +222,19 @@ def test_pod(ops_test):
 
 
 @pytest.fixture(scope="module")
-async def kyuubi_charm(ops_test):
-    logger.info("Building charm...")
-    charm = await ops_test.build_charm(".")
-    return charm
+def kyuubi_charm() -> Path:
+    """Path to the packed integration hub charm."""
+    if not (path := next(iter(Path.cwd().glob("*.charm")), None)):
+        raise FileNotFoundError("Could not find packed kyuubi charm.")
+
+    return path
+
+
+@pytest.fixture(scope="module")
+def test_charm() -> Path:
+    if not (
+        path := next(iter((Path.cwd() / "tests/integration/app-charm").glob("*.charm")), None)
+    ):
+        raise FileNotFoundError("Could not find packed test charm.")
+
+    return path

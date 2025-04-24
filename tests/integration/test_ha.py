@@ -32,8 +32,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -50,11 +48,11 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy_cluster_with_no_zookeeper(
-    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
-):
+    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+) -> None:
     await deploy_minimal_kyuubi_setup(
         ops_test=ops_test,
-        kyuubi_charm=kyuubi_charm,
+        kyuubi_charm=str(kyuubi_charm),
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,

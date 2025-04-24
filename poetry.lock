@@ -1747,26 +1747,6 @@ pytest-asyncio = "<0.23"
 pyyaml = "*"
 
 [[package]]
-name = "pytest-operator-cache"
-version = "0.1.0"
-description = ""
-optional = false
-python-versions = "^3.8"
-groups = ["integration"]
-files = []
-develop = false
-
-[package.dependencies]
-pyyaml = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/data-platform-workflows"
-reference = "v24.0.5"
-resolved_reference = "078fb649213bbffe223e826f04560c2e9c9c3396"
-subdirectory = "python/pytest_plugins/pytest_operator_cache"
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -2461,4 +2441,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "879c1f441100ec4bdfcc43d3f2aef32dabd13d38e899797c47db4d31d9459a60"
+content-hash = "d58f32b0de4f7188b1dca9dce0c92ee1cbe7ac90e4e1d0d7cae27c87594eea83"

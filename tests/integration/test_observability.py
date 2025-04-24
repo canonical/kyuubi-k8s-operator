@@ -29,16 +29,14 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
-    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
-):
+    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+) -> None:
     """Deploy minimal Kyuubi deployments."""
     """Test the status of default managed K8s service when Kyuubi is deployed."""
     await deploy_minimal_kyuubi_setup(

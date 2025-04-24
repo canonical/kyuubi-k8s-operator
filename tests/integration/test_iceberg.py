@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pytest_operator.plugin import OpsTest
 from spark_test.core.kyuubi import KyuubiClient
 
 from core.domain import Status
@@ -21,17 +22,15 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 
 
 @pytest.mark.abort_on_fail
 async def test_deploy_kyuubi_setup(
-    ops_test,
-    kyuubi_charm,
+    ops_test: OpsTest,
+    kyuubi_charm: Path,
     charm_versions,
     s3_bucket_and_creds,
-):
+) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
     await deploy_minimal_kyuubi_setup(
         ops_test=ops_test,

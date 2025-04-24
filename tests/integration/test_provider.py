@@ -30,18 +30,16 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
 TEST_CHARM_NAME = "application"
-COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 @pytest.mark.abort_on_fail
 async def test_deploy_minimal_kyuubi_setup(
-    ops_test,
-    kyuubi_charm,
+    ops_test: OpsTest,
+    kyuubi_charm: Path,
     charm_versions,
     s3_bucket_and_creds,
-):
+) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
     await deploy_minimal_kyuubi_setup(
         ops_test=ops_test,
@@ -96,15 +94,14 @@ async def test_enable_authentication(ops_test: OpsTest, charm_versions):
 
 
 @pytest.mark.abort_on_fail
-async def test_kyuubi_client_relation_joined(ops_test: OpsTest, charm_versions):
+async def test_kyuubi_client_relation_joined(
+    ops_test: OpsTest, charm_versions, test_charm: Path
+) -> None:
     """Test behavior of Kyuubi charm when a client application is related to it."""
-    logger.info("Building test charm (app-charm)...")
-    app_charm = await ops_test.build_charm(TEST_CHARM_PATH)
-
     # Deploy the test charm and wait for waiting status
     logger.info("Deploying test charm...")
     await ops_test.model.deploy(
-        app_charm,
+        test_charm,
         application_name=TEST_CHARM_NAME,
         num_units=1,
         series="jammy",

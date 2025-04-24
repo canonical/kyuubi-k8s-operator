@@ -21,9 +21,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
-COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -93,7 +90,9 @@ async def test_build_and_deploy(ops_test: OpsTest, charm_versions, s3_bucket_and
 
 
 @pytest.mark.abort_on_fail
-async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod, charm_versions):
+async def test_kyuubi_upgrades(
+    ops_test: OpsTest, kyuubi_charm: Path, test_pod, charm_versions
+) -> None:
     """Test the correct upgrade of a Kyuubi cluster."""
     # Retrieve the image to use from metadata.yaml
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]

@@ -28,8 +28,6 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 ZOOKEEPER_NAME = "zookeeper-k8s"
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 ZOOKEEPER_PORT = 2181
 
 PROCESS_NAME_PATTERN = "org.apache.kyuubi.server.KyuubiServer"
@@ -432,7 +430,7 @@ async def get_address(ops_test: OpsTest, unit_name: str) -> str:
 
 async def deploy_minimal_kyuubi_setup(
     ops_test: OpsTest,
-    kyuubi_charm: str,
+    kyuubi_charm: str | Path,
     charm_versions,
     s3_bucket_and_creds,
     trust: bool = True,

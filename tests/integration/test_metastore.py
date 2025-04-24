@@ -25,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 INVALID_METASTORE_APP_NAME = "invalid-metastore"
 TEST_EXTERNAL_DB_NAME = "dbext"
 TEST_EXTERNAL_TABLE_NAME = "text"
@@ -35,10 +33,10 @@ TEST_EXTERNAL_TABLE_NAME = "text"
 @pytest.mark.abort_on_fail
 async def test_deploy_minimal_kyuubi_setup(
     ops_test,
-    kyuubi_charm,
+    kyuubi_charm: Path,
     charm_versions,
     s3_bucket_and_creds,
-):
+) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
     await deploy_minimal_kyuubi_setup(
         ops_test=ops_test,
@@ -176,7 +174,7 @@ async def test_remove_external_metastore(ops_test, charm_versions):
 
 
 @pytest.mark.abort_on_fail
-async def test_run_sql_queries_again_with_local_metastore(ops_test, charm_versions):
+async def test_run_sql_queries_again_with_local_metastore(ops_test):
     """Test running SQL queries again with local metastore."""
     logger.info(
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
