@@ -80,11 +80,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
       - name: Get prefsrc
         run: |
           echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
