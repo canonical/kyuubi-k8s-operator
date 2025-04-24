@@ -92,9 +92,9 @@ jobs:
         # TODO: Replace with custom image on self-hosted runner
         uses: charmed-kubernetes/actions-operator@main
         with:
-          juju-channel: 3.4/stable
+          juju-channel: 3.6/stable
           provider: microk8s
-          channel: 1.30-strict/stable
+          channel: 1.32-strict/stable
           microk8s-group: snap_microk8s
           microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
       - name: Download packed charm(s)
