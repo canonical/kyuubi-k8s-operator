@@ -2,6 +2,7 @@
 
 import enum
 import functools
+import json
 import socket
 from dataclasses import dataclass
 
@@ -14,7 +15,7 @@ from lightkube.models.core_v1 import (
     ServiceSpec,
     ServiceStatus,
 )
-from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.models.meta_v1 import ObjectMeta, OwnerReference
 from lightkube.resources.core_v1 import Node, Pod, Service
 
 from constants import JDBC_PORT
@@ -183,7 +184,9 @@ class ServiceManager(WithLogging):
             namespace=self.namespace,
         )
 
-    def create_service(self, service_type, owner_references):
+    def create_service(
+        self, service_type: _ServiceType, owner_references: list[OwnerReference], annotations: dict
+    ) -> bool:
         """Create the Kubernetes service with desired service type."""
         desired_service = Service(
             metadata=ObjectMeta(
@@ -191,6 +194,7 @@ class ServiceManager(WithLogging):
                 namespace=self.namespace,
                 ownerReferences=owner_references,  # the stateful set
                 labels={"app.kubernetes.io/name": self.app_name},
+                annotations=annotations,
             ),
             spec=ServiceSpec(
                 ports=[
@@ -212,7 +216,7 @@ class ServiceManager(WithLogging):
             return False
         return True
 
-    def reconcile_services(self, expose_external: str):
+    def reconcile_services(self, expose_external: str, lb_extra_annotation: str) -> None:
         """Update the services according to the desired service type."""
         desired_service_type = {
             "false": _ServiceType.CLUSTER_IP,
@@ -221,9 +225,19 @@ class ServiceManager(WithLogging):
         }[expose_external]
 
         existing_service = self.get_service()
-
+        try:
+            annotations = json.loads(lb_extra_annotation)
+        except json.JSONDecodeError:
+            self.logger.warning(
+                "Could not parse 'loadbalancer-extra-annotations', ignoring the configuration option",
+                lb_extra_annotation,
+            )
+            annotations = {}
         if existing_service is not None:
-            if _ServiceType(existing_service.spec.type) == desired_service_type:  # type: ignore
+            is_same_service = _ServiceType(existing_service.spec.type) == desired_service_type  # type: ignore
+            has_same_annotations = existing_service.metadata.annotations == annotations  # type: ignore
+
+            if is_same_service and has_same_annotations:
                 self.logger.info(
                     f"Kyuubi is already exposed on a service of type {desired_service_type}."
                 )
@@ -236,6 +250,7 @@ class ServiceManager(WithLogging):
         self.create_service(
             service_type=desired_service_type,
             owner_references=pod0.metadata.ownerReferences,  # type: ignore
+            annotations=annotations,
         )
 
     def get_node_ip(self, pod_name: str) -> str:
