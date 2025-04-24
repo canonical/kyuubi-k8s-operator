@@ -4,25 +4,31 @@
 
 """Metastore database related event handlers."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
     DatabaseRequirerEventHandlers,
 )
-from ops import CharmBase
 
 from constants import HIVE_SCHEMA_VERSION
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.hive_metastore import HiveMetastoreManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class MetastoreEvents(BaseEventHandler, WithLogging):
     """Class implementing PostgreSQL metastore event hooks."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload) -> None:
         super().__init__(charm, "metastore")
 
         self.charm = charm

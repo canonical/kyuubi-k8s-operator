@@ -82,7 +82,7 @@ class StateBase:
         """Clean the content of the relation data."""
         if not self.relation:
             return
-        self.relation.data[self.component] = {}
+        self.relation.data[self.component] = {}  # type: ignore
 
 
 @dataclass
@@ -323,7 +323,7 @@ class KyuubiServer(RelationState):
     def external_address(self) -> Endpoint | None:
         """The external address for the unit, for external communication."""
         return self.k8s.get_service_endpoint(
-            expose_external=self.unit._backend.config_get().get("expose-external")
+            expose_external=str(self.unit._backend.config_get().get("expose-external"))
         )
 
     @property

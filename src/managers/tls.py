@@ -14,7 +14,7 @@ import ops.pebble
 from core.context import Context
 from core.domain import SANs
 from core.enums import ExposeExternal
-from core.workload.kyuubi import KyuubiWorkload
+from core.workload import KyuubiWorkloadBase
 from managers.service import DNSEndpoint, IPEndpoint
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class TLSManager:
     """Manager for building necessary files for Java TLS auth."""
 
-    def __init__(self, context: Context, workload: KyuubiWorkload):
+    def __init__(self, context: Context, workload: KyuubiWorkloadBase):
         self.context = context
         self.workload = workload
 
@@ -75,7 +75,7 @@ class TLSManager:
     def get_current_sans(self) -> SANs | None:
         """Gets the current SANs for the unit cert."""
         if not self.context.unit_server.certificate:
-            return
+            return None
 
         command = ["openssl", "x509", "-noout", "-ext", "subjectAltName", "-in", "server.pem"]
         try:
@@ -131,8 +131,8 @@ class TLSManager:
         """Creates the unit Java Truststore and adds the unit CA."""
         try:
             self._import_ca_in_truststore()
-        except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
-            if "already exists" in str(e.stdout):
+        except (subprocess.CalledProcessError, ops.pebble.ExecError) as import_ca_err:
+            if "already exists" in str(import_ca_err.stdout):
                 # Replacement strategy:
                 # - We need to own the file, otherwise keytool throws a permission error upon removing an entry
                 # - We need to make sure that the keystore is not empty at any point, hence the three steps.
@@ -147,8 +147,8 @@ class TLSManager:
 
                 return
 
-            logger.error(str(e.stdout))
-            raise e
+            logger.error(str(import_ca_err.stdout))
+            raise import_ca_err
 
     def _import_ca_in_truststore(self, alias: str = "ca") -> None:
         command = [

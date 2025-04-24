@@ -3,23 +3,29 @@
 
 """Kyuubi client relation hooks & helpers."""
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, cast
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequestedEvent,
 )
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops.charm import RelationBrokenEvent
 from ops.model import BlockedStatus
 
 from constants import KYUUBI_CLIENT_RELATION_NAME
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.domain import DatabaseConnectionInfo
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
+
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +38,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         - relation-broken
     """
 
-    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload):
         super().__init__(charm, "kyuubi-client-provider")
 
         self.charm = charm
@@ -65,7 +71,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                     "over auth-db relation endpoint."
                 )
 
-            auth = AuthenticationManager(self.context.auth_db)
+            auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
             service_manager = ServiceManager(
                 namespace=self.charm.model.name,
                 unit_name=self.charm.unit.name,
@@ -79,11 +85,12 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             kyuubi_endpoint = service_manager.get_service_endpoint(
                 expose_external=self.charm.config.expose_external
             )
-            jdbc_uri = (
-                f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
-                if kyuubi_endpoint
-                else ""
-            )
+
+            if kyuubi_endpoint is None:
+                event.defer()
+                return
+
+            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
 
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
@@ -122,7 +129,8 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
-        auth = AuthenticationManager(self.context.auth_db)
+        # FIXME: There is not guarantee here
+        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
         username = f"relation_id_{event.relation.id}"
 
         try:
