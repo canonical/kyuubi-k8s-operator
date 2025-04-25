@@ -63,7 +63,7 @@ jobs:
           - integration-auth
           - integration-observability
           - integration-tls
-          # - integration-ha
+          - integration-ha
           - integration-external-access
           - integration-dynamic-allocation
           - integration-upgrade

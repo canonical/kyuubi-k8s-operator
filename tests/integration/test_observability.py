@@ -77,7 +77,6 @@ def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju) -> None:
 
     juju.deploy(
         "cos-lite",
-        base="ubuntu@22.04",
         trust=True,
     )
 

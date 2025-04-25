@@ -56,7 +56,7 @@ def fetch_jdbc_endpoint(juju: jubilant.Juju) -> str:
     return jdbc_endpoint
 
 
-async def run_sql_test_against_jdbc_endpoint(
+def run_sql_test_against_jdbc_endpoint(
     juju: jubilant.Juju, test_pod: str, jdbc_endpoint: str
 ) -> bool:
     """Verify the JDBC endpoint exposed by the charm with some SQL queries."""
@@ -140,22 +140,14 @@ def get_active_kyuubi_servers_list(
     return servers
 
 
-async def find_leader_unit(ops_test, app_name):
-    """Returns the leader unit of a given application."""
-    for unit in ops_test.model.applications[app_name].units:
-        if await unit.is_leader_from_status():
-            return unit
-    return None
-
-
-def delete_pod(pod_name, namespace):
+def delete_pod(pod_name: str, namespace: str) -> None:
     """Delete a pod with given name and namespace."""
     command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
     process = subprocess.run(command, capture_output=True, check=True)
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
-async def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
+def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     """Return the process ID of Kyuubi process in given pod."""
     pod_name = unit.replace("/", "-")
     command = [
@@ -184,9 +176,9 @@ async def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     return None
 
 
-async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
+def kill_kyuubi_process(juju: jubilant.Juju, unit: str, kyuubi_pid: str) -> None:
     """Kill the Kyuubi process with given PID running in the given unit."""
-    pod_name = unit.name.replace("/", "-")
+    pod_name = unit.replace("/", "-")
     command = [
         "kubectl",
         "exec",
@@ -194,7 +186,7 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
         "-c",
         KYUUBI_CONTAINER_NAME,
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         "kill",
         "-SIGKILL",
@@ -204,7 +196,7 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
     assert process.returncode == 0, f"Could not kill Kyuubi process with pid {kyuubi_pid}."
 
 
-async def is_entire_cluster_responding_requests(juju: jubilant.Juju, test_pod: str) -> bool:
+def is_entire_cluster_responding_requests(juju: jubilant.Juju, test_pod: str) -> bool:
     """Return whether the entire Kyuubi cluster is responding to requests from client."""
     jdbc_endpoint = fetch_jdbc_endpoint(juju)
 
