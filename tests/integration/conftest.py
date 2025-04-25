@@ -6,6 +6,7 @@ import logging
 import subprocess
 from pathlib import Path
 from string import Template
+from typing import Iterable, cast
 
 import boto3
 import boto3.session
@@ -156,11 +157,11 @@ def s3_bucket_and_creds():
 
 
 @pytest.fixture(scope="module")
-def test_pod(ops_test):
+def test_pod(juju: jubilant.Juju) -> Iterable[str]:
     logger.info("Preparing test pod fixture...")
 
     kyuubi_image = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    namespace = ops_test.model_name
+    namespace = cast(str, juju.model)
 
     with open(TEST_POD_SPEC_FILE) as tf:
         template = Template(tf.read())
