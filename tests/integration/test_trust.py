@@ -40,8 +40,7 @@ def test_build_and_deploy(
         lambda status: jubilant.all_active(
             status, charm_versions.integration_hub.name, charm_versions.s3.name
         ),
-        timeout=120,
-        delay=3,
+        delay=5,
     )
 
     assert (

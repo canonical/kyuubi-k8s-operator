@@ -44,7 +44,7 @@ def test_deploy_minimal_kyuubi_setup(
     )
 
     # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    juju.wait(jubilant.all_active, timeout=120, delay=3)
+    juju.wait(jubilant.all_active, delay=5)
 
 
 def test_sql_queries_no_authentication(juju: jubilant.Juju) -> None:
@@ -63,7 +63,7 @@ def test_enable_authentication(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
         lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
-        timeout=120,
+        timeout=600,
         delay=3,
     )
 

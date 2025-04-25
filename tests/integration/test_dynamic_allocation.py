@@ -4,17 +4,19 @@
 
 import logging
 from pathlib import Path
+from time import time
+from typing import cast
 
+import jubilant
 import pytest
 import yaml
-from pytest_operator.plugin import OpsTest
 from spark_test.core.kyuubi import KyuubiClient
 from spark_test.utils import get_spark_executors
 
 from core.domain import Status
 
+from .types import IntegrationTestsCharms, S3Info
 from .helpers import (
-    check_status,
     deploy_minimal_kyuubi_setup,
     get_address,
     juju_sleep,
@@ -26,16 +28,15 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
-@pytest.mark.abort_on_fail
-async def test_deploy_kyuubi_setup(
-    ops_test: OpsTest,
+def test_deploy_kyuubi_setup(
+    juju: jubilant.Juju,
     kyuubi_charm: Path,
-    charm_versions,
-    s3_bucket_and_creds,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
-    await deploy_minimal_kyuubi_setup(
-        ops_test=ops_test,
+    deploy_minimal_kyuubi_setup(
+        juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
@@ -43,29 +44,21 @@ async def test_deploy_kyuubi_setup(
     )
 
     # Wait for everything to settle down
-    await ops_test.model.wait_for_idle(
-        apps=[
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
             APP_NAME,
             charm_versions.integration_hub.application_name,
             charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
+        ),
+        delay=5,
     )
 
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
-
-@pytest.mark.abort_on_fail
-async def test_dynamic_allocation_disabled(ops_test):
+def test_dynamic_allocation_disabled(juju: jubilant.Juju) -> None:
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    status = juju.status()
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     # Put some load by executing some Kyuubi SQL queries
@@ -75,31 +68,26 @@ async def test_dynamic_allocation_disabled(ops_test):
     table.insert([55])
 
     # The number of executors is supposed to always be 2 by default
-    n1 = len(get_spark_executors(namespace=ops_test.model.name))
+    n1 = len(get_spark_executors(namespace=cast(str, juju.model)))
     assert n1 == 2
 
     # Wait for some time of idleness, where there is no load in the Kyuubi
-    await juju_sleep(ops_test, 90, APP_NAME)
+    time.sleep(90)
 
     # The number of executors is supposed to be the same (i.e. 2)
-    n2 = len(get_spark_executors(namespace=ops_test.model.name))
+    n2 = len(get_spark_executors(namespace=cast(str, juju.model)))
     assert n2 == n1 == 2
 
 
-@pytest.mark.abort_on_fail
-async def test_dynamic_allocation_enabled(ops_test):
+def test_dynamic_allocation_enabled(juju: jubilant.Juju) -> None:
     """Test running Kyuubi SQL queries when dynamic allocation option is enabled in Kyuubi charm."""
     logger.info("Changing enable-dynamic-allocation to 'true' for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config({"enable-dynamic-allocation": "true"})
+    juju.config(APP_NAME, {"enable-dynamic-allocation": "true"})
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="active",
-        timeout=1000,
-    )
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME))
 
-    host = await get_address(ops_test, unit_name="kyuubi-k8s/0")
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     # Put some load by executing some Kyuubi SQL queries
@@ -110,14 +98,14 @@ async def test_dynamic_allocation_enabled(ops_test):
     assert len(list(table.rows())) == 1
 
     # The load that was put earlier should have spawned at least one executor pod
-    n1 = len(get_spark_executors(namespace=ops_test.model.name))
+    n1 = len(get_spark_executors(namespace=cast(str, juju.model)))
     assert n1 > 0
 
     # Wait for some time of idleness, where there is no load in the Kyuubi
-    await juju_sleep(ops_test, 90, APP_NAME)
+    time.sleep(90)
 
     # The number of executor pods should now be zero, since there's no load to Kyuubi
-    n2 = len(get_spark_executors(namespace=ops_test.model.name))
+    n2 = len(get_spark_executors(namespace=cast(str, juju.model)))
     assert n2 == 0
 
     # Put some load by executing some Kyuubi SQL queries again
@@ -125,5 +113,5 @@ async def test_dynamic_allocation_enabled(ops_test):
     assert len(list(table.rows())) == 2
 
     # The load that was put just now should have spawned at least one executor pod again
-    n3 = len(get_spark_executors(namespace=ops_test.model.name))
+    n3 = len(get_spark_executors(namespace=cast(str, juju.model)))
     assert n3 > 0

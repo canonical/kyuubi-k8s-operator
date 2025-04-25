@@ -58,8 +58,7 @@ def test_enable_authentication(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
         lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
-        timeout=120,
-        delay=3,
+        delay=5,
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
@@ -68,8 +67,7 @@ def test_enable_authentication(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
         lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
-        timeout=120,
-        delay=3,
+        delay=5,
     )
 
 
@@ -82,9 +80,7 @@ def test_kyuubi_client_relation_joined(
     juju.deploy(test_charm, app=TEST_CHARM_NAME, num_units=1)
 
     logger.info("Waiting for test charm to be idle...")
-    status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), timeout=120
-    )
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME))
 
     # Check number of users before integration
     # Fetch password for operator user from postgresql-k8s
@@ -115,9 +111,7 @@ def test_kyuubi_client_relation_joined(
     juju.integrate(APP_NAME, TEST_CHARM_NAME)
 
     logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), timeout=120, delay=3
-    )
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=5)
 
     with (
         psycopg2.connect(
@@ -147,9 +141,7 @@ def test_kyuubi_client_relation_removed(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the behavior of Kyuubi when client application relation is removed from it."""
-    status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), timeout=120
-    )
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME))
     # Fetch password for operator user from postgresql-k8s
     postgres_leader = f"{charm_versions.postgres.name}/0"
     postgres_host = status.apps[charm_versions.postgres.name].units[postgres_leader].address

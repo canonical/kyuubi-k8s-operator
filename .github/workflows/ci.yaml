@@ -65,7 +65,7 @@ jobs:
           # - integration-tls
           # - integration-ha
           # - integration-external-access
-          # - integration-dynamic-allocation
+          - integration-dynamic-allocation
           # - integration-upgrade
           # - integration-iceberg
           - integration-provider
