@@ -68,7 +68,7 @@ jobs:
           # - integration-dynamic-allocation
           # - integration-upgrade
           # - integration-iceberg
-          # - integration-relation
+          - integration-provider
           - integration-trust
     name: ${{ matrix.tox-environments }}
     needs:
