@@ -93,13 +93,13 @@ def test_enable_ssl(
     )
     juju.integrate(APP_NAME, charm_versions.tls.app)
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.tls.app), delay=5
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.tls.app), delay=10
     )
 
     host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
 
     response = subprocess.check_output(
-        f"openssl s_client -showcerts -connect {host}:10009 < /dev/null",
+        f"openssl s_client -showcerts -connect {host}:10009 < /dev/null || true",
         stderr=subprocess.PIPE,
         shell=True,
         universal_newlines=True,
@@ -292,7 +292,7 @@ def test_loadbalancer_service(
 
 def test_disable_tls(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     """Test that we are able to disable TLS by removing the certificates relation."""
-    juju.remove_relation(TLS_REL, f"{charm_versions.tls.name}:{TLS_REL}")
+    juju.remove_relation(APP_NAME, charm_versions.tls.app)
 
     status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 

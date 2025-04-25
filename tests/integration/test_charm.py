@@ -180,7 +180,7 @@ def test_integration_hub_realtime_updates(
     task = juju.run(
         f"{charm_versions.integration_hub.app}/0",
         "add-config",
-        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
+        {"conf": "foo=bar"},
     )
     assert task.return_code == 0
 

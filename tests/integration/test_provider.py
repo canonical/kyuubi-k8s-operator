@@ -67,7 +67,7 @@ def test_enable_authentication(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
         lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app),
-        delay=5,
+        delay=10,
     )
 
 
@@ -111,7 +111,7 @@ def test_kyuubi_client_relation_joined(
     juju.integrate(APP_NAME, TEST_CHARM_NAME)
 
     logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=5)
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=10)
 
     with (
         psycopg2.connect(

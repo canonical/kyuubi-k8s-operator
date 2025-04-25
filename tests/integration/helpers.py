@@ -46,7 +46,7 @@ def fetch_jdbc_endpoint(juju: jubilant.Juju) -> str:
     """Return the JDBC endpoint for clients to connect to Kyuubi server."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
     task = juju.run(
-        f"{APP_NAME}/0",
+        f"{APP_NAME}/leader",
         "get-jdbc-endpoint",
     )
     assert task.return_code == 0
@@ -137,7 +137,7 @@ def get_active_kyuubi_servers_list(
             continue
         servers.append(match.group("node"))
 
-    return servers
+    return list(set(servers))
 
 
 def delete_pod(pod_name: str, namespace: str) -> None:

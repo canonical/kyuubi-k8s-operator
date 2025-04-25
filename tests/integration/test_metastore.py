@@ -61,14 +61,16 @@ def test_integrate_external_metastore(
     juju.deploy(**charm_versions.postgres.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app))
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=5
+    )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
     juju.integrate(charm_versions.postgres.app, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app)
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=10
     )
 
     postgres_leader = f"{charm_versions.postgres.app}/0"
