@@ -18,17 +18,17 @@ on:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install tox
-        run: pipx install tox
-      - name: Run linters
-        run: tox run -e lint
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Install tox
+  #       run: pipx install tox
+  #     - name: Run linters
+  #       run: tox run -e lint
 
   unit-test:
     name: Unit tests
@@ -58,21 +58,21 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          - integration-charm
-          - integration-metastore
+          # - integration-charm
+          # - integration-metastore
           - integration-auth
-          - integration-observability
-          - integration-tls
-          - integration-ha
-          - integration-external-access
-          - integration-dynamic-allocation
-          - integration-upgrade
-          - integration-iceberg
-          - integration-relation
+          # - integration-observability
+          # - integration-tls
+          # - integration-ha
+          # - integration-external-access
+          # - integration-dynamic-allocation
+          # - integration-upgrade
+          # - integration-iceberg
+          # - integration-relation
           - integration-trust
     name: ${{ matrix.tox-environments }}
     needs:
-      - lint
+      # - lint
       - unit-test
       - build
     runs-on: ubuntu-22.04

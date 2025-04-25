@@ -60,13 +60,11 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 pytest = ">=7.2"
-juju = "^3.1.6"
-coverage = { extras = ["toml"], version = ">7.0" }
-pytest-operator = ">0.20"
 # NOTE(boto): 1.36+ incompatible with minio because of MD5 checksum
 boto3 = ">=1.28.0,<1.36"
 tenacity = "^8.2.2"
 spark-k8s-test = "^0.0.2"
+jubilant = "^0.5.0"
 
 [tool.ruff]
 line-length = 99
@@ -102,7 +100,7 @@ module = [
   "charms.loki_k8s.*",
   "charms.prometheus_k8s.*",
   "charms.tls_certificates_interface.*",
-  "spark8t.services"
+  "spark8t.services",
 ]
 ignore_missing_imports = true
 

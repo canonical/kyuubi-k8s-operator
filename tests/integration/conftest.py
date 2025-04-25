@@ -6,14 +6,15 @@ import logging
 import subprocess
 from pathlib import Path
 from string import Template
-from typing import Optional
 
 import boto3
 import boto3.session
+import jubilant
 import pytest
 import yaml
 from botocore.client import Config
-from pydantic import BaseModel
+
+from .types import IntegrationTestsCharms, TestCharm
 
 logger = logging.getLogger(__name__)
 
@@ -26,48 +27,27 @@ TEST_SERVICE_ACCOUNT = "kyuubi-test"
 TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
 
 
-class TestCharm(BaseModel):
-    """An abstraction of metadata of a charm to be deployed.
+@pytest.fixture(scope="module")
+def juju(request: pytest.FixtureRequest):
+    keep_models = bool(request.config.getoption("--keep-models"))
 
-    Attrs:
-        name: str, representing the charm to be deployed
-        channel: str, representing the channel to be used
-        series: str, representing the series of the system for the container where the charm
-            is deployed to
-        num_units: int, number of units for the deployment
-        alias: str (Optional), alias to be used for the charm
-    """
+    with jubilant.temp_model(keep=keep_models) as juju:
+        juju.wait_timeout = 10 * 60
 
-    name: str
-    channel: str
-    series: str
-    revision: int
-    num_units: int = 1
-    alias: Optional[str] = None
-    trust: Optional[bool] = False
+        yield juju  # run the test
 
-    @property
-    def application_name(self) -> str:
-        return self.alias or self.name
-
-    def deploy_dict(self):
-        return {
-            "entity_url": self.name,
-            "channel": self.channel,
-            "series": self.series,
-            "revision": self.revision,
-            "num_units": self.num_units,
-            "application_name": self.application_name,
-            "trust": self.trust,
-        }
+        if request.session.testsfailed:
+            log = juju.debug_log(limit=1000)
+            print(log, end="")
 
 
-class IntegrationTestsCharms(BaseModel):
-    s3: TestCharm
-    postgres: TestCharm
-    integration_hub: TestCharm
-    zookeeper: TestCharm
-    tls: TestCharm
+def pytest_addoption(parser):
+    parser.addoption(
+        "--keep-models",
+        action="store_true",
+        default=False,
+        help="keep temporarily-created models",
+    )
 
 
 @pytest.fixture(scope="module")
@@ -78,7 +58,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "name": "s3-integrator",
                 "channel": "edge",
                 "revision": 41,
-                "series": "jammy",
+                "base": "ubuntu@22.04",
                 "alias": "s3",
             }
         ),
@@ -87,7 +67,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "name": "postgresql-k8s",
                 "channel": "14/stable",
                 "revision": 281,
-                "series": "jammy",
+                "base": "ubuntu@22.04",
                 "alias": "postgresql",
                 "trust": True,
             }
@@ -97,7 +77,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "name": "spark-integration-hub-k8s",
                 "channel": "latest/edge",
                 "revision": 43,
-                "series": "jammy",
+                "base": "ubuntu@22.04",
                 "alias": "integration-hub",
                 "trust": True,
             }
@@ -107,7 +87,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "name": "zookeeper-k8s",
                 "channel": "3/edge",
                 "revision": 70,
-                "series": "jammy",
+                "base": "ubuntu@22.04",
                 "alias": "zookeeper",
                 "num_units": 3,
             }
@@ -117,7 +97,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "name": "self-signed-certificates",
                 "channel": "edge",
                 "revision": 163,  # FIXME (certs): Unpin the revision once the charm is fixed
-                "series": "jammy",
+                "base": "ubuntu@22.04",
                 "alias": "self-signed-certificates",
                 "num_units": 1,
             }
@@ -223,7 +203,7 @@ def test_pod(ops_test):
 
 @pytest.fixture(scope="module")
 def kyuubi_charm() -> Path:
-    """Path to the packed integration hub charm."""
+    """Path to the packed kyuubi charm."""
     if not (path := next(iter(Path.cwd().glob("*.charm")), None)):
         raise FileNotFoundError("Could not find packed kyuubi charm.")
 

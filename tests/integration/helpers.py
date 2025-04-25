@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import json
 import logging
@@ -10,13 +12,10 @@ from subprocess import PIPE, check_output
 from tempfile import NamedTemporaryFile
 from typing import List
 
+import jubilant
 import lightkube
 import requests
 import yaml
-from juju.application import Application
-from juju.unit import Unit
-from ops import StatusBase
-from pytest_operator.plugin import OpsTest
 from spark8t.domain import PropertyFile
 from spark_test.core.kyuubi import KyuubiClient
 
@@ -43,16 +42,16 @@ def get_random_name():
     return str(uuid.uuid4()).replace("-", "_")
 
 
-def check_status(entity: Application | Unit, status: StatusBase):
-    if isinstance(entity, Application):
-        return entity.status == status.name and entity.status_message == status.message
-    elif isinstance(entity, Unit):
-        return (
-            entity.workload_status == status.name
-            and entity.workload_status_message == status.message
-        )
-    else:
-        raise ValueError(f"entity type {type(entity)} is not allowed")
+# def check_status(entity: Application | Unit, status: StatusBase):
+#     if isinstance(entity, Application):
+#         return entity.status == status.name and entity.status_message == status.message
+#     elif isinstance(entity, Unit):
+#         return (
+#             entity.workload_status == status.name
+#             and entity.workload_status_message == status.message
+#         )
+#     else:
+#         raise ValueError(f"entity type {type(entity)} is not allowed")
 
 
 async def fetch_jdbc_endpoint(ops_test):
@@ -428,8 +427,8 @@ async def get_address(ops_test: OpsTest, unit_name: str) -> str:
     return address
 
 
-async def deploy_minimal_kyuubi_setup(
-    ops_test: OpsTest,
+def deploy_minimal_kyuubi_setup(
+    juju: jubilant.Juju,
     kyuubi_charm: str | Path,
     charm_versions,
     s3_bucket_and_creds,
@@ -437,12 +436,12 @@ async def deploy_minimal_kyuubi_setup(
     num_units=1,
     integrate_zookeeper=False,
     deploy_from_charmhub=False,
-) -> str:
+) -> None:
     deploy_args = {
-        "application_name": APP_NAME,
+        "app": APP_NAME,
         "num_units": num_units,
         "channel": "edge",
-        "series": "jammy",
+        "base": "ubuntu@22.04",
         "trust": trust,
     }
     if not deploy_from_charmhub:
@@ -454,29 +453,29 @@ async def deploy_minimal_kyuubi_setup(
 
     # Deploy the Kyuubi charm and wait
     logger.info("Deploying kyuubi-k8s charm...")
-    await ops_test.model.deploy(kyuubi_charm, **deploy_args)
+    juju.deploy(kyuubi_charm, **deploy_args)
     logger.info("Waiting for kyuubi-k8s app to be settle...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked")
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
+    status = juju.wait(jubilant.all_blocked)
+    logger.info(f"State of kyuubi-k8s app: {status.apps[APP_NAME]}")
 
     # Set Kyuubi config options and wait
     logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace = ops_test.model.name
+    namespace = juju.model
     username = "kyuubi-spark-engine"
     charm_config = {"namespace": namespace, "service-account": username}
 
-    await ops_test.model.applications[APP_NAME].set_config(charm_config)
+    juju.config(APP_NAME, charm_config)
     logger.info("Waiting for kyuubi-k8s app to settle...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", idle_period=20)
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
-    )
+    status = juju.wait(jubilant.all_blocked)
+    assert status.apps[APP_NAME].app_status.message == Status.MISSING_INTEGRATION_HUB.value.message
 
     # Deploy the S3 Integrator charm and wait
     logger.info("Deploying s3-integrator charm...")
-    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
+    juju.deploy(**charm_versions.s3.deploy_dict())
     logger.info("Waiting for s3-integrator app to be idle...")
-    await ops_test.model.wait_for_idle(apps=[charm_versions.s3.application_name])
+    status = juju.wait(
+        lambda status: jubilant.all_blocked(status, charm_versions.s3.application_name),
+    )
 
     # Receive S3 params from fixture, apply them and wait
     endpoint_url = s3_bucket_and_creds["endpoint"]
@@ -485,104 +484,99 @@ async def deploy_minimal_kyuubi_setup(
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
     logger.info("Setting up s3 credentials in s3-integrator charm")
-    s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
-    action = await s3_integrator_unit.run_action(
-        action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
+    task = juju.run(
+        f"{charm_versions.s3.application_name}/0",
+        "sync-s3-credentials",
+        {"access-key": access_key, "secret-key": secret_key},
     )
-    await action.wait()
+    assert task.return_code == 0
     logger.info("Setting configuration for s3-integrator charm...")
-    await ops_test.model.applications[charm_versions.s3.application_name].set_config(
+    juju.config(
+        charm_versions.s3.application_name,
         {
             "bucket": bucket_name,
             "path": path,
             "endpoint": endpoint_url,
-        }
+        },
     )
     logger.info("Waiting for s3-integrator app to be idle and active...")
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[charm_versions.s3.application_name], status="active"
-        )
+    juju.wait(lambda status: jubilant.all_active(status, charm_versions.s3.application_name))
 
     # Deploy the integration hub charm and wait
     logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
+    juju.deploy(**charm_versions.integration_hub.deploy_dict())
     logger.info("Waiting for integration_hub and s3-integrator app to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
-        status="active",
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.s3.application_name,
+            charm_versions.integration_hub.application_name,
+        )
     )
 
     # Integrate integration hub with S3 integrator and wait
     logger.info("Integrating integration-hub charm with s3-integrator charm...")
-    await ops_test.model.integrate(
+    juju.integrate(
         charm_versions.s3.application_name, charm_versions.integration_hub.application_name
     )
     logger.info("Waiting for s3-integrator and integration-hub charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[
-            charm_versions.integration_hub.application_name,
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
             charm_versions.s3.application_name,
-        ],
-        status="active",
+            charm_versions.integration_hub.application_name,
+        ),
+        delay=5,
     )
 
     # Add configuration key to prevent resource starvation during tests
-    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
-    action = await unit.run_action(
-        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+    task = juju.run(
+        f"{charm_versions.integration_hub.application_name}/0",
+        "add-config",
+        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
     )
-    _ = await action.wait()
+    assert task.return_code == 0
 
     # Integrate Kyuubi with Integration Hub and wait
     logger.info("Integrating kyuubi charm with integration-hub charm...")
-    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
-    logger.info("Waiting for s3-integrator and integration_hub charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[
-            charm_versions.integration_hub.application_name,
-            charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
+    juju.integrate(charm_versions.integration_hub.application_name, APP_NAME)
+    logger.info(
+        "Waiting for kyuubi, s3-integrator and integration_hub charms to be idle and active..."
     )
-    logger.info("Waiting for kyuubi charm to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-        ],
-        idle_period=20,
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.s3.application_name,
+            charm_versions.integration_hub.application_name,
+        ),
+        delay=5,
     )
 
     if integrate_zookeeper:
         # Deploy Zookeeper and wait
-        await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
+        juju.deploy(**charm_versions.zookeeper.deploy_dict())
         logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
-        await ops_test.model.wait_for_idle(
-            apps=[charm_versions.zookeeper.application_name], idle_period=20, status="active"
+        juju.wait(
+            lambda status: jubilant.all_active(
+                status,
+                charm_versions.zookeeper.application_name,
+            ),
         )
 
         # Integrate Kyuubi with Zookeeper and wait
         logger.info("Integrating kyuubi charm with zookeeper charm...")
-        await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)
+        juju.integrate(charm_versions.zookeeper.application_name, APP_NAME)
         logger.info(
             "Waiting for s3-integrator, integration_hub and zookeeper to be idle and active..."
         )
-        await ops_test.model.wait_for_idle(
-            apps=[
+        juju.wait(
+            lambda status: jubilant.all_active(
+                status,
+                charm_versions.s3.application_name,
                 charm_versions.integration_hub.application_name,
                 charm_versions.zookeeper.application_name,
-                charm_versions.s3.application_name,
-            ],
-            idle_period=20,
-            status="active",
-        )
-        logger.info("Waiting for Kyuubi charm to be idle...")
-        await ops_test.model.wait_for_idle(
-            apps=[
-                APP_NAME,
-            ],
-            idle_period=20,
+            ),
+            delay=5,
         )
 
     logger.info("Successfully deployed minimal working Kyuubi setup.")
@@ -677,8 +671,8 @@ async def fetch_spark_properties(ops_test: OpsTest, unit_name: str) -> dict[str,
         return props
 
 
-async def validate_sql_queries_with_kyuubi(
-    ops_test: OpsTest,
+def validate_sql_queries_with_kyuubi(
+    juju: jubilant.Juju,
     kyuubi_host: str | None = None,
     kyuubi_port: str | int = 10009,
     username: str | None = None,
@@ -689,7 +683,7 @@ async def validate_sql_queries_with_kyuubi(
 ):
     """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
     if not kyuubi_host:
-        kyuubi_host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+        kyuubi_host = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
     if not db_name:
         db_name = str(uuid.uuid4()).replace("-", "_")
     if not table_name:
