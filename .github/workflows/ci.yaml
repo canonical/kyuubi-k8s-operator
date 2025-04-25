@@ -58,13 +58,13 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          # - integration-charm
-          # - integration-metastore
+          - integration-charm
+          - integration-metastore
           - integration-auth
           # - integration-observability
-          # - integration-tls
+          - integration-tls
           # - integration-ha
-          # - integration-external-access
+          - integration-external-access
           - integration-dynamic-allocation
           # - integration-upgrade
           # - integration-iceberg

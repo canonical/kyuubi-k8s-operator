@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from subprocess import PIPE, check_output
 from tempfile import NamedTemporaryFile
-from typing import List
+from typing import List, cast
 
 import jubilant
 import lightkube
@@ -44,39 +44,24 @@ def get_random_name():
     return str(uuid.uuid4()).replace("-", "_")
 
 
-# def check_status(entity: Application | Unit, status: StatusBase):
-#     if isinstance(entity, Application):
-#         return entity.status == status.name and entity.status_message == status.message
-#     elif isinstance(entity, Unit):
-#         return (
-#             entity.workload_status == status.name
-#             and entity.workload_status_message == status.message
-#         )
-#     else:
-#         raise ValueError(f"entity type {type(entity)} is not allowed")
-
-
-async def fetch_jdbc_endpoint(ops_test):
+def fetch_jdbc_endpoint(juju: jubilant.Juju) -> str:
     """Return the JDBC endpoint for clients to connect to Kyuubi server."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    for unit in ops_test.model.applications[APP_NAME].units:
-        if await unit.is_leader_from_status():
-            kyuubi_unit = unit
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
+    task = juju.run(
+        f"{APP_NAME}/0",
+        "get-jdbc-endpoint",
     )
-    result = await action.wait()
-
-    jdbc_endpoint = result.results.get("endpoint")
+    assert task.return_code == 0
+    jdbc_endpoint = task.results["endpoint"]
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
     return jdbc_endpoint
 
 
-async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_endpoint=None):
+async def run_sql_test_against_jdbc_endpoint(
+    juju: jubilant.Juju, test_pod: str, jdbc_endpoint: str
+) -> bool:
     """Verify the JDBC endpoint exposed by the charm with some SQL queries."""
-    if jdbc_endpoint is None:
-        jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
     database_name = get_random_name()
     table_name = get_random_name()
     logger.info(
@@ -87,7 +72,7 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_e
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
-            ops_test.model_name,
+            cast(str, juju.model),
             jdbc_endpoint,
             get_random_name(),
             get_random_name(),
@@ -220,13 +205,12 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
     assert process.returncode == 0, f"Could not kill Kyuubi process with pid {kyuubi_pid}."
 
 
-async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
+async def is_entire_cluster_responding_requests(juju: jubilant.Juju, test_pod: str) -> bool:
     """Return whether the entire Kyuubi cluster is responding to requests from client."""
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
+    jdbc_endpoint = fetch_jdbc_endpoint(juju)
 
-    kyuubi_pods = {
-        unit.name.replace("/", "-") for unit in ops_test.model.applications[APP_NAME].units
-    }
+    status = juju.status()
+    kyuubi_pods = {unit.replace("/", "-") for unit in status.apps[APP_NAME].units.keys()}
     logger.info(f"Nodes in the cluster being tested: {','.join(kyuubi_pods)}")
     pods_that_responded = set()
 
@@ -244,7 +228,7 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
             "exec",
             test_pod,
             "-n",
-            ops_test.model_name,
+            cast(str, juju.model),
             "--",
             *pod_command,
         ]
@@ -259,7 +243,7 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
                 "logs",
                 pod_name,
                 "-n",
-                ops_test.model_name,
+                cast(str, juju.model),
                 "-c",
                 "kyuubi",
                 "--since-time",
@@ -293,17 +277,6 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
         tries += 1
 
     return False
-
-
-async def juju_sleep(ops: OpsTest, time: int, app: str | None = None):
-    """Sleep for given amount of time while waiting for the given application to be idle."""
-    app_name = app if app else ops.model.applications[0]
-
-    await ops.model.wait_for_idle(
-        apps=[app_name],
-        idle_period=time,
-        timeout=300,
-    )
 
 
 def prometheus_exporter_data(host: str) -> str | None:
@@ -598,8 +571,8 @@ def get_k8s_service(namespace: str, service_name: str):
     return service
 
 
-async def run_command_in_pod(
-    ops_test: OpsTest,
+def run_command_in_pod(
+    juju: jubilant.Juju,
     pod_name: str,
     pod_command: List[str],
 ) -> tuple[str, str]:
@@ -611,7 +584,7 @@ async def run_command_in_pod(
         "-c",
         "kyuubi",
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         *pod_command,
     ]
@@ -634,8 +607,8 @@ def umask_named_temporary_file(*args, **kargs):
 
 
 def assert_service_status(
-    namespace,
-    service_type,
+    namespace: str,
+    service_type: str,
 ):
     """Utility function to check status of managed K8s service created by Kyuubi charm."""
     service_name = f"{APP_NAME}-service"
@@ -658,12 +631,10 @@ def assert_service_status(
         assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
 
 
-async def fetch_spark_properties(ops_test: OpsTest, unit_name: str) -> dict[str, str]:
+def fetch_spark_properties(juju: jubilant.Juju, unit_name: str) -> dict[str, str]:
     pod_name = unit_name.replace("/", "-")
     command = ["cat", "/etc/spark8t/conf/spark-defaults.conf"]
-    stdout, stderr = await run_command_in_pod(
-        ops_test=ops_test, pod_name=pod_name, pod_command=command
-    )
+    stdout, stderr = run_command_in_pod(juju, pod_name=pod_name, pod_command=command)
     with NamedTemporaryFile(mode="w+") as temp_file:
         temp_file.write(stdout)
         temp_file.seek(0)
