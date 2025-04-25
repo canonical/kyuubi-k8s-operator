@@ -87,7 +87,7 @@ def test_kyuubi_upgrades(
 
     time.sleep(90)
 
-    juju.wait(
+    status = juju.wait(
         lambda status: {
             status.apps[APP_NAME].units[unit].juju_status.current
             for unit in status.apps[APP_NAME].units
@@ -95,6 +95,11 @@ def test_kyuubi_upgrades(
         == {"idle"}
     )
     logger.info("Resume upgrade...")
+    leader_unit = None
+    for name, unit in status.apps[APP_NAME].units.items():
+        if unit.leader:
+            leader_unit = name
+    assert leader_unit
     task = juju.run(leader_unit, "resume-upgrade")
     assert task.return_code == 0
 

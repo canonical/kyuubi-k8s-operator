@@ -61,7 +61,7 @@ jobs:
           - integration-charm
           - integration-metastore
           - integration-auth
-          # - integration-observability
+          - integration-observability
           - integration-tls
           # - integration-ha
           - integration-external-access

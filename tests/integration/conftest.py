@@ -38,7 +38,7 @@ def juju(request: pytest.FixtureRequest):
         yield juju  # run the test
 
         if request.session.testsfailed:
-            log = juju.debug_log(limit=1000)
+            log = juju.debug_log(limit=30)
             print(log, end="")
 
 

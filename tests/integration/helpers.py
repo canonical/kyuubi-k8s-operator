@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import datetime
-import json
 import logging
 import os
 import re
 import subprocess
 import uuid
 from pathlib import Path
-from subprocess import PIPE, check_output
 from tempfile import NamedTemporaryFile
 from typing import List, cast
 
@@ -150,16 +148,16 @@ async def find_leader_unit(ops_test, app_name):
     return None
 
 
-async def delete_pod(pod_name, namespace):
+def delete_pod(pod_name, namespace):
     """Delete a pod with given name and namespace."""
     command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
     process = subprocess.run(command, capture_output=True, check=True)
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
-async def get_kyuubi_pid(ops_test: OpsTest, unit):
+async def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     """Return the process ID of Kyuubi process in given pod."""
-    pod_name = unit.name.replace("/", "-")
+    pod_name = unit.replace("/", "-")
     command = [
         "kubectl",
         "exec",
@@ -167,7 +165,7 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
         "-c",
         KYUUBI_CONTAINER_NAME,
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         "ps",
         "aux",
@@ -291,34 +289,36 @@ def prometheus_exporter_data(host: str) -> str | None:
         return response.text
 
 
-async def all_prometheus_exporters_data(ops_test: OpsTest, check_field) -> bool:
+def all_prometheus_exporters_data(juju: jubilant.Juju, check_field: str) -> bool:
     """Check if a all units has metric service available and publishing."""
     result = True
-    for unit in ops_test.model.applications[APP_NAME].units:
-        unit_ip = await get_address(ops_test, unit.name)
-        result = result and check_field in prometheus_exporter_data(unit_ip)
+    status = juju.status()
+    for unit in status.apps[APP_NAME].units.values():
+        result = result and check_field in (prometheus_exporter_data(unit.address) or "")
     return result
 
 
-def published_prometheus_alerts(ops_test: OpsTest, host: str) -> dict | None:
+def published_prometheus_alerts(juju: jubilant.Juju, host: str) -> dict:
     """Retrieve all Prometheus Alert rules that have been published."""
     if "http://" in host:
         host = host.split("//")[1]
-    url = f"http://{host}/{ops_test.model.name}-prometheus-0/api/v1/rules"
+    url = f"http://{host}/{cast(str, juju.model)}-prometheus-0/api/v1/rules"
     try:
         response = requests.get(url)
     except requests.exceptions.RequestException:
-        return
+        return {}
 
     if response.status_code == 200:
         return response.json()
 
+    return {}
 
-def published_prometheus_data(ops_test: OpsTest, host: str, field: str) -> dict | None:
+
+def published_prometheus_data(juju: jubilant.Juju, host: str, field: str) -> dict | None:
     """Check the existence of field among Prometheus published data."""
     if "http://" in host:
         host = host.split("//")[1]
-    url = f"http://{host}/{ops_test.model.name}-prometheus-0/api/v1/query?query={field}"
+    url = f"http://{host}/{cast(str, juju.model)}-prometheus-0/api/v1/query?query={field}"
     try:
         response = requests.get(url)
     except requests.exceptions.RequestException:
@@ -328,9 +328,9 @@ def published_prometheus_data(ops_test: OpsTest, host: str, field: str) -> dict 
         return response.json()
 
 
-async def published_grafana_dashboards(ops_test: OpsTest) -> str | None:
+def published_grafana_dashboards(juju: jubilant.Juju) -> dict | None:
     """Get the list of dashboards published to Grafana."""
-    base_url, pw = await get_grafana_access(ops_test)
+    base_url, pw = get_grafana_access(juju)
     url = f"{base_url}/api/search?query=&starred=false"
 
     try:
@@ -343,12 +343,12 @@ async def published_grafana_dashboards(ops_test: OpsTest) -> str | None:
         return response.json()
 
 
-async def published_loki_logs(
-    ops_test: OpsTest, field: str, value: str, limit: int = 300
-) -> str | None:
+def published_loki_logs(
+    juju: jubilant.Juju, field: str, value: str, limit: int = 300
+) -> dict | None:
     """Get the list of dashboards published to Grafana."""
-    base_url = await get_cos_address(ops_test)
-    url = f"{base_url}/{ops_test.model.name}-loki-0/loki/api/v1/query_range"
+    base_url = get_cos_address(juju)
+    url = f"{base_url}/{cast(str, juju.model)}-loki-0/loki/api/v1/query_range"
 
     try:
         response = requests.get(url, params={"query": f'{{{field}=~"{value}"}}', "limit": limit})
@@ -358,49 +358,18 @@ async def published_loki_logs(
         return response.json()
 
 
-async def get_cos_address(ops_test: OpsTest) -> str:
+def get_cos_address(juju: jubilant.Juju) -> str:
     """Retrieve the URL where COS services are available."""
-    cos_addr_res = check_output(
-        f"JUJU_MODEL={ops_test.model.name} juju run traefik/0 show-proxied-endpoints --format json",
-        stderr=PIPE,
-        shell=True,
-        universal_newlines=True,
-    )
-
-    try:
-        cos_addr = json.loads(cos_addr_res)
-    except json.JSONDecodeError:
-        raise ValueError
-
-    endpoints = cos_addr["traefik/0"]["results"]["proxied-endpoints"]
-    return json.loads(endpoints)["traefik"]["url"]
+    task = juju.run("traefik/0", "show-proxied-endpoints")
+    assert task.return_code == 0
+    return task.results["proxied-endpoints"]["traefik"]["url"]
 
 
-async def get_grafana_access(ops_test: OpsTest) -> tuple[str, str]:
+def get_grafana_access(juju: jubilant.Juju) -> tuple[str, str]:
     """Get Grafana URL and password."""
-    grafana_res = check_output(
-        f"JUJU_MODEL={ops_test.model.name} juju run grafana/0 get-admin-password --format json",
-        stderr=PIPE,
-        shell=True,
-        universal_newlines=True,
-    )
-
-    try:
-        grafana_data = json.loads(grafana_res)
-    except json.JSONDecodeError:
-        raise ValueError
-
-    url = grafana_data["grafana/0"]["results"]["url"]
-    password = grafana_data["grafana/0"]["results"]["admin-password"]
-    return url, password
-
-
-async def get_address(ops_test: OpsTest, unit_name: str) -> str:
-    """Get the address for a unit."""
-    status = await ops_test.model.get_status()  # noqa: F821
-    app_name = unit_name.split("/")[0]
-    address = status["applications"][app_name]["units"][f"{unit_name}"]["address"]
-    return address
+    task = juju.run("grafana/0", "get-admin-password")
+    assert task.return_code == 0
+    return task.results["admin-password"]
 
 
 def deploy_minimal_kyuubi_setup(

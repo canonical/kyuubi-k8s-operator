@@ -13,7 +13,6 @@ from typing import cast
 
 import jubilant
 import yaml
-from tests.integration.test_dynamic_allocation import S3Info
 
 from constants import TLS_REL
 
@@ -24,7 +23,7 @@ from .helpers import (
     run_sql_test_against_jdbc_endpoint,
     umask_named_temporary_file,
 )
-from .types import IntegrationTestsCharms
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
