@@ -57,16 +57,16 @@ def test_enable_authentication(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app),
         delay=5,
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    juju.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:auth-db")
+    juju.integrate(charm_versions.postgres.app, f"{APP_NAME}:auth-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app),
         delay=5,
     )
 
@@ -84,8 +84,8 @@ def test_kyuubi_client_relation_joined(
 
     # Check number of users before integration
     # Fetch password for operator user from postgresql-k8s
-    postgres_leader = f"{charm_versions.postgres.name}/0"
-    postgres_host = status.apps[charm_versions.postgres.name].units[postgres_leader].address
+    postgres_leader = f"{charm_versions.postgres.app}/0"
+    postgres_host = status.apps[charm_versions.postgres.app].units[postgres_leader].address
 
     task = juju.run(postgres_leader, "get-password")
     assert task.return_code == 0
@@ -143,8 +143,8 @@ def test_kyuubi_client_relation_removed(
     """Test the behavior of Kyuubi when client application relation is removed from it."""
     status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME))
     # Fetch password for operator user from postgresql-k8s
-    postgres_leader = f"{charm_versions.postgres.name}/0"
-    postgres_host = status.apps[charm_versions.postgres.name].units[postgres_leader].address
+    postgres_leader = f"{charm_versions.postgres.app}/0"
+    postgres_host = status.apps[charm_versions.postgres.app].units[postgres_leader].address
 
     task = juju.run(postgres_leader, "get-password")
     assert task.return_code == 0

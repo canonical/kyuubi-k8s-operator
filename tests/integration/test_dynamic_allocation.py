@@ -3,24 +3,19 @@
 # See LICENSE file for licensing details.
 
 import logging
+import time
 from pathlib import Path
-from time import time
 from typing import cast
 
 import jubilant
-import pytest
 import yaml
 from spark_test.core.kyuubi import KyuubiClient
 from spark_test.utils import get_spark_executors
 
-from core.domain import Status
-
-from .types import IntegrationTestsCharms, S3Info
 from .helpers import (
     deploy_minimal_kyuubi_setup,
-    get_address,
-    juju_sleep,
 )
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 

@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_NAME = "application"
-INVALID_METASTORE_APP_NAME = "invalid-metastore"
 
 
 def test_deploy_minimal_kyuubi_setup(
@@ -62,7 +60,9 @@ def test_enable_authentication(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
+        lambda status: jubilant.all_active(
+            status, APP_NAME, charm_versions.postgres.application_name
+        ),
         timeout=600,
         delay=3,
     )
@@ -72,13 +72,17 @@ def test_enable_authentication(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
+        lambda status: jubilant.all_active(
+            status, APP_NAME, charm_versions.postgres.application_name
+        ),
         timeout=300,
         delay=10,
     )
 
-    postgres_leader = f"{charm_versions.postgres.name}/0"
-    postgres_host = status.apps[charm_versions.postgres.name].units[postgres_leader].address
+    postgres_leader = f"{charm_versions.postgres.application_name}/0"
+    postgres_host = (
+        status.apps[charm_versions.postgres.application_name].units[postgres_leader].address
+    )
 
     task = juju.run(postgres_leader, "get-password")
     assert task.return_code == 0
@@ -155,7 +159,9 @@ def test_remove_authentication(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.name),
+        lambda status: jubilant.all_active(
+            status, APP_NAME, charm_versions.postgres.application_name
+        ),
         timeout=120,
         delay=3,
     )

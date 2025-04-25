@@ -41,6 +41,10 @@ class TestCharm(BaseModel):
     def application_name(self) -> str:
         return self.alias or self.name
 
+    @property
+    def app(self) -> str:
+        return self.alias or self.name
+
     def deploy_dict(self):
         return {
             "charm": self.name,

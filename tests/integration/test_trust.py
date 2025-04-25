@@ -38,7 +38,9 @@ def test_build_and_deploy(
     # Assert that all charms that were deployed as part of minimal setup are in correct states.
     status = juju.wait(
         lambda status: jubilant.all_active(
-            status, charm_versions.integration_hub.name, charm_versions.s3.name
+            status,
+            charm_versions.integration_hub.application_name,
+            charm_versions.s3.application_name,
         ),
         delay=5,
     )
@@ -57,7 +59,10 @@ def test_provide_clusterwide_trust_permissions(
 
     juju.wait(
         lambda status: jubilant.all_active(
-            status, APP_NAME, charm_versions.s3.name, charm_versions.integration_hub.name
+            status,
+            APP_NAME,
+            charm_versions.s3.application_name,
+            charm_versions.integration_hub.application_name,
         ),
         delay=5,
     )
