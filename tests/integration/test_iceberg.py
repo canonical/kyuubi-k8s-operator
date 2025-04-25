@@ -5,18 +5,14 @@
 import logging
 from pathlib import Path
 
-import pytest
+import jubilant
 import yaml
-from pytest_operator.plugin import OpsTest
 from spark_test.core.kyuubi import KyuubiClient
 
-from core.domain import Status
-
 from .helpers import (
-    check_status,
     deploy_minimal_kyuubi_setup,
-    get_address,
 )
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
@@ -24,16 +20,15 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
-@pytest.mark.abort_on_fail
-async def test_deploy_kyuubi_setup(
-    ops_test: OpsTest,
+def test_deploy_kyuubi_setup(
+    juju: jubilant.Juju,
     kyuubi_charm: Path,
-    charm_versions,
-    s3_bucket_and_creds,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
-    await deploy_minimal_kyuubi_setup(
-        ops_test=ops_test,
+    deploy_minimal_kyuubi_setup(
+        juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
@@ -41,29 +36,13 @@ async def test_deploy_kyuubi_setup(
     )
 
     # Wait for everything to settle down
-    await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-            charm_versions.integration_hub.application_name,
-            charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
-    )
-
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+    juju.wait(jubilant.all_active, delay=5)
 
 
-@pytest.mark.abort_on_fail
-async def test_iceberg_with_iceberg_catalog(ops_test):
+def test_iceberg_with_iceberg_catalog(juju: jubilant.Juju) -> None:
     """Test Iceberg capabilities using the `iceberg` catalog created by default."""
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    status = juju.status()
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     # Put some load by executing some Kyuubi SQL queries
@@ -80,33 +59,24 @@ async def test_iceberg_with_iceberg_catalog(ops_test):
         assert len(results) == 1
 
 
-@pytest.mark.abort_on_fail
-async def test_iceberg_external_metastore(ops_test, charm_versions):
+def test_iceberg_external_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test Iceberg support with Postgres as external metastore."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying postgresql-k8s charm...")
-    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
+    juju.deploy(**charm_versions.postgres.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
+    juju.wait(jubilant.all_active, delay=5)
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    await ops_test.model.integrate(
-        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
-    )
+    juju.integrate(charm_versions.postgres.app, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
-    )
+    status = juju.wait(jubilant.all_active, delay=5)
 
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
-
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     kyuubi_client = KyuubiClient(host=host, port=int(port))
@@ -122,34 +92,23 @@ async def test_iceberg_external_metastore(ops_test, charm_versions):
         assert len(results) == 1
 
 
-@pytest.mark.abort_on_fail
-async def test_disconnect_and_reconnect_external_metastore(ops_test, charm_versions):
+def test_disconnect_and_reconnect_external_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test disconnecting external metastore and reconnecting to it again and read old data."""
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
-    )
+    juju.remove_relation(f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.app}:database")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
+    juju.wait(jubilant.all_active, delay=5)
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm again...")
-    await ops_test.model.integrate(
-        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
-    )
+    juju.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
+    status = juju.wait(jubilant.all_active, delay=5)
 
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
-
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     kyuubi_client = KyuubiClient(host=host, port=int(port))
@@ -164,10 +123,10 @@ async def test_disconnect_and_reconnect_external_metastore(ops_test, charm_versi
 
 
 # Test normal tables can be written / read using the iceberg catalog
-@pytest.mark.abort_on_fail
-async def test_normal_table_format_with_iceberg_catalog(ops_test):
+def test_normal_table_format_with_iceberg_catalog(juju: jubilant.Juju) -> None:
     """Test that tables using non-iceberg format can be read and written using iceberg catalog."""
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    status = juju.status()
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     kyuubi_client = KyuubiClient(host=host, port=int(port))
@@ -184,21 +143,14 @@ async def test_normal_table_format_with_iceberg_catalog(ops_test):
         assert len(results) == 1
 
 
-@pytest.mark.abort_on_fail
-async def test_iceberg_with_spark_catalog(ops_test):
+def test_iceberg_with_spark_catalog(juju: jubilant.Juju) -> None:
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
     logger.info("Changing Iceberg catalog to default spark_catalog...")
-    await ops_test.model.applications[APP_NAME].set_config(
-        {"iceberg-catalog-name": "spark_catalog"}
-    )
-    logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="active",
-        timeout=1000,
-    )
+    juju.config(APP_NAME, {"iceberg-catalog-name": "spark_catalog"})
 
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    logger.info("Waiting for kyuubi-k8s app to be active and idle...")
+    status = juju.wait(jubilant.all_active, delay=5)
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     # Put some load by executing some Kyuubi SQL queries
@@ -215,10 +167,10 @@ async def test_iceberg_with_spark_catalog(ops_test):
         assert len(results) == 1
 
 
-@pytest.mark.abort_on_fail
-async def test_reading_table_written_by_other_catalog(ops_test):
+def test_reading_table_written_by_other_catalog(juju: jubilant.Juju) -> None:
     """Test whether one is able to read data written using iceberg catalog using spark_catalog."""
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    status = juju.status()
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     kyuubi_client = KyuubiClient(host=host, port=int(port))
@@ -232,10 +184,10 @@ async def test_reading_table_written_by_other_catalog(ops_test):
         assert len(results) == 1
 
 
-@pytest.mark.abort_on_fail
-async def test_normal_table_format_with_iceberg_enabled_spark_catalog(ops_test):
+def test_normal_table_format_with_iceberg_enabled_spark_catalog(juju: jubilant.Juju) -> None:
     """Test that tables using non-iceberg format can be read and written using iceberg enabled spark_catalog."""
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    status = juju.status()
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
 
     kyuubi_client = KyuubiClient(host=host, port=int(port))

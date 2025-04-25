@@ -43,16 +43,7 @@ def test_default_deploy(
     )
 
     # Wait for everything to settle down
-    juju.wait(
-        lambda status: jubilant.all_active(
-            status,
-            APP_NAME,
-            charm_versions.integration_hub.application_name,
-            charm_versions.zookeeper.application_name,
-            charm_versions.s3.application_name,
-        ),
-        delay=5,
-    )
+    juju.wait(jubilant.all_active, delay=5)
 
     # Ensure that Kyuubi is exposed with ClusterIP service
     assert_service_status(namespace=cast(str, juju.model), service_type="ClusterIP")

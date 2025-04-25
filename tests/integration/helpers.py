@@ -87,20 +87,21 @@ async def run_sql_test_against_jdbc_endpoint(
     return process.returncode == 0
 
 
-async def get_zookeeper_quorum(ops_test: OpsTest, zookeeper_name: str) -> str:
+def get_zookeeper_quorum(juju: jubilant.Juju, zookeeper_name: str) -> str:
     addresses = []
-    for unit in ops_test.model.applications[zookeeper_name].units:
-        host = await get_address(ops_test, unit.name)
+    status = juju.status()
+    for unit in status.apps[zookeeper_name].units.values():
+        host = unit.address
         port = ZOOKEEPER_PORT
         addresses.append(f"{host}:{port}")
     return ",".join(addresses)
 
 
-async def get_active_kyuubi_servers_list(
-    ops_test: OpsTest, zookeeper_name=ZOOKEEPER_NAME
+def get_active_kyuubi_servers_list(
+    juju: jubilant.Juju, zookeeper_name=ZOOKEEPER_NAME
 ) -> list[str]:
     """Return the list of Kyuubi servers that are live in the cluster."""
-    zookeeper_quorum = await get_zookeeper_quorum(ops_test=ops_test, zookeeper_name=zookeeper_name)
+    zookeeper_quorum = get_zookeeper_quorum(juju=juju, zookeeper_name=zookeeper_name)
     logger.info(f"Zookeeper quorum: {zookeeper_quorum}")
     pod_command = [
         "/opt/kyuubi/bin/kyuubi-ctl",
@@ -120,7 +121,7 @@ async def get_active_kyuubi_servers_list(
         "-c",
         "kyuubi",
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         *pod_command,
     ]
