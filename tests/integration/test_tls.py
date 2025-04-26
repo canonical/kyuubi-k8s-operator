@@ -14,8 +14,6 @@ from typing import cast
 import jubilant
 import yaml
 
-from constants import TLS_REL
-
 from .helpers import (
     assert_service_status,
     deploy_minimal_kyuubi_setup,

@@ -45,8 +45,14 @@ def get_random_name():
 def fetch_jdbc_endpoint(juju: jubilant.Juju) -> str:
     """Return the JDBC endpoint for clients to connect to Kyuubi server."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    status = juju.status()
+    leader_unit = None
+    for name, unit in status.apps[APP_NAME].units.items():
+        if unit.leader:
+            leader_unit = name
+    assert leader_unit
     task = juju.run(
-        f"{APP_NAME}/leader",
+        leader_unit,
         "get-jdbc-endpoint",
     )
     assert task.return_code == 0
