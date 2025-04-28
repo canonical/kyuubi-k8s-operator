@@ -100,8 +100,7 @@ def test_kyuubi_upgrades(
         if unit.leader:
             leader_unit = name
     assert leader_unit
-    task = juju.run(leader_unit, "resume-upgrade")
-    assert task.return_code == 0
+    juju.run(leader_unit, "resume-upgrade")
 
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
