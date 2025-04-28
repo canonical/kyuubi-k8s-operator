@@ -65,6 +65,7 @@ class TestCharm(BaseModel):
 class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
     postgres: TestCharm
+    auth_db: TestCharm
     integration_hub: TestCharm
     zookeeper: TestCharm
     tls: TestCharm
@@ -89,6 +90,16 @@ def charm_versions() -> IntegrationTestsCharms:
                 "revision": 281,
                 "series": "jammy",
                 "alias": "postgresql",
+                "trust": True,
+            }
+        ),
+        auth_db=TestCharm(
+            **{
+                "name": "postgresql-k8s",
+                "channel": "14/stable",
+                "revision": 281,
+                "series": "jammy",
+                "alias": "auth-db",
                 "trust": True,
             }
         ),

@@ -546,12 +546,19 @@ async def deploy_minimal_kyuubi_setup(
         idle_period=20,
         status="active",
     )
-    logger.info("Waiting for kyuubi charm to be idle...")
+
+    await ops_test.model.deploy(**charm_versions.auth_db.deploy_dict())
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-        ],
-        idle_period=20,
+        apps=[charm_versions.auth_db.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
+    await ops_test.model.integrate(charm_versions.auth_db.application_name, f"{APP_NAME}:auth-db")
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.auth_db.application_name], timeout=1000, idle_period=20
     )
 
     if integrate_zookeeper:

@@ -6,15 +6,20 @@ import logging
 import subprocess
 from pathlib import Path
 
+import psycopg2
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
+from thrift.transport.TTransport import TTransportException
 
+from constants import AUTHENTICATION_DATABASE_NAME
 from core.domain import Status
 
 from .helpers import (
     check_status,
     fetch_spark_properties,
+    find_leader_unit,
+    get_address,
     validate_sql_queries_with_kyuubi,
 )
 
@@ -177,6 +182,64 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
         == "active"
     )
     assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+
+
+@pytest.mark.abort_on_fail
+async def test_kyuubi_without_passing_credentials(ops_test: OpsTest):
+    """Test running SQL queries when authentication has not yet been enabled."""
+    with pytest.raises(TTransportException):
+        assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+
+
+@pytest.mark.abort_on_fail
+async def test_enable_authentication(ops_test, charm_versions):
+    """Test the Kyuuubi charm by integrating it with external metastore."""
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying postgresql-k8s charm...")
+    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
+    await ops_test.model.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:auth-db")
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
+    )
+
+    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
+    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
+
+    postgres_leader = await find_leader_unit(
+        ops_test, app_name=charm_versions.postgres.application_name
+    )
+    assert postgres_leader is not None
+    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
+
+    action = await postgres_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+    password = result.results.get("password")
+
+    # Connect to PostgreSQL metastore database
+    connection = psycopg2.connect(
+        host=postgres_host,
+        database=AUTHENTICATION_DATABASE_NAME,
+        user="operator",
+        password=password,
+    )
+
+    with connection.cursor() as cursor:
+        cursor.execute(""" SELECT * FROM kyuubi_users; """)
+        assert cursor.rowcount != 0
+
+    connection.close()
 
 
 @pytest.mark.abort_on_fail
