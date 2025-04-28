@@ -90,9 +90,9 @@ async def test_kyuubi_client_relation_joined(
 
     # Fetch host address of postgresql-k8s
     status = await ops_test.model.get_status()
-    postgresql_host_address = status["applications"][charm_versions.postgres.application_name][
+    postgresql_host_address = status["applications"][charm_versions.auth_db.application_name][
         "units"
-    ][f"{charm_versions.postgres.application_name}/0"]["address"]
+    ][f"{charm_versions.auth_db.application_name}/0"]["address"]
 
     # Connect to PostgreSQL authentication database
     connection = psycopg2.connect(

@@ -191,7 +191,7 @@ async def test_enable_authentication(ops_test, charm_versions):
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+        apps=[charm_versions.postgres.application_name], timeout=1000, status="active"
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")

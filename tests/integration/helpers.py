@@ -72,7 +72,9 @@ async def fetch_jdbc_endpoint(ops_test):
     return jdbc_endpoint
 
 
-async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_endpoint=None):
+async def run_sql_test_against_jdbc_endpoint(
+    ops_test: OpsTest, test_pod, username, password, jdbc_endpoint=None
+):
     """Verify the JDBC endpoint exposed by the charm with some SQL queries."""
     if jdbc_endpoint is None:
         jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
@@ -90,6 +92,8 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_e
             jdbc_endpoint,
             get_random_name(),
             get_random_name(),
+            username,
+            password,
         ],
         capture_output=True,
     )
