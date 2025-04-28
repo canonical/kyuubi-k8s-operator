@@ -177,7 +177,7 @@ async def test_zookeeper_relation_with_three_units_of_kyuubi(
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 async def test_pod_reschedule(ops_test: OpsTest, test_pod, charm_versions):
@@ -219,7 +219,7 @@ async def test_pod_reschedule(ops_test: OpsTest, test_pod, charm_versions):
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
@@ -274,7 +274,7 @@ async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -318,7 +318,7 @@ async def test_scale_down_kyuubi_from_three_to_two_with_zookeeper(
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -362,7 +362,7 @@ async def test_scale_down_to_standalone_kyuubi_with_zookeeper(
     assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail

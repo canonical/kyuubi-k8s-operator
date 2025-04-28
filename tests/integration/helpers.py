@@ -223,7 +223,9 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
     assert process.returncode == 0, f"Could not kill Kyuubi process with pid {kyuubi_pid}."
 
 
-async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
+async def is_entire_cluster_responding_requests(
+    ops_test: OpsTest, test_pod, username, password
+) -> bool:
     """Return whether the entire Kyuubi cluster is responding to requests from client."""
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
 
@@ -241,7 +243,17 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
         logger.info(f"Trying the {tries + 1}-th connection to see if entire cluster responds...")
         unique_id = get_random_name()
         query = f"SELECT '{unique_id}'"
-        pod_command = ["/opt/kyuubi/bin/beeline", "-u", jdbc_endpoint, "-e", query]
+        pod_command = [
+            "/opt/kyuubi/bin/beeline",
+            "-u",
+            jdbc_endpoint,
+            "-n",
+            username,
+            "-p",
+            password,
+            "-e",
+            query,
+        ]
         kubectl_command = [
             "kubectl",
             "exec",

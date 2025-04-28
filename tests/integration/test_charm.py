@@ -383,8 +383,23 @@ async def test_remove_zookeeper_relation(ops_test: OpsTest, charm_versions):
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
     )
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
 
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
 
 @pytest.mark.skip(reason="This tests need re-write and fixes on integration hub level")

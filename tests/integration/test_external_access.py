@@ -17,6 +17,7 @@ from .helpers import (
     check_status,
     deploy_minimal_kyuubi_setup,
     fetch_jdbc_endpoint,
+    find_leader_unit,
     is_entire_cluster_responding_requests,
     run_sql_test_against_jdbc_endpoint,
 )
@@ -74,10 +75,26 @@ async def test_default_deploy(
 
     # Run SQL tests against JDBC endpoint
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(
+        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint
+    )
+    assert await is_entire_cluster_responding_requests(
+        ops_test=ops_test, test_pod=test_pod, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -99,10 +116,27 @@ async def test_nodeport_service(
     assert_service_status(namespace=ops_test.model_name, service_type="NodePort")
 
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(
+        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint
+    )
+
+    assert await is_entire_cluster_responding_requests(
+        ops_test=ops_test, test_pod=test_pod, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -124,10 +158,27 @@ async def test_loadbalancer_service(
     assert_service_status(namespace=ops_test.model_name, service_type="LoadBalancer")
 
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(
+        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint
+    )
+
+    assert await is_entire_cluster_responding_requests(
+        ops_test=ops_test, test_pod=test_pod, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -149,10 +200,26 @@ async def test_clusterip_service(
     assert_service_status(namespace=ops_test.model_name, service_type="ClusterIP")
 
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(
+        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint
+    )
+    assert await is_entire_cluster_responding_requests(
+        ops_test=ops_test, test_pod=test_pod, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail
