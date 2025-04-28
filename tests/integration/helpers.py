@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import os
 import re
@@ -360,7 +361,7 @@ def get_cos_address(juju: jubilant.Juju) -> str:
     """Retrieve the URL where COS services are available."""
     task = juju.run("traefik/0", "show-proxied-endpoints")
     assert task.return_code == 0
-    return task.results["proxied-endpoints"]["traefik"]["url"]
+    return json.loads(task.results["proxied-endpoints"])["traefik"]["url"]
 
 
 def get_grafana_access(juju: jubilant.Juju) -> tuple[str, str]:
