@@ -120,7 +120,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "revision": 70,
                 "series": "jammy",
                 "alias": "zookeeper",
-                "num_units": 3,
+                "num_units": 1,
             }
         ),
         tls=TestCharm(
