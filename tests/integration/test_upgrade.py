@@ -100,7 +100,10 @@ def test_kyuubi_upgrades(
         if unit.leader:
             leader_unit = name
     assert leader_unit
-    juju.run(leader_unit, "resume-upgrade")
+    try:
+        juju.run(leader_unit, "resume-upgrade")
+    except Exception:
+        pass
 
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 

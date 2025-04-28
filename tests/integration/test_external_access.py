@@ -123,4 +123,10 @@ def test_invalid_service_type(
     logger.info("Changing expose-external to an invalid value for kyuubi-k8s charm...")
     juju.config(APP_NAME, {"expose-external": "invalid"})
 
-    juju.wait(lambda status: jubilant.all_error(status, APP_NAME))
+    juju.wait(
+        lambda status: {
+            status.apps[APP_NAME].units[unit].workload_status.current
+            for unit in status.apps[APP_NAME].units
+        }
+        == {"error"}
+    )

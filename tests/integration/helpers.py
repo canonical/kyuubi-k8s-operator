@@ -368,7 +368,7 @@ def get_grafana_access(juju: jubilant.Juju) -> tuple[str, str]:
     """Get Grafana URL and password."""
     task = juju.run("grafana/0", "get-admin-password")
     assert task.return_code == 0
-    return task.results["admin-password"]
+    return task.results["url"], task.results["admin-password"]
 
 
 def deploy_minimal_kyuubi_setup(

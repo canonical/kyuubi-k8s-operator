@@ -151,7 +151,7 @@ def test_prepare_metastore_with_invalid_schema(
         f"Deploying a new instance of postgresql-k8s charm with alias {INVALID_METASTORE_APP_NAME}..."
     )
     deploy_dict = charm_versions.postgres.deploy_dict()
-    deploy_dict.update({"application_name": INVALID_METASTORE_APP_NAME})
+    deploy_dict.update({"app": INVALID_METASTORE_APP_NAME})
     juju.deploy(**deploy_dict)
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
