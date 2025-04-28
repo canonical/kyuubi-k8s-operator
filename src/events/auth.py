@@ -78,12 +78,5 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     def _on_auth_db_relation_departed(self, event) -> None:
-        """Handle the event when the authentication database relation is departed.
-
-        Until this point, the relation data is still there and hence the credentials
-        can be fetched for one last time in order to remove authentication database.
-        """
+        """Handle the event when the authentication database relation is departed."""
         self.logger.info("Authentication database relation departed")
-        # TODO: I don't think we should be doing this, is it our responsibility?
-        # auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
-        # auth.remove_auth_db()

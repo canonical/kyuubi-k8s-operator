@@ -162,6 +162,7 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
         status="active",
         timeout=1000,
         idle_period=30,
+        raise_on_error=False,
     )
 
 

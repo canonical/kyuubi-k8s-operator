@@ -59,7 +59,11 @@ class KyuubiManager(WithLogging):
         # auth is mandatory
         if not auth_db_info:
             self.logger.info("Workload stopped because auth db is missing.")
-            self.workload.stop()
+            try:
+                self.workload.stop()
+            except Exception:
+                # Stopping on best effort basis for now
+                pass
             return
 
         # Restart workload only if some configuration has changed.
