@@ -38,6 +38,7 @@ class Status(Enum):
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
     MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
+    MISSING_AUTH_DB = BlockedStatus("Missing authentication database relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     INSUFFICIENT_CLUSTER_PERMISSIONS = BlockedStatus(

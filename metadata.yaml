@@ -43,21 +43,24 @@ peers:
     interface: upgrade
 
 requires:
-  metastore-db:
-    interface: postgresql_client
-    limit: 1
   auth-db:
     interface: postgresql_client
     limit: 1
   spark-service-account:
     interface: spark_service_account
     limit: 1
+  metastore-db:
+    interface: postgresql_client
+    limit: 1
+    optional: true
   zookeeper:
     interface: zookeeper
     limit: 1
+    optional: true
   logging:
     interface: loki_push_api
     limit: 1
+    optional: true
   certificates:
     interface: tls-certificates
     limit: 1

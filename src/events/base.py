@@ -59,6 +59,9 @@ class BaseEventHandler(Object, WithLogging):
         if not k8s_manager.is_service_account_valid():
             return Status.INVALID_SERVICE_ACCOUNT.value
 
+        if not self.context.auth_db:
+            return Status.MISSING_AUTH_DB.value
+
         metastore_manager = HiveMetastoreManager(self.workload)
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():
             return Status.INVALID_METASTORE_SCHEMA.value

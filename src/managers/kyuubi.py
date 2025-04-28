@@ -48,13 +48,19 @@ class KyuubiManager(WithLogging):
         set_zookeeper_none: bool = False,
         set_tls_none: bool = False,
         force_restart: bool = False,
-    ):
+    ) -> None:
         """Update Kyuubi service and restart it."""
         metastore_db_info = None if set_metastore_db_none else self.context.metastore_db
         auth_db_info = None if set_auth_db_none else self.context.auth_db
         service_account_info = None if set_service_account_none else self.context.service_account
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
         tls_info = None if set_tls_none else self.context.tls
+
+        # auth is mandatory
+        if not auth_db_info:
+            self.logger.info("Workload stopped because auth db is missing.")
+            self.workload.stop()
+            return
 
         # Restart workload only if some configuration has changed.
         if any(
