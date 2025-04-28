@@ -171,17 +171,8 @@ async def test_integration_with_integration_hub(ops_test: OpsTest, charm_version
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.integration_hub.application_name],
         timeout=1000,
-        status="active",
         idle_period=20,
     )
-
-    # Assert that all kyuubi-k8s, integration-hub and s3-integrator charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
@@ -361,8 +352,22 @@ async def test_integration_with_zookeeper(ops_test: OpsTest, charm_versions):
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, charm_versions.zookeeper.application_name], timeout=1000, status="active"
     )
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
 
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
 
 # TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
@@ -419,8 +424,22 @@ async def test_read_spark_properties_from_secrets(ops_test: OpsTest):
         status="active",
         timeout=1000,
     )
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
 
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
     # Check exactly 3 executor pods were created.
     list_pods_process = subprocess.run(

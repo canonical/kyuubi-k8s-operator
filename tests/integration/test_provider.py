@@ -16,10 +16,8 @@ from constants import (
     AUTHENTICATION_DATABASE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
 )
-from core.domain import Status
 
 from .helpers import (
-    check_status,
     deploy_minimal_kyuubi_setup,
     find_leader_unit,
     get_address,
@@ -55,42 +53,11 @@ async def test_deploy_minimal_kyuubi_setup(
             APP_NAME,
             charm_versions.integration_hub.application_name,
             charm_versions.s3.application_name,
+            charm_versions.auth_db.application_name,
         ],
         idle_period=20,
         status="active",
     )
-
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
-
-
-@pytest.mark.abort_on_fail
-async def test_enable_authentication(ops_test: OpsTest, charm_versions):
-    """Enable authentication for Kyuubi."""
-    logger.info("Deploying postgresql-k8s charm...")
-    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
-
-    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm over auth-db endpoint...")
-    await ops_test.model.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:auth-db")
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
-    )
-
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
 
 
 @pytest.mark.abort_on_fail
@@ -114,7 +81,7 @@ async def test_kyuubi_client_relation_joined(
 
     # Check number of users before integration
     # Fetch password for operator user from postgresql-k8s
-    postgres_unit = ops_test.model.applications[charm_versions.postgres.application_name].units[0]
+    postgres_unit = ops_test.model.applications[charm_versions.auth_db.application_name].units[0]
     action = await postgres_unit.run_action(
         action_name="get-password",
     )
@@ -183,7 +150,7 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, charm_versions)
 
     # Fetch host address of postgresql-k8s
     postgres_unit = await find_leader_unit(
-        ops_test, app_name=charm_versions.postgres.application_name
+        ops_test, app_name=charm_versions.auth_db.application_name
     )
     assert postgres_unit is not None
     postgresql_host_address = await get_address(ops_test, unit_name=postgres_unit.name)

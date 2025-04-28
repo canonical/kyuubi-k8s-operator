@@ -69,7 +69,22 @@ async def test_deploy_minimal_kyuubi_setup(
 @pytest.mark.abort_on_fail
 async def test_sql_queries_local_metastore(ops_test):
     """Test running SQL queries without an external metastore."""
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -128,8 +143,26 @@ async def test_integrate_external_metastore(ops_test, charm_versions):
 @pytest.mark.abort_on_fail
 async def test_sql_queries_external_metastore(ops_test):
     """Test running SQL queries with an external metastore."""
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
     assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, db_name=TEST_EXTERNAL_DB_NAME, table_name=TEST_EXTERNAL_TABLE_NAME
+        ops_test=ops_test,
+        username=username,
+        password=password,
+        db_name=TEST_EXTERNAL_DB_NAME,
+        table_name=TEST_EXTERNAL_TABLE_NAME,
     )
 
 
@@ -180,8 +213,22 @@ async def test_run_sql_queries_again_with_local_metastore(ops_test):
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
     )
     time.sleep(30)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
 
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
 
 async def test_prepare_metastore_with_invalid_schema(ops_test, charm_versions):
@@ -301,11 +348,29 @@ async def test_integrate_metastore_with_valid_schema_again(ops_test, charm_versi
 @pytest.mark.abort_on_fail
 async def test_read_write_with_valid_schema_metastore_again(ops_test):
     """Test whether previously written data can be read as well as new data can be written."""
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
     assert await validate_sql_queries_with_kyuubi(
         ops_test=ops_test,
+        username=username,
+        password=password,
         query_lines=[
             f"USE {TEST_EXTERNAL_DB_NAME};",
             f"SELECT * FROM {TEST_EXTERNAL_TABLE_NAME};",
         ],
     )
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )

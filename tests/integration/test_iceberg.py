@@ -15,6 +15,7 @@ from core.domain import Status
 from .helpers import (
     check_status,
     deploy_minimal_kyuubi_setup,
+    find_leader_unit,
     get_address,
 )
 
@@ -51,23 +52,28 @@ async def test_deploy_kyuubi_setup(
         status="active",
     )
 
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
-
 
 @pytest.mark.abort_on_fail
 async def test_iceberg_with_iceberg_catalog(ops_test):
     """Test Iceberg capabilities using the `iceberg` catalog created by default."""
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
 
     # Put some load by executing some Kyuubi SQL queries
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         cursor.execute("USE iceberg;")
@@ -108,8 +114,21 @@ async def test_iceberg_external_metastore(ops_test, charm_versions):
 
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
 
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         cursor.execute("USE iceberg;")
@@ -152,7 +171,20 @@ async def test_disconnect_and_reconnect_external_metastore(ops_test, charm_versi
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     # Verify that the previously inserted rows are readable
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
@@ -170,7 +202,20 @@ async def test_normal_table_format_with_iceberg_catalog(ops_test):
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     # Verify that the data can be read and written using default (non-iceberg) table format
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
@@ -201,8 +246,21 @@ async def test_iceberg_with_spark_catalog(ops_test):
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
     # Put some load by executing some Kyuubi SQL queries
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         cursor.execute("USE spark_catalog;")
@@ -221,7 +279,20 @@ async def test_reading_table_written_by_other_catalog(ops_test):
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     # Verify that the previously inserted rows are readable
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
@@ -238,7 +309,20 @@ async def test_normal_table_format_with_iceberg_enabled_spark_catalog(ops_test):
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
 
     # Verify that the data can be read and written using default (non-iceberg) table format
     with kyuubi_client.connection as conn, conn.cursor() as cursor:

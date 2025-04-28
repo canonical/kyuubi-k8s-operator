@@ -17,6 +17,7 @@ from .helpers import (
     all_prometheus_exporters_data,
     check_status,
     deploy_minimal_kyuubi_setup,
+    find_leader_unit,
     get_cos_address,
     published_grafana_dashboards,
     published_loki_logs,
@@ -72,7 +73,22 @@ async def test_build_and_deploy(
 @pytest.mark.abort_on_fail
 async def test_run_some_sql_queries(ops_test):
     """Test running SQL queries without an external metastore."""
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail

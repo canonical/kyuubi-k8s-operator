@@ -11,11 +11,9 @@ from pytest_operator.plugin import OpsTest
 from spark_test.core.kyuubi import KyuubiClient
 from spark_test.utils import get_spark_executors
 
-from core.domain import Status
-
 from .helpers import (
-    check_status,
     deploy_minimal_kyuubi_setup,
+    find_leader_unit,
     get_address,
     juju_sleep,
 )
@@ -53,14 +51,6 @@ async def test_deploy_kyuubi_setup(
         status="active",
     )
 
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
-
 
 @pytest.mark.abort_on_fail
 async def test_dynamic_allocation_disabled(ops_test):
@@ -68,8 +58,21 @@ async def test_dynamic_allocation_disabled(ops_test):
     host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
     port = 10009
 
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
     # Put some load by executing some Kyuubi SQL queries
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
     db = kyuubi_client.get_database("default")
     table = db.create_table(name="table1", schema=[("id", int)])
     table.insert([55])
@@ -102,8 +105,21 @@ async def test_dynamic_allocation_enabled(ops_test):
     host = await get_address(ops_test, unit_name="kyuubi-k8s/0")
     port = 10009
 
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
     # Put some load by executing some Kyuubi SQL queries
-    kyuubi_client = KyuubiClient(host=host, port=int(port))
+    kyuubi_client = KyuubiClient(host=host, port=int(port), username=username, password=password)
     db = kyuubi_client.get_database("default")
     table = db.create_table(name="table2", schema=[("id", int)])
     table.insert([55])
