@@ -62,7 +62,7 @@ def test_integrate_external_metastore(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=5
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=10
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
@@ -70,7 +70,7 @@ def test_integrate_external_metastore(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=10
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=20
     )
 
     postgres_leader = f"{charm_versions.postgres.app}/0"
@@ -109,7 +109,7 @@ def test_remove_external_metastore(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app)
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=10
     )
 
     postgres_leader = f"{charm_versions.postgres.app}/0"
@@ -155,13 +155,17 @@ def test_prepare_metastore_with_invalid_schema(
     juju.deploy(**deploy_dict)
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME))
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME), delay=10
+    )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
     juju.integrate(INVALID_METASTORE_APP_NAME, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME))
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME), delay=20
+    )
 
     # By this time, the postgres database will have been initialized with the Hive metastore schema
     # Now remove the relation to mutate the schema externally
@@ -171,7 +175,7 @@ def test_prepare_metastore_with_invalid_schema(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME)
+        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME), delay=10
     )
 
     # Now attempt to mutate the schema
@@ -226,7 +230,7 @@ def test_integrate_metastore_with_valid_schema_again(
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app)
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app), delay=10
     )
 
     # Assert that postgresql-k8s charm is in active state

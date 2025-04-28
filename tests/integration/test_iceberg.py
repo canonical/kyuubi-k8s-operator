@@ -74,7 +74,7 @@ def test_iceberg_external_metastore(
     juju.integrate(charm_versions.postgres.app, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    status = juju.wait(jubilant.all_active, delay=5)
+    status = juju.wait(jubilant.all_active, delay=20)
 
     host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009
@@ -100,13 +100,13 @@ def test_disconnect_and_reconnect_external_metastore(
     juju.remove_relation(f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.app}:database")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    juju.wait(jubilant.all_active, delay=5)
+    juju.wait(jubilant.all_active, delay=10)
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm again...")
     juju.integrate(charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    status = juju.wait(jubilant.all_active, delay=5)
+    status = juju.wait(jubilant.all_active, delay=20)
 
     host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009

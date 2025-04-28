@@ -80,7 +80,7 @@ def test_dynamic_allocation_enabled(juju: jubilant.Juju) -> None:
     juju.config(APP_NAME, {"enable-dynamic-allocation": "true"})
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME))
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
     host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
     port = 10009

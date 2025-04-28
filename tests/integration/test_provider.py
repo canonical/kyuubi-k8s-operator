@@ -67,7 +67,7 @@ def test_enable_authentication(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
         lambda status: jubilant.all_active(status, APP_NAME, charm_versions.postgres.app),
-        delay=10,
+        delay=20,
     )
 
 
@@ -80,7 +80,9 @@ def test_kyuubi_client_relation_joined(
     juju.deploy(test_charm, app=TEST_CHARM_NAME, num_units=1)
 
     logger.info("Waiting for test charm to be idle...")
-    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME))
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=5
+    )
 
     # Check number of users before integration
     # Fetch password for operator user from postgresql-k8s

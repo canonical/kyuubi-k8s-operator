@@ -63,8 +63,7 @@ def test_enable_authentication(
         lambda status: jubilant.all_active(
             status, APP_NAME, charm_versions.postgres.application_name
         ),
-        timeout=600,
-        delay=3,
+        delay=10,
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
@@ -75,8 +74,7 @@ def test_enable_authentication(
         lambda status: jubilant.all_active(
             status, APP_NAME, charm_versions.postgres.application_name
         ),
-        timeout=300,
-        delay=10,
+        delay=20,
     )
 
     postgres_leader = f"{charm_versions.postgres.application_name}/0"
@@ -163,7 +161,7 @@ def test_remove_authentication(
             status, APP_NAME, charm_versions.postgres.application_name
         ),
         timeout=120,
-        delay=3,
+        delay=10,
     )
 
     assert validate_sql_queries_with_kyuubi(juju=juju)
