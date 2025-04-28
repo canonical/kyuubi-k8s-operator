@@ -85,5 +85,5 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         """
         self.logger.info("Authentication database relation departed")
         # TODO: I don't think we should be doing this, is it our responsibility?
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
-        auth.remove_auth_db()
+        # auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        # auth.remove_auth_db()
