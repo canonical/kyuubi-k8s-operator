@@ -22,7 +22,7 @@ class AuthenticationManager(WithLogging):
     DEFAULT_ADMIN_USERNAME = "admin"
     AUTHENTICATION_TABLE_NAME = "kyuubi_users"
 
-    def __init__(self, db_info: DatabaseConnectionInfo = None) -> None:
+    def __init__(self, db_info: DatabaseConnectionInfo) -> None:
         super().__init__()
         self.database = DatabaseManager(db_info=db_info)
 
@@ -86,7 +86,7 @@ class AuthenticationManager(WithLogging):
         password = results[0][0]
         return password
 
-    def set_password(self, username: str, password: str) -> str:
+    def set_password(self, username: str, password: str) -> None:
         """Set a new password for the given username."""
         query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = %s WHERE username = %s"
         vars = (

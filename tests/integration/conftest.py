@@ -65,6 +65,7 @@ class TestCharm(BaseModel):
 class IntegrationTestsCharms(BaseModel):
     s3: TestCharm
     postgres: TestCharm
+    auth_db: TestCharm
     integration_hub: TestCharm
     zookeeper: TestCharm
     tls: TestCharm
@@ -92,6 +93,16 @@ def charm_versions() -> IntegrationTestsCharms:
                 "trust": True,
             }
         ),
+        auth_db=TestCharm(
+            **{
+                "name": "postgresql-k8s",
+                "channel": "14/stable",
+                "revision": 281,
+                "series": "jammy",
+                "alias": "auth-db",
+                "trust": True,
+            }
+        ),
         integration_hub=TestCharm(
             **{
                 "name": "spark-integration-hub-k8s",
@@ -109,7 +120,7 @@ def charm_versions() -> IntegrationTestsCharms:
                 "revision": 70,
                 "series": "jammy",
                 "alias": "zookeeper",
-                "num_units": 3,
+                "num_units": 1,
             }
         ),
         tls=TestCharm(
@@ -222,7 +233,19 @@ def test_pod(ops_test):
 
 
 @pytest.fixture(scope="module")
-async def kyuubi_charm(ops_test):
-    logger.info("Building charm...")
-    charm = await ops_test.build_charm(".")
-    return charm
+def kyuubi_charm() -> Path:
+    """Path to the packed integration hub charm."""
+    if not (path := next(iter(Path.cwd().glob("*.charm")), None)):
+        raise FileNotFoundError("Could not find packed kyuubi charm.")
+
+    return path
+
+
+@pytest.fixture(scope="module")
+def test_charm() -> Path:
+    if not (
+        path := next(iter((Path.cwd() / "tests/integration/app-charm").glob("*.charm")), None)
+    ):
+        raise FileNotFoundError("Could not find packed test charm.")
+
+    return path

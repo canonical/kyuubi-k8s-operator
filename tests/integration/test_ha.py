@@ -32,8 +32,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -50,11 +48,11 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy_cluster_with_no_zookeeper(
-    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
-):
+    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+) -> None:
     await deploy_minimal_kyuubi_setup(
         ops_test=ops_test,
-        kyuubi_charm=kyuubi_charm,
+        kyuubi_charm=str(kyuubi_charm),
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
@@ -81,7 +79,21 @@ async def test_build_and_deploy_cluster_with_no_zookeeper(
 
 @pytest.mark.abort_on_fail
 async def test_standalone_kyuubi_works_without_zookeeper(ops_test: OpsTest, test_pod):
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -148,10 +160,24 @@ async def test_zookeeper_relation_with_three_units_of_kyuubi(
     assert set(active_servers) == set(expected_servers)
 
     # Run SQL test against the cluster
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 async def test_pod_reschedule(ops_test: OpsTest, test_pod, charm_versions):
@@ -176,10 +202,24 @@ async def test_pod_reschedule(ops_test: OpsTest, test_pod, charm_versions):
     assert len(active_servers) == 3
 
     # Run SQL test against the cluster
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
@@ -188,9 +228,9 @@ async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
 
     # Get the current PID of Kyuubi process
     kyuubi_pid_old = await get_kyuubi_pid(ops_test, leader_unit)
-    assert (
-        kyuubi_pid_old is not None
-    ), f"No Kyuubi process found running in the unit {leader_unit.name}"
+    assert kyuubi_pid_old is not None, (
+        f"No Kyuubi process found running in the unit {leader_unit.name}"
+    )
 
     # Kill Kyuubi process inside the leader unit
     await kill_kyuubi_process(ops_test, leader_unit, kyuubi_pid_old)
@@ -217,10 +257,24 @@ async def test_kill_kyuubi_process(ops_test: OpsTest, test_pod, charm_versions):
     assert len(active_servers) == 3
 
     # Run SQL test against the cluster
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -248,10 +302,23 @@ async def test_scale_down_kyuubi_from_three_to_two_with_zookeeper(
     assert len(active_servers) == 2
 
     # Run SQL test against the cluster
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -278,10 +345,24 @@ async def test_scale_down_to_standalone_kyuubi_with_zookeeper(
     assert len(active_servers) == 1
 
     # Run SQL test against the cluster
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     # Assert the entire cluster is usable
-    assert await is_entire_cluster_responding_requests(ops_test, test_pod)
+    assert await is_entire_cluster_responding_requests(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -304,4 +385,18 @@ async def test_remove_zookeeper_relation_on_single_unit(
     )
 
     # Run SQL test against the standalone Kyuubi
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)

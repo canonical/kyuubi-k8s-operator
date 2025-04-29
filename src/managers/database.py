@@ -5,7 +5,6 @@
 
 """Database connection manager."""
 
-
 import psycopg2
 
 from constants import (
@@ -18,10 +17,10 @@ from utils.logging import WithLogging
 class DatabaseManager(WithLogging):
     """Manager class encapsulating various database operations."""
 
-    def __init__(self, db_info: DatabaseConnectionInfo):
+    def __init__(self, db_info: DatabaseConnectionInfo) -> None:
         self.db_info = db_info
 
-    def execute(self, query: str, vars=None, dbname: str = None) -> tuple[bool, list]:
+    def execute(self, query: str, vars=None, dbname: str | None = None) -> tuple[bool, list]:
         """Execute a SQL query by connecting to a given database.
 
         Args:

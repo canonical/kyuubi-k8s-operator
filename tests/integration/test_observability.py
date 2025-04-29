@@ -17,6 +17,7 @@ from .helpers import (
     all_prometheus_exporters_data,
     check_status,
     deploy_minimal_kyuubi_setup,
+    find_leader_unit,
     get_cos_address,
     published_grafana_dashboards,
     published_loki_logs,
@@ -29,16 +30,14 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
-    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
-):
+    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+) -> None:
     """Deploy minimal Kyuubi deployments."""
     """Test the status of default managed K8s service when Kyuubi is deployed."""
     await deploy_minimal_kyuubi_setup(
@@ -74,7 +73,22 @@ async def test_build_and_deploy(
 @pytest.mark.abort_on_fail
 async def test_run_some_sql_queries(ops_test):
     """Test running SQL queries without an external metastore."""
-    assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+    assert await validate_sql_queries_with_kyuubi(
+        ops_test=ops_test, username=username, password=password
+    )
 
 
 @pytest.mark.abort_on_fail
@@ -148,6 +162,7 @@ async def test_kyuubi_cos_monitoring_setup(ops_test: OpsTest):
         status="active",
         timeout=1000,
         idle_period=30,
+        raise_on_error=False,
     )
 
 
@@ -156,7 +171,6 @@ async def test_kyuubi_cos_data_published(ops_test: OpsTest):
     # We should leave time for Prometheus data to be published
     for attempt in Retrying(stop=stop_after_attempt(10), wait=wait_fixed(60), reraise=True):
         with attempt:
-
             # Data got published to Prometheus
             logger.info("Checking if Prometheus data is being published...")
             cos_address = await get_cos_address(ops_test)

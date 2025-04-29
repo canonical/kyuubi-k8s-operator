@@ -4,6 +4,10 @@
 
 """Refresh related event handlers."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from charms.data_platform_libs.v0.upgrade import (
     ClusterNotReadyError,
     DataUpgrade,
@@ -14,16 +18,18 @@ from charms.data_platform_libs.v0.upgrade import (
 from lightkube.core.client import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.apps_v1 import StatefulSet
-from ops import CharmBase, ModelError
+from ops import ModelError
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_random
-from typing_extensions import override
 
 from constants import KYUUBI_CONTAINER_NAME
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
 from managers.kyuubi import KyuubiManager
+
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
 
 
 class KyuubiDependencyModel(BaseModel):
@@ -37,12 +43,12 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
 
     def __init__(
         self,
-        charm: CharmBase,
+        charm: KyuubiCharm,
         context: Context,
-        workload: KyuubiWorkloadBase,
+        workload: KyuubiWorkload,
         dependency_model: BaseModel,
-    ):
-        super().__init__(charm, dependency_model=dependency_model, substrate="k8s")
+    ) -> None:
+        super().__init__(charm, dependency_model=dependency_model, substrate="k8s")  # type: ignore
 
         self.charm = charm
         self.context = context
@@ -91,7 +97,6 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
         self.logger.info("Post upgrade checks")
         self.pre_upgrade_check()
 
-    @override
     def pre_upgrade_check(self) -> None:
         """Pre-upgrade-tests function."""
         self.logger.info("Post upgrade check")
@@ -100,7 +105,6 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
         if not self.workload.active():
             raise ClusterNotReadyError(message=default_message, cause="Cluster is not healthy")
 
-    @override
     def log_rollback_instructions(self) -> None:
         """Return rollback instructions."""
         self.logger.critical(
@@ -114,7 +118,6 @@ class UpgradeEvents(DataUpgrade, BaseEventHandler):
         )
         return
 
-    @override
     def _set_rolling_update_partition(self, partition: int) -> None:
         """Set the rolling update partition to a specific value."""
         try:

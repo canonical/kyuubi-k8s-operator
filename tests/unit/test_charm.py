@@ -109,9 +109,10 @@ def test_service_unavailable(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
 ) -> None:
     state = State(
-        relations=[spark_service_account_relation],
+        relations=[spark_service_account_relation, auth_db_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
@@ -142,9 +143,10 @@ def test_valid_on_service_account(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
 ) -> None:
     state = State(
-        relations=[spark_service_account_relation],
+        relations=[spark_service_account_relation, auth_db_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(
@@ -220,10 +222,11 @@ def test_zookeeper_relation_joined(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
     zookeeper_relation: Relation,
 ):
     state = State(
-        relations=[spark_service_account_relation, zookeeper_relation],
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(kyuubi_context.on.relation_changed(zookeeper_relation), state)
@@ -268,17 +271,21 @@ def test_zookeeper_relation_broken(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
     zookeeper_relation: Relation,
 ) -> None:
     state = State(
-        relations=[spark_service_account_relation, zookeeper_relation],
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     state_after_relation_changed = kyuubi_context.run(
         kyuubi_context.on.relation_changed(zookeeper_relation), state
     )
     state_after_relation_broken = kyuubi_context.run(
-        kyuubi_context.on.relation_broken(zookeeper_relation), state_after_relation_changed
+        kyuubi_context.on.relation_broken(
+            state_after_relation_changed.get_relation(zookeeper_relation.id)
+        ),
+        state_after_relation_changed,
     )
     assert state_after_relation_broken.unit_status == Status.ACTIVE.value
 
@@ -322,7 +329,9 @@ def test_spark_service_account_broken(
         kyuubi_context.on.relation_changed(spark_service_account_relation), initial_state
     )
     state_after_relation_broken = kyuubi_context.run(
-        kyuubi_context.on.relation_broken(spark_service_account_relation),
+        kyuubi_context.on.relation_broken(
+            state_after_relation_changed.get_relation(spark_service_account_relation.id)
+        ),
         state_after_relation_changed,
     )
 
@@ -397,9 +406,10 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
 ) -> None:
     state = State(
-        relations=[spark_service_account_relation],
+        relations=[spark_service_account_relation, auth_db_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
@@ -434,9 +444,10 @@ def test_spark_property_priorities(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
 ):
     state = State(
-        relations=[spark_service_account_relation],
+        relations=[spark_service_account_relation, auth_db_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(

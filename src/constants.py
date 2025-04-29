@@ -49,4 +49,4 @@ DEPENDENCIES = {
     },
 }
 
-SECRETS_APP = []
+SECRETS_APP: list[str] = []

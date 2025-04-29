@@ -4,22 +4,28 @@
 
 """Zookeeper related event handlers."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerEventHandlers
-from ops import CharmBase
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 
 from constants import ZOOKEEPER_REL
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
+
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
 
 
 class ZookeeperEvents(BaseEventHandler, WithLogging):
     """Class implementing Zookeeper integration event hooks."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload) -> None:
         super().__init__(charm, "zookeeper")
 
         self.charm = charm

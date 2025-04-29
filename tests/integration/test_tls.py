@@ -24,6 +24,7 @@ from core.domain import Status
 from .helpers import (
     assert_service_status,
     deploy_minimal_kyuubi_setup,
+    find_leader_unit,
     get_address,
     run_command_in_pod,
     run_sql_test_against_jdbc_endpoint,
@@ -55,8 +56,8 @@ def check_status(entity: Application | Unit, status: StatusBase):
 @pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
-    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
-):
+    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+) -> None:
     """Deploy minimal Kyuubi deployments."""
     """Test the status of default managed K8s service when Kyuubi is deployed."""
     await deploy_minimal_kyuubi_setup(
@@ -106,8 +107,21 @@ async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod)
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
 
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
@@ -228,9 +242,22 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
 
     assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod, jdbc_endpoint=jdbc_endpoint_ssl
+        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint_ssl
     )
 
 
@@ -358,8 +385,22 @@ async def test_loadbalancer_service(
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
     assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod, jdbc_endpoint=jdbc_endpoint_ssl
+        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint_ssl
     )
 
 

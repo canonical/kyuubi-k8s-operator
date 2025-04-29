@@ -4,26 +4,31 @@
 
 """Kyuubi related event handlers."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import ops
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops import SecretChangedEvent
 
 from constants import PEER_REL
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
     """Class implementing Kyuubi related event hooks."""
 
-    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload) -> None:
         super().__init__(charm, "kyuubi")
 
         self.charm = charm
@@ -103,7 +108,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if sans_ip_changed or sans_dns_changed:
             self.logger.info(
                 (
-                    f'SERVER {self.charm.unit.name.split("/")[1]} updating certificate SANs - '
+                    f"SERVER {self.charm.unit.name.split('/')[1]} updating certificate SANs - "
                     f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
                     f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
                     f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
@@ -160,7 +165,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if event.secret.label == self.context.cluster.data_interface._generate_secret_label(
             PEER_REL,
             self.context.cluster.relation.id,
-            "extra",  # type:ignore noqa  -- Changes with the https://github.com/canonical/data-platform-libs/issues/124
+            "extra",  # type: ignore
+            # Changes with the https://github.com/canonical/data-platform-libs/issues/124
         ):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
 

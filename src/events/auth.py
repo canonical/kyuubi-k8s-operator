@@ -4,24 +4,31 @@
 
 """Authentication related event handlers."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
     DatabaseRequirerEventHandlers,
 )
-from ops import CharmBase
 
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.domain import DatabaseConnectionInfo
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class AuthenticationEvents(BaseEventHandler, WithLogging):
     """Class implementing PostgreSQL metastore event hooks."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload) -> None:
         super().__init__(charm, "s3")
 
         self.charm = charm
@@ -48,8 +55,12 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the event when authentication database is created."""
+        if not (auth_db := self.context.auth_db) or auth_db is None:
+            event.defer()
+            return
+
         self.logger.info("Authentication database created...")
-        auth = AuthenticationManager(self.context.auth_db)
+        auth = AuthenticationManager(auth_db)
         auth.prepare_auth_db()
         self.kyuubi.update()
 
@@ -67,11 +78,5 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
 
     @compute_status
     def _on_auth_db_relation_departed(self, event) -> None:
-        """Handle the event when the authentication database relation is departed.
-
-        Until this point, the relation data is still there and hence the credentials
-        can be fetched for one last time in order to remove authentication database.
-        """
+        """Handle the event when the authentication database relation is departed."""
         self.logger.info("Authentication database relation departed")
-        auth = AuthenticationManager(self.context.auth_db)
-        auth.remove_auth_db()

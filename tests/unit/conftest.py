@@ -10,6 +10,7 @@ from ops.testing import Container, Context, Model, Mount, Relation
 from charm import KyuubiCharm
 from constants import (
     KYUUBI_CONTAINER_NAME,
+    POSTGRESQL_AUTH_DB_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
 )
@@ -72,6 +73,24 @@ def spark_service_account_relation():
         remote_app_name="integration-hub",
         local_app_data={"service-account": "spark:kyuubi", "spark-properties": "{'foo':'bar'}"},
         remote_app_data={"service-account": "spark:kyuubi", "spark-properties": '{"foo":"bar"}'},
+    )
+
+
+@pytest.fixture
+def auth_db_relation() -> Relation:
+    return Relation(
+        endpoint=POSTGRESQL_AUTH_DB_REL,
+        interface="postgresql_client",
+        remote_app_name="kyuubi-users",
+        local_app_data={
+            "database": "kyuubi-users",
+        },
+        remote_app_data={
+            "database": "myappB",
+            "endpoints": "postgresql-k8s-primary:5432",
+            "username": "kyuubi",
+            "password": "pwd",
+        },
     )
 
 

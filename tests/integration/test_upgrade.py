@@ -13,6 +13,7 @@ from core.domain import Status
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
+    find_leader_unit,
     get_active_kyuubi_servers_list,
     run_sql_test_against_jdbc_endpoint,
 )
@@ -21,9 +22,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
-COS_AGENT_APP_NAME = "grafana-agent-k8s"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -89,11 +87,27 @@ async def test_build_and_deploy(ops_test: OpsTest, charm_versions, s3_bucket_and
     assert set(active_servers) == set(expected_servers)
 
     # Run SQL test against the cluster
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
 
 @pytest.mark.abort_on_fail
-async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod, charm_versions):
+async def test_kyuubi_upgrades(
+    ops_test: OpsTest, kyuubi_charm: Path, test_pod, charm_versions
+) -> None:
     """Test the correct upgrade of a Kyuubi cluster."""
     # Retrieve the image to use from metadata.yaml
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -130,7 +144,22 @@ async def test_kyuubi_upgrades(ops_test: OpsTest, kyuubi_charm, test_pod, charm_
     )
 
     # test that upgraded Kyuubi cluster works and all units are available
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod)
+
+    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
+    assert kyuubi_leader is not None
+
+    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
+    action = await kyuubi_leader.run_action(
+        action_name="get-password",
+    )
+    result = await action.wait()
+
+    password = result.results.get("password")
+    logger.info(f"Fetched password: {password}")
+
+    username = "admin"
+
+    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
 
     active_servers = await get_active_kyuubi_servers_list(
         ops_test, zookeeper_name=charm_versions.zookeeper.application_name

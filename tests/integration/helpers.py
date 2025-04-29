@@ -28,8 +28,6 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 ZOOKEEPER_NAME = "zookeeper-k8s"
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 ZOOKEEPER_PORT = 2181
 
 PROCESS_NAME_PATTERN = "org.apache.kyuubi.server.KyuubiServer"
@@ -74,7 +72,9 @@ async def fetch_jdbc_endpoint(ops_test):
     return jdbc_endpoint
 
 
-async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_endpoint=None):
+async def run_sql_test_against_jdbc_endpoint(
+    ops_test: OpsTest, test_pod, username, password, jdbc_endpoint=None
+):
     """Verify the JDBC endpoint exposed by the charm with some SQL queries."""
     if jdbc_endpoint is None:
         jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
@@ -92,6 +92,8 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_e
             jdbc_endpoint,
             get_random_name(),
             get_random_name(),
+            username,
+            password,
         ],
         capture_output=True,
     )
@@ -188,9 +190,9 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
         "aux",
     ]
     process = subprocess.run(command, capture_output=True, check=True)
-    assert (
-        process.returncode == 0
-    ), f"Command: {command} returned with return code {process.returncode}"
+    assert process.returncode == 0, (
+        f"Command: {command} returned with return code {process.returncode}"
+    )
 
     for line in process.stdout.decode().splitlines():
         match = re.search(re.escape(PROCESS_NAME_PATTERN), line)
@@ -221,7 +223,9 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
     assert process.returncode == 0, f"Could not kill Kyuubi process with pid {kyuubi_pid}."
 
 
-async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
+async def is_entire_cluster_responding_requests(
+    ops_test: OpsTest, test_pod, username, password
+) -> bool:
     """Return whether the entire Kyuubi cluster is responding to requests from client."""
     jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
 
@@ -239,7 +243,17 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
         logger.info(f"Trying the {tries + 1}-th connection to see if entire cluster responds...")
         unique_id = get_random_name()
         query = f"SELECT '{unique_id}'"
-        pod_command = ["/opt/kyuubi/bin/beeline", "-u", jdbc_endpoint, "-e", query]
+        pod_command = [
+            "/opt/kyuubi/bin/beeline",
+            "-u",
+            jdbc_endpoint,
+            "-n",
+            username,
+            "-p",
+            password,
+            "-e",
+            query,
+        ]
         kubectl_command = [
             "kubectl",
             "exec",
@@ -432,7 +446,7 @@ async def get_address(ops_test: OpsTest, unit_name: str) -> str:
 
 async def deploy_minimal_kyuubi_setup(
     ops_test: OpsTest,
-    kyuubi_charm: str,
+    kyuubi_charm: str | Path,
     charm_versions,
     s3_bucket_and_creds,
     trust: bool = True,
@@ -548,12 +562,19 @@ async def deploy_minimal_kyuubi_setup(
         idle_period=20,
         status="active",
     )
-    logger.info("Waiting for kyuubi charm to be idle...")
+
+    await ops_test.model.deploy(**charm_versions.auth_db.deploy_dict())
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-        ],
-        idle_period=20,
+        apps=[charm_versions.auth_db.application_name], timeout=1000, status="active"
+    )
+
+    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
+    await ops_test.model.integrate(charm_versions.auth_db.application_name, f"{APP_NAME}:auth-db")
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME, charm_versions.auth_db.application_name], timeout=1000, idle_period=20
     )
 
     if integrate_zookeeper:

@@ -20,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 
 
 def check_status(entity: Application | Unit, status: StatusBase):
@@ -38,8 +36,8 @@ def check_status(entity: Application | Unit, status: StatusBase):
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
-    ops_test: OpsTest, kyuubi_charm, charm_versions, s3_bucket_and_creds
-):
+    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+) -> None:
     await deploy_minimal_kyuubi_setup(
         ops_test=ops_test,
         kyuubi_charm=kyuubi_charm,
@@ -72,7 +70,6 @@ async def test_build_and_deploy(
 
 @pytest.mark.abort_on_fail
 async def test_provide_clusterwide_trust_permissions(ops_test):
-
     # Add cluster-wisde trust permission on the application
     await ops_test.juju("trust", APP_NAME, "--scope=cluster")
 

@@ -28,6 +28,9 @@ class Endpoint:
     host: str
     port: int
 
+    def __str__(self) -> str:  # noqa: D105
+        return f"{self.host}:{self.port}"
+
 
 class DNSEndpoint(Endpoint):
     """DNS endpoint type."""
@@ -95,7 +98,7 @@ class ServiceManager(WithLogging):
     @functools.cache
     def get_node(self, unit_name: str) -> Node:
         """Return the node for the provided unit name."""
-        node_name = self.get_pod(unit_name).spec.nodeName
+        node_name: str = self.get_pod(unit_name).spec.nodeName  # type: ignore
         return self.lightkube_agent.get(
             res=Node,
             name=node_name,
@@ -218,8 +221,9 @@ class ServiceManager(WithLogging):
         }[expose_external]
 
         existing_service = self.get_service()
+
         if existing_service is not None:
-            if _ServiceType(existing_service.spec.type) == desired_service_type:
+            if _ServiceType(existing_service.spec.type) == desired_service_type:  # type: ignore
                 self.logger.info(
                     f"Kyuubi is already exposed on a service of type {desired_service_type}."
                 )
@@ -230,7 +234,8 @@ class ServiceManager(WithLogging):
         pod0 = self.get_pod(f"{self.app_name}/0")
 
         self.create_service(
-            service_type=desired_service_type, owner_references=pod0.metadata.ownerReferences
+            service_type=desired_service_type,
+            owner_references=pod0.metadata.ownerReferences,  # type: ignore
         )
 
     def get_node_ip(self, pod_name: str) -> str:

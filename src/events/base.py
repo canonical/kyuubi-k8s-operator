@@ -13,7 +13,7 @@ from ops import EventBase, Object, StatusBase
 
 from core.context import Context
 from core.domain import Status
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from managers.hive_metastore import HiveMetastoreManager
 from managers.k8s import K8sManager
 from managers.service import ServiceManager
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 class BaseEventHandler(Object, WithLogging):
     """Base class for all Event Handler classes in the Spark Integration Hub."""
 
-    workload: KyuubiWorkloadBase
+    workload: KyuubiWorkload
     charm: KyuubiCharm
     context: Context
 
@@ -59,6 +59,9 @@ class BaseEventHandler(Object, WithLogging):
         if not k8s_manager.is_service_account_valid():
             return Status.INVALID_SERVICE_ACCOUNT.value
 
+        if not self.context.auth_db:
+            return Status.MISSING_AUTH_DB.value
+
         metastore_manager = HiveMetastoreManager(self.workload)
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():
             return Status.INVALID_METASTORE_SCHEMA.value
@@ -84,7 +87,7 @@ class BaseEventHandler(Object, WithLogging):
 
 
 def compute_status(
-    hook: Callable[[BaseEventHandler, EventBase], None],
+    hook: Callable,
 ) -> Callable[[BaseEventHandler, EventBase], None]:
     """Decorator to automatically compute statuses at the end of the hook."""
 
@@ -101,7 +104,7 @@ def compute_status(
 
 
 def defer_when_not_ready(
-    hook: Callable[[BaseEventHandler, EventBase], None],
+    hook: Callable,
 ) -> Callable[[BaseEventHandler, EventBase], None]:
     """Decorator to defer hook is workload is not ready."""
 
