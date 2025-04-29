@@ -127,3 +127,20 @@ async def test_set_password_action(ops_test: OpsTest):
     assert await validate_sql_queries_with_kyuubi(
         ops_test=ops_test, username=username, password=new_password
     )
+
+
+@pytest.mark.abort_on_fail
+async def test_remove_authentication(ops_test: OpsTest, charm_versions):
+    """Test that charm is stopped when authentication is disabled."""
+    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s over auth-db endpoint...")
+    await ops_test.model.applications[APP_NAME].remove_relation(
+        f"{APP_NAME}:auth-db", f"{charm_versions.auth_db.application_name}:database"
+    )
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME], timeout=1000, status="blocked", idle_period=10
+    )
+
+    with pytest.raises(TTransportException):
+        assert await validate_sql_queries_with_kyuubi(ops_test=ops_test)
