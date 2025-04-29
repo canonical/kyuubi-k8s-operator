@@ -6,14 +6,16 @@ import logging
 import subprocess
 from pathlib import Path
 from string import Template
-from typing import Optional
+from typing import Iterable, cast
 
 import boto3
 import boto3.session
+import jubilant
 import pytest
 import yaml
 from botocore.client import Config
-from pydantic import BaseModel
+
+from .types import IntegrationTestsCharms, TestCharm
 
 logger = logging.getLogger(__name__)
 
@@ -26,112 +28,76 @@ TEST_SERVICE_ACCOUNT = "kyuubi-test"
 TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
 
 
-class TestCharm(BaseModel):
-    """An abstraction of metadata of a charm to be deployed.
+@pytest.fixture(scope="module")
+def juju(request: pytest.FixtureRequest):
+    keep_models = bool(request.config.getoption("--keep-models"))
 
-    Attrs:
-        name: str, representing the charm to be deployed
-        channel: str, representing the channel to be used
-        series: str, representing the series of the system for the container where the charm
-            is deployed to
-        num_units: int, number of units for the deployment
-        alias: str (Optional), alias to be used for the charm
-    """
+    with jubilant.temp_model(keep=keep_models) as juju:
+        juju.wait_timeout = 10 * 60
 
-    name: str
-    channel: str
-    series: str
-    revision: int
-    num_units: int = 1
-    alias: Optional[str] = None
-    trust: Optional[bool] = False
+        yield juju  # run the test
 
-    @property
-    def application_name(self) -> str:
-        return self.alias or self.name
-
-    def deploy_dict(self):
-        return {
-            "entity_url": self.name,
-            "channel": self.channel,
-            "series": self.series,
-            "revision": self.revision,
-            "num_units": self.num_units,
-            "application_name": self.application_name,
-            "trust": self.trust,
-        }
+        if request.session.testsfailed:
+            log = juju.debug_log(limit=30)
+            print(log, end="")
 
 
-class IntegrationTestsCharms(BaseModel):
-    s3: TestCharm
-    postgres: TestCharm
-    auth_db: TestCharm
-    integration_hub: TestCharm
-    zookeeper: TestCharm
-    tls: TestCharm
+def pytest_addoption(parser):
+    parser.addoption(
+        "--keep-models",
+        action="store_true",
+        default=False,
+        help="keep temporarily-created models",
+    )
 
 
 @pytest.fixture(scope="module")
 def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=TestCharm(
-            **{
-                "name": "s3-integrator",
-                "channel": "edge",
-                "revision": 41,
-                "series": "jammy",
-                "alias": "s3",
-            }
+            name="s3-integrator",
+            channel="edge",
+            revision=41,
+            base="ubuntu@22.04",
+            alias="s3",
         ),
-        postgres=TestCharm(
-            **{
-                "name": "postgresql-k8s",
-                "channel": "14/stable",
-                "revision": 281,
-                "series": "jammy",
-                "alias": "postgresql",
-                "trust": True,
-            }
+        metastore_db=TestCharm(
+            name="postgresql-k8s",
+            channel="14/stable",
+            revision=281,
+            base="ubuntu@22.04",
+            alias="metastore",
+            trust=True,
         ),
         auth_db=TestCharm(
-            **{
-                "name": "postgresql-k8s",
-                "channel": "14/stable",
-                "revision": 281,
-                "series": "jammy",
-                "alias": "auth-db",
-                "trust": True,
-            }
+            name="postgresql-k8s",
+            channel="14/stable",
+            revision=281,
+            base="ubuntu@22.04",
+            alias="auth-db",
+            trust=True,
         ),
         integration_hub=TestCharm(
-            **{
-                "name": "spark-integration-hub-k8s",
-                "channel": "latest/edge",
-                "revision": 43,
-                "series": "jammy",
-                "alias": "integration-hub",
-                "trust": True,
-            }
+            name="spark-integration-hub-k8s",
+            channel="latest/edge",
+            revision=43,
+            base="ubuntu@22.04",
+            alias="integration-hub",
+            trust=True,
         ),
         zookeeper=TestCharm(
-            **{
-                "name": "zookeeper-k8s",
-                "channel": "3/edge",
-                "revision": 70,
-                "series": "jammy",
-                "alias": "zookeeper",
-                "num_units": 1,
-            }
+            name="zookeeper-k8s",
+            channel="3/edge",
+            revision=70,
+            base="ubuntu@22.04",
+            alias="zookeeper",
         ),
         tls=TestCharm(
-            **{
-                "name": "self-signed-certificates",
-                "channel": "edge",
-                "revision": 163,  # FIXME (certs): Unpin the revision once the charm is fixed
-                "series": "jammy",
-                "alias": "self-signed-certificates",
-                "num_units": 1,
-            }
+            name="self-signed-certificates",
+            channel="edge",
+            revision=163,  # FIXME (certs): Unpin the revision once the charm is fixed
+            base="ubuntu@22.04",
+            alias="self-signed-certificates",
         ),
     )
 
@@ -187,11 +153,11 @@ def s3_bucket_and_creds():
 
 
 @pytest.fixture(scope="module")
-def test_pod(ops_test):
+def test_pod(juju: jubilant.Juju) -> Iterable[str]:
     logger.info("Preparing test pod fixture...")
 
     kyuubi_image = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    namespace = ops_test.model_name
+    namespace = cast(str, juju.model)
 
     with open(TEST_POD_SPEC_FILE) as tf:
         template = Template(tf.read())
@@ -234,7 +200,7 @@ def test_pod(ops_test):
 
 @pytest.fixture(scope="module")
 def kyuubi_charm() -> Path:
-    """Path to the packed integration hub charm."""
+    """Path to the packed kyuubi charm."""
     if not (path := next(iter(Path.cwd().glob("*.charm")), None)):
         raise FileNotFoundError("Could not find packed kyuubi charm.")
 

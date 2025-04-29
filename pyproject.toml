@@ -45,6 +45,9 @@ ruff = ">=0.10.0"
 codespell = ">=2.2.2"
 mypy = "^1.15.0"
 types-psycopg2 = "^2.9.21.20250318"
+types-pyyaml = "^6.0.12.20250402"
+types-requests = "^2.32.0.20250328"
+types-boto3 = { extras = ["essentials"], version = "<1.36.0" }
 
 [tool.poetry.group.unit]
 optional = true
@@ -60,13 +63,11 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 pytest = ">=7.2"
-juju = "^3.1.6"
-coverage = { extras = ["toml"], version = ">7.0" }
-pytest-operator = ">0.20"
 # NOTE(boto): 1.36+ incompatible with minio because of MD5 checksum
 boto3 = ">=1.28.0,<1.36"
 tenacity = "^8.2.2"
 spark-k8s-test = "^0.0.2"
+jubilant = "^0.5.0"
 
 [tool.ruff]
 line-length = 99
@@ -95,6 +96,12 @@ extend-ignore = [
 mccabe.max-complexity = 10
 
 [tool.mypy]
+exclude = [
+  "lib",
+  "tests/integration/app-charm/lib",
+]
+follow_imports = "silent"
+
 [[tool.mypy.overrides]]
 module = [
   "charms.data_platform_libs.*",
@@ -102,7 +109,7 @@ module = [
   "charms.loki_k8s.*",
   "charms.prometheus_k8s.*",
   "charms.tls_certificates_interface.*",
-  "spark8t.services"
+  "spark8t.services",
 ]
 ignore_missing_imports = true
 

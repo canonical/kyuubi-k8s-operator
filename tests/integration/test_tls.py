@@ -3,33 +3,26 @@
 # See LICENSE file for licensing details.
 
 import ast
-import asyncio
 import json
 import logging
 import os
 import re
 import subprocess
 from pathlib import Path
+from typing import cast
 
-import pytest
+import jubilant
 import yaml
-from juju.application import Application
-from juju.unit import Unit
-from ops import StatusBase
-from pytest_operator.plugin import OpsTest
-
-from constants import TLS_REL
-from core.domain import Status
 
 from .helpers import (
     assert_service_status,
     deploy_minimal_kyuubi_setup,
-    find_leader_unit,
-    get_address,
+    fetch_password,
     run_command_in_pod,
     run_sql_test_against_jdbc_endpoint,
     umask_named_temporary_file,
 )
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
@@ -41,27 +34,16 @@ CERTIFICATE_LOCATION = "/tmp/cert.pem"
 TRUSTSTORE_LOCATION = "/tmp/truststore.jks"
 
 
-def check_status(entity: Application | Unit, status: StatusBase):
-    if isinstance(entity, Application):
-        return entity.status == status.name and entity.status_message == status.message
-    elif isinstance(entity, Unit):
-        return (
-            entity.workload_status == status.name
-            and entity.workload_status_message == status.message
-        )
-    else:
-        raise ValueError(f"entity type {type(entity)} is not allowed")
-
-
-@pytest.mark.skip_if_deployed
-@pytest.mark.abort_on_fail
-async def test_build_and_deploy(
-    ops_test: OpsTest, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds
+def test_build_and_deploy(
+    juju: jubilant.Juju,
+    kyuubi_charm: Path,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
 ) -> None:
     """Deploy minimal Kyuubi deployments."""
     """Test the status of default managed K8s service when Kyuubi is deployed."""
-    await deploy_minimal_kyuubi_setup(
-        ops_test=ops_test,
+    deploy_minimal_kyuubi_setup(
+        juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
@@ -71,90 +53,56 @@ async def test_build_and_deploy(
     )
 
     # Wait for everything to settle down
-    await ops_test.model.wait_for_idle(
-        apps=[
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
             APP_NAME,
-            charm_versions.integration_hub.application_name,
-            # charm_versions.zookeeper.application_name,
-            charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
+            charm_versions.integration_hub.app,
+            charm_versions.s3.app,
+        ),
+        delay=5,
     )
 
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
 
-
-@pytest.mark.abort_on_fail
-async def test_jdbc_endpoint_with_default_metastore(ops_test: OpsTest, test_pod):
+def test_jdbc_endpoint_with_default_metastore(juju: jubilant.Juju, test_pod: str) -> None:
     """Test the JDBC endpoint exposed by the charm."""
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
-    )
-    result = await action.wait()
 
-    jdbc_endpoint = result.results.get("endpoint")
+    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
+    assert task.return_code == 0
+    jdbc_endpoint = task.results["endpoint"]
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
+    password = fetch_password(juju)
 
-    assert await run_sql_test_against_jdbc_endpoint(ops_test, test_pod, username, password)
-
-
-@pytest.mark.abort_on_fail
-async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
-    await asyncio.gather(
-        ops_test.model.deploy(
-            charm_versions.tls.application_name,
-            application_name=charm_versions.tls.application_name,
-            channel=charm_versions.tls.channel,
-            num_units=1,
-            config={"ca-common-name": "kyuubi"},
-            series=charm_versions.tls.series,
-            # FIXME (certs): Unpin the revision once the charm is fixed
-            revision=charm_versions.tls.revision,
-        ),
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod, jdbc_endpoint, username=username, password=password
     )
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.tls.name], status="active", timeout=1000, idle_period=30
+
+
+def test_enable_ssl(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
+) -> None:
+    juju.deploy(
+        **charm_versions.tls.deploy_dict(),
+        config={"ca-common-name": "kyuubi"},
     )
-    await ops_test.model.add_relation(APP_NAME, charm_versions.tls.name)
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.tls.app), delay=5
+    )
+    juju.integrate(APP_NAME, charm_versions.tls.app)
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.tls.app), delay=10
+    )
 
-    async with ops_test.fast_forward(fast_interval="60s"):
-        await ops_test.model.wait_for_idle(
-            apps=[APP_NAME, charm_versions.tls.name],
-            status="active",
-            timeout=1000,
-            idle_period=30,
-        )
-
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
 
     response = subprocess.check_output(
-        f"openssl s_client -showcerts -connect {host}:10009 < /dev/null",
+        f"openssl s_client -showcerts -connect {host}:10009 < /dev/null || true",
         stderr=subprocess.PIPE,
         shell=True,
         universal_newlines=True,
@@ -165,14 +113,9 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
 
     # get issued certificates
     logger.info("Get certificate from self-signed certificate operator")
-    self_signed_certificate_unit = ops_test.model.applications[
-        charm_versions.tls.application_name
-    ].units[0]
-    action = await self_signed_certificate_unit.run_action(
-        action_name="get-issued-certificates",
-    )
-    result = await action.wait()
-    items = ast.literal_eval(result.results.get("certificates"))
+    task = juju.run(f"{charm_versions.tls.app}/0", "get-issued-certificates")
+    assert task.return_code == 0
+    items = ast.literal_eval(task.results.get("certificates", "[]"))
     certificates = json.loads(items[0])
     ca_cert = certificates["ca"]
 
@@ -189,7 +132,7 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
             "kubectl",
             "cp",
             "-n",
-            ops_test.model_name,
+            cast(str, juju.model),
             temp_file.name,
             f"{test_pod}:{CERTIFICATE_LOCATION}",
             "-c",
@@ -217,20 +160,17 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
             TRUSTSTORE_PASSWORD,
         ]
 
-    await run_command_in_pod(ops_test, "testpod", c2)
+    run_command_in_pod(juju, "testpod", c2)
     # mod permission of the trustore
     c3 = ["chmod", "u+x", TRUSTSTORE_LOCATION]
-    await run_command_in_pod(ops_test, "testpod", c3)
+    run_command_in_pod(juju, "testpod", c3)
 
     # run query with tls
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
-    )
-    result = await action.wait()
+    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
+    assert task.return_code == 0
 
-    jdbc_endpoint = result.results.get("endpoint")
+    jdbc_endpoint = task.results["endpoint"]
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
     jdbc_endpoint_ssl = (
@@ -242,38 +182,21 @@ async def test_enable_ssl(ops_test: OpsTest, charm_versions, test_pod):
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
+    password = fetch_password(juju)
 
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint_ssl
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint_ssl, username=username, password=password
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_renew_cert(ops_test: OpsTest, charm_versions):
+def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     # invalidate previous certs
-    await ops_test.model.applications[charm_versions.tls.name].set_config(
-        {"ca-common-name": "new-name"}
-    )
-
-    await ops_test.model.wait_for_idle([APP_NAME], status="active", timeout=1000, idle_period=30)
-    async with ops_test.fast_forward(fast_interval="20s"):
-        await asyncio.sleep(60)
+    juju.config(charm_versions.tls.app, {"ca-common-name": "new-name"})
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
     # check client-presented certs
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
 
     response = subprocess.check_output(
         f"openssl s_client -showcerts -connect {host}:10009 < /dev/null",
@@ -286,35 +209,25 @@ async def test_renew_cert(ops_test: OpsTest, charm_versions):
     assert "CN = new-name" in response
 
 
-@pytest.mark.abort_on_fail
-async def test_loadbalancer_service(
-    ops_test,
-    test_pod,
-    charm_versions,
-):
+def test_loadbalancer_service(
+    juju: jubilant.Juju,
+    test_pod: str,
+    charm_versions: IntegrationTestsCharms,
+) -> None:
     """Test the tls connection with loadbalancer."""
     logger.info("Changing expose-external to 'loadbalancer' for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config({"expose-external": "loadbalancer"})
+    juju.config(APP_NAME, {"expose-external": "loadbalancer"})
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="active",
-        timeout=1000,
-    )
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
-    assert_service_status(namespace=ops_test.model_name, service_type="LoadBalancer")
+    assert_service_status(namespace=cast(str, juju.model), service_type="LoadBalancer")
 
     # get issued certificates
     logger.info("Get certificate from self-signed certificate operator")
-    self_signed_certificate_unit = ops_test.model.applications[
-        charm_versions.tls.application_name
-    ].units[0]
-    action = await self_signed_certificate_unit.run_action(
-        action_name="get-issued-certificates",
-    )
-    result = await action.wait()
-    items = ast.literal_eval(result.results.get("certificates"))
+    task = juju.run(f"{charm_versions.tls.app}/0", "get-issued-certificates")
+    assert task.return_code == 0
+    items = ast.literal_eval(task.results.get("certificates", "[]"))
     certificates = json.loads(items[0])
     cert = certificates["certificate"]
 
@@ -331,7 +244,7 @@ async def test_loadbalancer_service(
             "kubectl",
             "cp",
             "-n",
-            ops_test.model_name,
+            cast(str, juju.model),
             temp_file.name,
             f"{test_pod}:{CERTIFICATE_LOCATION}",
             "-c",
@@ -343,7 +256,7 @@ async def test_loadbalancer_service(
         assert process.returncode == 0
 
     c1 = ["rm", TRUSTSTORE_LOCATION]
-    await run_command_in_pod(ops_test, "testpod", c1)
+    run_command_in_pod(juju, "testpod", c1)
 
     logger.info(f"Generating the trustore in the testpod in this location: {TRUSTSTORE_LOCATION}")
     c2 = [
@@ -360,20 +273,16 @@ async def test_loadbalancer_service(
         TRUSTSTORE_PASSWORD,
     ]
 
-    await run_command_in_pod(ops_test, "testpod", c2)
+    run_command_in_pod(juju, "testpod", c2)
     # mod permission of the trustore
     c3 = ["chmod", "u+x", TRUSTSTORE_LOCATION]
-    await run_command_in_pod(ops_test, "testpod", c3)
+    run_command_in_pod(juju, "testpod", c3)
 
     # run query with tls
     logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    kyuubi_unit = ops_test.model.applications[APP_NAME].units[0]
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
-    )
-    result = await action.wait()
-
-    jdbc_endpoint = result.results.get("endpoint")
+    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
+    assert task.return_code == 0
+    jdbc_endpoint = task.results["endpoint"]
     logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
     jdbc_endpoint_ssl = (
@@ -385,41 +294,21 @@ async def test_loadbalancer_service(
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
-
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod, username, password, jdbc_endpoint=jdbc_endpoint_ssl
+    password = fetch_password(juju)
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint_ssl, username=username, password=password
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_disable_tls(ops_test: OpsTest, charm_versions):
+def test_disable_tls(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     """Test that we are able to disable TLS by removing the certificates relation."""
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        TLS_REL, f"{charm_versions.tls.name}:{TLS_REL}"
-    )
+    juju.remove_relation(APP_NAME, charm_versions.tls.app)
 
-    async with ops_test.fast_forward(fast_interval="60s"):
-        await ops_test.model.wait_for_idle(
-            apps=[APP_NAME],
-            status="active",
-            timeout=1000,
-            idle_period=30,
-        )
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
-    host = await get_address(ops_test, unit_name=f"{APP_NAME}/0")
+    host = status.apps[APP_NAME].units[f"{APP_NAME}/0"].address
+
     response = subprocess.check_output(
         f"openssl s_client -showcerts -connect {host}:10009 < /dev/null || true",
         stderr=subprocess.PIPE,
