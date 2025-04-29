@@ -73,13 +73,13 @@ def test_iceberg_external_metastore(
     juju.deploy(**charm_versions.metastore_db.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    juju.wait(jubilant.all_active, delay=5)
+    juju.wait(jubilant.all_active, delay=15, timeout=1000)
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
     juju.integrate(charm_versions.metastore_db.app, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    status = juju.wait(jubilant.all_active, delay=20)
+    status = juju.wait(jubilant.all_active, delay=20, timeout=1000)
 
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
