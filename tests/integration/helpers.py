@@ -545,7 +545,6 @@ def deploy_minimal_kyuubi_setup(
     juju.wait(
         lambda status: jubilant.all_active(
             status,
-            APP_NAME,
             charm_versions.auth_db.app,
         ),
         delay=15,

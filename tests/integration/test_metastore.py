@@ -50,7 +50,13 @@ def test_deploy_minimal_kyuubi_setup(
 
 def test_sql_queries_local_metastore(juju: jubilant.Juju) -> None:
     """Test running SQL queries without an external metastore."""
-    assert validate_sql_queries_with_kyuubi(juju=juju)
+    username = "admin"
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
+        username=username,
+        password=password,
+    )
 
 
 def test_integrate_external_metastore(
