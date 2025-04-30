@@ -234,8 +234,10 @@ class ServiceManager(WithLogging):
             )
             annotations = {}
         if existing_service is not None:
-            is_same_service = _ServiceType(existing_service.spec.type) == desired_service_type  # type: ignore
-            has_same_annotations = existing_service.metadata.annotations == annotations  # type: ignore
+            existing_service_type = getattr(existing_service.spec, "type")
+            is_same_service = _ServiceType(existing_service_type) == desired_service_type
+            existing_annotations: dict = getattr(existing_service.metadata, "annotations")
+            has_same_annotations = existing_annotations == annotations
 
             if is_same_service and has_same_annotations:
                 self.logger.info(
@@ -249,7 +251,7 @@ class ServiceManager(WithLogging):
 
         self.create_service(
             service_type=desired_service_type,
-            owner_references=pod0.metadata.ownerReferences,  # type: ignore
+            owner_references=getattr(pod0.metadata, "ownerReferences", []),
             annotations=annotations,
         )
 

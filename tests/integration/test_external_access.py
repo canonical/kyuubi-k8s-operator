@@ -2,6 +2,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+import json
 import logging
 from pathlib import Path
 from typing import cast
@@ -97,7 +98,13 @@ def test_loadbalancer_service(
 ) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'loadbalancer'."""
     logger.info("Changing expose-external to 'nodeport' for kyuubi-k8s charm...")
-    juju.config(APP_NAME, {"expose-external": "loadbalancer"})
+    juju.config(
+        APP_NAME,
+        {
+            "expose-external": "loadbalancer",
+            "loadbalancer-extra-annotations": json.dumps({"foo": "bar"}),
+        },
+    )
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
     juju.wait(
@@ -105,7 +112,9 @@ def test_loadbalancer_service(
         delay=5,
     )
 
-    assert_service_status(namespace=cast(str, juju.model), service_type="LoadBalancer")
+    service = assert_service_status(namespace=cast(str, juju.model), service_type="LoadBalancer")
+    annotations = getattr(service.metadata, "annotations", {})
+    assert annotations.get("foo", "") == "bar"
 
     username = "admin"
     password = fetch_password(juju)
