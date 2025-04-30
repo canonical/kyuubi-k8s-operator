@@ -158,8 +158,6 @@ def test_run_sql_queries_again_with_local_metastore(juju: jubilant.Juju) -> None
     password = fetch_password(juju)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
-        db_name=TEST_EXTERNAL_DB_NAME,
-        table_name=TEST_EXTERNAL_TABLE_NAME,
         username=username,
         password=password,
     )
@@ -267,8 +265,6 @@ def test_read_write_with_valid_schema_metastore_again(juju: jubilant.Juju) -> No
     password = fetch_password(juju)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
-        db_name=TEST_EXTERNAL_DB_NAME,
-        table_name=TEST_EXTERNAL_TABLE_NAME,
         username=username,
         password=password,
         query_lines=[
@@ -279,8 +275,6 @@ def test_read_write_with_valid_schema_metastore_again(juju: jubilant.Juju) -> No
 
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
-        db_name=TEST_EXTERNAL_DB_NAME,
-        table_name=TEST_EXTERNAL_TABLE_NAME,
         username=username,
         password=password,
     )

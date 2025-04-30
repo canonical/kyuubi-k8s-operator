@@ -11,6 +11,7 @@ import yaml
 from core.domain import Status
 
 from .helpers import (
+    fetch_password,
     fetch_spark_properties,
     jubilant,
     validate_sql_queries_with_kyuubi,
@@ -253,7 +254,9 @@ def test_integration_with_zookeeper(
     logger.info("Waiting for zookeeper-k8s and kyuubi charms to be idle idle...")
     juju.wait(jubilant.all_active, delay=5)
 
-    assert validate_sql_queries_with_kyuubi(juju)
+    username = "admin"
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)
 
 
 # TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
@@ -267,7 +270,9 @@ def test_remove_zookeeper_relation(
     logger.info("Waiting for zookeeper-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(jubilant.all_active, delay=5)
 
-    assert validate_sql_queries_with_kyuubi(juju)
+    username = "admin"
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)
 
 
 # TODO: rewrite
