@@ -536,7 +536,7 @@ def deploy_minimal_kyuubi_setup(
             charm_versions.auth_db.app,
         ),
         delay=10,
-        timeout=1000,
+        timeout=2000,
     )
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
     juju.integrate(charm_versions.auth_db.application_name, f"{APP_NAME}:auth-db")

@@ -15,6 +15,7 @@ from core.domain import Status
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
+    fetch_password,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -44,7 +45,7 @@ def test_deploy_minimal_kyuubi_setup(
     )
 
     # Wait for everything to settle down
-    juju.wait(jubilant.all_active, delay=5)
+    juju.wait(jubilant.all_active, delay=15)
 
 
 def test_sql_queries_local_metastore(juju: jubilant.Juju) -> None:
@@ -97,8 +98,14 @@ def test_integrate_external_metastore(
 
 def test_sql_queries_external_metastore(juju: jubilant.Juju) -> None:
     """Test running SQL queries with an external metastore."""
+    username = "admin"
+    password = fetch_password(juju)
     assert validate_sql_queries_with_kyuubi(
-        juju=juju, db_name=TEST_EXTERNAL_DB_NAME, table_name=TEST_EXTERNAL_TABLE_NAME
+        juju=juju,
+        db_name=TEST_EXTERNAL_DB_NAME,
+        table_name=TEST_EXTERNAL_TABLE_NAME,
+        username=username,
+        password=password,
     )
 
 
@@ -141,8 +148,15 @@ def test_run_sql_queries_again_with_local_metastore(juju: jubilant.Juju) -> None
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
     )
     time.sleep(30)
-
-    assert validate_sql_queries_with_kyuubi(juju=juju)
+    username = "admin"
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
+        db_name=TEST_EXTERNAL_DB_NAME,
+        table_name=TEST_EXTERNAL_TABLE_NAME,
+        username=username,
+        password=password,
+    )
 
 
 def test_prepare_metastore_with_invalid_schema(
@@ -243,11 +257,24 @@ def test_integrate_metastore_with_valid_schema_again(
 
 def test_read_write_with_valid_schema_metastore_again(juju: jubilant.Juju) -> None:
     """Test whether previously written data can be read as well as new data can be written."""
+    username = "admin"
+    password = fetch_password(juju)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
+        db_name=TEST_EXTERNAL_DB_NAME,
+        table_name=TEST_EXTERNAL_TABLE_NAME,
+        username=username,
+        password=password,
         query_lines=[
             f"USE {TEST_EXTERNAL_DB_NAME};",
             f"SELECT * FROM {TEST_EXTERNAL_TABLE_NAME};",
         ],
     )
-    assert validate_sql_queries_with_kyuubi(juju=juju)
+
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
+        db_name=TEST_EXTERNAL_DB_NAME,
+        table_name=TEST_EXTERNAL_TABLE_NAME,
+        username=username,
+        password=password,
+    )
