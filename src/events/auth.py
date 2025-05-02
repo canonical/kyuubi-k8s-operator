@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
@@ -14,7 +14,6 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 
 from core.context import Context
-from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.auth import AuthenticationManager
@@ -60,7 +59,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             return
 
         self.logger.info("Authentication database created...")
-        auth = AuthenticationManager(auth_db)
+        auth = AuthenticationManager(auth_db, self.context)
         auth.prepare_auth_db()
         self.kyuubi.update()
 

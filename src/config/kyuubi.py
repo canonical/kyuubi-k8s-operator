@@ -35,7 +35,7 @@ class KyuubiConfig(WithLogging):
     def _get_authentication_query(self) -> str:
         return (
             f"SELECT 1 FROM {AUTHENTICATION_TABLE_NAME} "
-            "WHERE username=${user} AND passwd=${password}"
+            "WHERE username=${user} AND passwd=crypt(${password}, passwd);"
         )
 
     def _get_zookeeper_auth_digest(self) -> str:

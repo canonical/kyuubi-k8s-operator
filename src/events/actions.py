@@ -110,8 +110,15 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 event.fail(msg)
                 return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(
+            cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+        )
         password = auth.get_password(DEFAULT_ADMIN_USERNAME)
+        if password is None:
+            event.fail(
+                f"The action failed because the password could not be fetched for {DEFAULT_ADMIN_USERNAME}."
+            )
+            return
         event.set_results({"password": password})
 
     def _on_set_password(self, event: ActionEvent) -> None:
@@ -147,7 +154,9 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 event.fail(msg)
                 return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(
+            cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+        )
         password = auth.generate_password()
 
         if "password" in event.params:
