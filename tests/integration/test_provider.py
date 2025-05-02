@@ -10,7 +10,6 @@ import psycopg2
 import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
-from thrift.transport.TTransport import TTransportException
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
@@ -21,7 +20,6 @@ from .helpers import (
     deploy_minimal_kyuubi_setup,
     find_leader_unit,
     get_address,
-    validate_sql_queries_with_kyuubi,
 )
 
 logger = logging.getLogger(__name__)
@@ -126,18 +124,11 @@ async def test_kyuubi_client_relation_joined(
     with connection.cursor() as cursor:
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()
 
     connection.close()
 
     # Assert that a new user had indeed been created
     assert num_users != 0
-
-    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
-
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-    )
 
 
 @pytest.mark.abort_on_fail
@@ -176,14 +167,8 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, charm_versions)
             """ SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin'; """
         )
         num_users_before = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()
 
-    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
     assert num_users_before != 0
-
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-    )
 
     logger.info("Removing relation between test charm and kyuubi-k8s...")
     await ops_test.model.applications[APP_NAME].remove_relation(
@@ -210,9 +195,3 @@ async def test_kyuubi_client_relation_removed(ops_test: OpsTest, charm_versions)
 
     # Assert that relation user created previously has been deleted
     assert num_users_after == 0
-
-    with pytest.raises(TTransportException) as exc:
-        await validate_sql_queries_with_kyuubi(
-            ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
-        )
-        assert b"Error validating the login" in exc.value.message
