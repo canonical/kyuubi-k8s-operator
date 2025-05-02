@@ -39,7 +39,7 @@ class AuthenticationManager(WithLogging):
         """Create authentication table in the authentication database."""
         self.logger.info("Creating authentication table...")
         query = f"""
-            CREATE TABLE {self.AUTHENTICATION_TABLE_NAME} (
+            CREATE TABLE IF NOT EXISTS {self.AUTHENTICATION_TABLE_NAME} (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
                 passwd TEXT NOT NULL
@@ -76,6 +76,23 @@ class AuthenticationManager(WithLogging):
             secret_name = self._generate_secret_name(username)
             self.context.cluster.update({secret_name: password})
         return success
+
+    def user_exists(self, username: str) -> bool:
+        """Check whether the user with given username already exists.
+
+        Args:
+            username (str): Username of the user.
+
+        Returns:
+            bool: signifies whether the user already exists
+        """
+        query = f"SELECT 1 FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        vars = (username,)
+        success, result = self.database.execute(query=query, vars=vars)
+        if not success:
+            self.logger.error(f"Could not check if user {username} exists.")
+            return False
+        return len(result) != 0
 
     def delete_user(self, username: str) -> bool:
         """Delete a user with given username.
@@ -116,6 +133,11 @@ class AuthenticationManager(WithLogging):
 
     def create_admin_user(self) -> bool:
         """Create a default admin user in the authentication database."""
+        if self.user_exists(self.DEFAULT_ADMIN_USERNAME):
+            self.logger.info(
+                f"Admin user {self.DEFAULT_ADMIN_USERNAME} already exists, skipping creation."
+            )
+            return True
         password = self.generate_password()
         return self.create_user(self.DEFAULT_ADMIN_USERNAME, password)
 
