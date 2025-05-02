@@ -92,12 +92,12 @@ class AuthenticationManager(WithLogging):
         status, _ = self.database.execute(query=query, vars=vars)
         return status
 
-    def get_password(self, username: str) -> str:
+    def get_password(self, username: str) -> str | None:
         """Returns the password for the given username."""
         secret_name = self._generate_secret_name(username)
         password = self.context.cluster.relation_data.get(secret_name, None)
         if password is None:
-            raise Exception(f"Could not fetch password for {username}.")
+            self.logger.error(f"Password for {username} not found in peer relation data.")
         return password
 
     def set_password(self, username: str, password: str) -> None:
