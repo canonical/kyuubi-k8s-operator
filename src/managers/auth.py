@@ -122,7 +122,12 @@ class AuthenticationManager(WithLogging):
     def prepare_auth_db(self) -> None:
         """Prepare the authentication database in PostgreSQL."""
         self.logger.info("Preparing auth db...")
+
+        # TODO: this is to be done via configuration option from postgresql-k8s
+        # in the future. We enable this here manually because postgresql-k8s
+        # does not have config option to enable this extension yet.
         self.enable_pgcrypto_extension()
+
         self.create_authentication_table()
         self.create_admin_user()
 
