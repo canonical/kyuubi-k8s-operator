@@ -8,9 +8,8 @@
 import secrets
 import string
 
-from constants import (
-    POSTGRESQL_DEFAULT_DATABASE,
-)
+from constants import PASSWORD_SECRET_SUFFIX, POSTGRESQL_DEFAULT_DATABASE
+from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from managers.database import DatabaseManager
 from utils.logging import WithLogging
@@ -22,9 +21,19 @@ class AuthenticationManager(WithLogging):
     DEFAULT_ADMIN_USERNAME = "admin"
     AUTHENTICATION_TABLE_NAME = "kyuubi_users"
 
-    def __init__(self, db_info: DatabaseConnectionInfo) -> None:
+    def __init__(self, db_info: DatabaseConnectionInfo, context: Context) -> None:
         super().__init__()
         self.database = DatabaseManager(db_info=db_info)
+        self.context = context
+
+    def enable_pgcrypto_extension(self) -> bool:
+        """Enable pgcrypto extension in the authentication database."""
+        self.logger.info("Enabling pgcrypto extension...")
+        query = "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+        status, _ = self.database.execute(query)
+        if not status:
+            raise RuntimeError("Could not enable pgcrypto extension.")
+        return status
 
     def create_authentication_table(self) -> bool:
         """Create authentication table in the authentication database."""
@@ -33,7 +42,7 @@ class AuthenticationManager(WithLogging):
             CREATE TABLE {self.AUTHENTICATION_TABLE_NAME} (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
-                passwd VARCHAR(255) NOT NULL
+                passwd TEXT NOT NULL
             );
         """
         status, _ = self.database.execute(query)
@@ -44,6 +53,10 @@ class AuthenticationManager(WithLogging):
         choices = string.ascii_letters + string.digits
         password = "".join([secrets.choice(choices) for i in range(16)])
         return password
+
+    def _generate_secret_name(self, username: str) -> str:
+        """Generate a secret name for the given username."""
+        return username + PASSWORD_SECRET_SUFFIX
 
     def create_user(self, username: str, password: str) -> bool:
         """Create a user with given parameters.
@@ -56,10 +69,13 @@ class AuthenticationManager(WithLogging):
             bool: signifies whether the user has been created successfully
         """
         self.logger.info(f"Creating user {username}...")
-        query = f"INSERT INTO {self.AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, %s);"
+        query = f"INSERT INTO {self.AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, crypt(%s, gen_salt('bf')) );"
         vars = (username, password)
-        status, _ = self.database.execute(query=query, vars=vars)
-        return status
+        success, _ = self.database.execute(query=query, vars=vars)
+        if success:
+            secret_name = self._generate_secret_name(username)
+            self.context.cluster.update({secret_name: password})
+        return success
 
     def delete_user(self, username: str) -> bool:
         """Delete a user with given username.
@@ -78,23 +94,24 @@ class AuthenticationManager(WithLogging):
 
     def get_password(self, username: str) -> str:
         """Returns the password for the given username."""
-        query = f"SELECT passwd FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s"
-        vars = (username,)
-        status, results = self.database.execute(query=query, vars=vars)
-        if not status or len(results) == 0:
-            raise Exception("Could not fetch password from authentication database.")
-        password = results[0][0]
+        secret_name = self._generate_secret_name(username)
+        password = self.context.cluster.relation_data.get(secret_name, None)
+        if password is None:
+            raise Exception(f"Could not fetch password for {username}.")
         return password
 
     def set_password(self, username: str, password: str) -> None:
         """Set a new password for the given username."""
-        query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = %s WHERE username = %s"
+        query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = crypt(%s, gen_salt('bf')) WHERE username = %s ;"
         vars = (
             password,
             username,
         )
-        status, _ = self.database.execute(query=query, vars=vars)
-        if not status:
+        success, _ = self.database.execute(query=query, vars=vars)
+        if success:
+            secret_name = self._generate_secret_name(username)
+            self.context.cluster.update({secret_name: password})
+        else:
             raise Exception(f"Could not update password of {username}.")
 
     def create_admin_user(self) -> bool:
@@ -105,6 +122,7 @@ class AuthenticationManager(WithLogging):
     def prepare_auth_db(self) -> None:
         """Prepare the authentication database in PostgreSQL."""
         self.logger.info("Preparing auth db...")
+        self.enable_pgcrypto_extension()
         self.create_authentication_table()
         self.create_admin_user()
 

@@ -50,3 +50,4 @@ DEPENDENCIES = {
 }
 
 SECRETS_APP: list[str] = []
+PASSWORD_SECRET_SUFFIX = "-password"

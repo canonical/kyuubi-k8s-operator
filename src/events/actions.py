@@ -110,7 +110,9 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 event.fail(msg)
                 return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(
+            cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+        )
         password = auth.get_password(DEFAULT_ADMIN_USERNAME)
         event.set_results({"password": password})
 
@@ -147,7 +149,9 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 event.fail(msg)
                 return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(
+            cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+        )
         password = auth.generate_password()
 
         if "password" in event.params:

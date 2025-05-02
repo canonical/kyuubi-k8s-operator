@@ -71,7 +71,9 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                     "over auth-db relation endpoint."
                 )
 
-            auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+            auth = AuthenticationManager(
+                cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+            )
             service_manager = ServiceManager(
                 namespace=self.charm.model.name,
                 unit_name=self.charm.unit.name,
@@ -130,7 +132,9 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             return
 
         # FIXME: There is not guarantee here
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(
+            cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+        )
         username = f"relation_id_{event.relation.id}"
 
         try:
