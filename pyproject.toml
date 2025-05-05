@@ -67,7 +67,7 @@ pytest = ">=7.2"
 boto3 = ">=1.28.0,<1.36"
 tenacity = "^8.2.2"
 spark-k8s-test = "^0.0.2"
-jubilant = "^0.5.0"
+jubilant = "^1.0.0"
 
 [tool.ruff]
 line-length = 99
