@@ -18,6 +18,7 @@ from botocore.client import Config
 from .types import IntegrationTestsCharms, TestCharm
 
 logger = logging.getLogger(__name__)
+logging.getLogger("jubilant.wait").setLevel(logging.WARNING)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]

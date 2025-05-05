@@ -93,13 +93,8 @@ def test_kyuubi_upgrades(
 
     time.sleep(90)
 
-    status = juju.wait(
-        lambda status: {
-            status.apps[APP_NAME].units[unit].juju_status.current
-            for unit in status.apps[APP_NAME].units
-        }
-        == {"idle"}
-    )
+    status = juju.wait(lambda status: jubilant.all_agents_idle(status, APP_NAME), delay=3)
+
     logger.info("Resume upgrade...")
     leader_unit = None
     for name, unit in status.apps[APP_NAME].units.items():
