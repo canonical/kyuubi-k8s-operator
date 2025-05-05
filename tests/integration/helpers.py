@@ -15,9 +15,9 @@ from typing import List, cast
 
 import jubilant
 import lightkube
-from lightkube.resources.core_v1 import Service
 import requests
 import yaml
+from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
 from spark_test.core.kyuubi import KyuubiClient
 
@@ -645,17 +645,21 @@ def assert_service_status(
     assert service is not None
 
     service_spec = service.spec
+    assert service_spec is not None
     assert service_type == service_spec.type
     assert service_spec.selector == {"app.kubernetes.io/name": APP_NAME}
 
+    assert service_spec.ports is not None
     service_port = service_spec.ports[0]
+    assert service_port is not None
     assert service_port.port == JDBC_PORT
     assert service_port.targetPort == JDBC_PORT
     assert service_port.name == JDBC_PORT_NAME
     assert service_port.protocol == "TCP"
 
     if service_type in ("NodePort", "LoadBalancer"):
-        assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
+        assert service_port.nodePort is not None
+        assert NODEPORT_MIN_VALUE <= int(service_port.nodePort) <= NODEPORT_MAX_VALUE
 
     return service
 
