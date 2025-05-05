@@ -6,20 +6,19 @@ import logging
 import time
 from pathlib import Path
 
+import jubilant
 import psycopg2
-import pytest
 import yaml
 
 from constants import METASTORE_DATABASE_NAME
 from core.domain import Status
 
 from .helpers import (
-    check_status,
     deploy_minimal_kyuubi_setup,
-    find_leader_unit,
-    get_address,
+    fetch_password,
     validate_sql_queries_with_kyuubi,
 )
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
@@ -30,16 +29,15 @@ TEST_EXTERNAL_DB_NAME = "dbext"
 TEST_EXTERNAL_TABLE_NAME = "text"
 
 
-@pytest.mark.abort_on_fail
-async def test_deploy_minimal_kyuubi_setup(
-    ops_test,
+def test_deploy_minimal_kyuubi_setup(
+    juju: jubilant.Juju,
     kyuubi_charm: Path,
-    charm_versions,
-    s3_bucket_and_creds,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
-    await deploy_minimal_kyuubi_setup(
-        ops_test=ops_test,
+    deploy_minimal_kyuubi_setup(
+        juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
@@ -47,323 +45,226 @@ async def test_deploy_minimal_kyuubi_setup(
     )
 
     # Wait for everything to settle down
-    await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-            charm_versions.integration_hub.application_name,
-            charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
-    )
-
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
+    juju.wait(jubilant.all_active, delay=15)
 
 
-@pytest.mark.abort_on_fail
-async def test_sql_queries_local_metastore(ops_test):
+def test_sql_queries_local_metastore(juju: jubilant.Juju) -> None:
     """Test running SQL queries without an external metastore."""
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=username, password=password
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
+        username=username,
+        password=password,
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_integrate_external_metastore(ops_test, charm_versions):
+def test_integrate_external_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the Kyuuubi charm by integrating it with external metastore."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying postgresql-k8s charm...")
-    await ops_test.model.deploy(**charm_versions.postgres.deploy_dict())
+    juju.deploy(**charm_versions.metastore_db.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.metastore_db.app),
+        delay=10,
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    await ops_test.model.integrate(
-        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
-    )
+    juju.integrate(charm_versions.metastore_db.app, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.metastore_db.app),
+        delay=20,
     )
 
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert ops_test.model.applications[charm_versions.postgres.application_name].status == "active"
-
-    postgres_leader = await find_leader_unit(
-        ops_test, app_name=charm_versions.postgres.application_name
-    )
-    assert postgres_leader is not None
-    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
-
-    action = await postgres_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
+    postgres_leader = f"{charm_versions.metastore_db.app}/0"
+    postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
 
     # Connect to PostgreSQL metastore database
-    connection = psycopg2.connect(
-        host=postgres_host,
-        database=METASTORE_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    with connection.cursor() as cursor:
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=METASTORE_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
         cursor.execute(""" SELECT * FROM "VERSION"; """)
         assert cursor.rowcount == 1
 
-    connection.close()
 
-
-@pytest.mark.abort_on_fail
-async def test_sql_queries_external_metastore(ops_test):
+def test_sql_queries_external_metastore(juju: jubilant.Juju) -> None:
     """Test running SQL queries with an external metastore."""
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
-
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test,
-        username=username,
-        password=password,
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
         db_name=TEST_EXTERNAL_DB_NAME,
         table_name=TEST_EXTERNAL_TABLE_NAME,
-    )
-
-
-@pytest.mark.abort_on_fail
-async def test_remove_external_metastore(ops_test, charm_versions):
-    """Test removal of external metastore."""
-    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:metastore-db", f"{charm_versions.postgres.application_name}:database"
-    )
-
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000, status="active"
-    )
-
-    postgres_leader = await find_leader_unit(
-        ops_test, app_name=charm_versions.postgres.application_name
-    )
-    assert postgres_leader is not None
-    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
-
-    action = await postgres_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
-
-    # Connect to PostgreSQL metastore database
-    connection = psycopg2.connect(
-        host=postgres_host,
-        database=METASTORE_DATABASE_NAME,
-        user="operator",
+        username=username,
         password=password,
     )
 
-    with connection.cursor() as cursor:
+
+def test_remove_external_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Test removal of external metastore."""
+    logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
+    juju.remove_relation(f"{APP_NAME}:metastore-db", f"{charm_versions.metastore_db.app}:database")
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.metastore_db.app),
+        delay=10,
+    )
+
+    postgres_leader = f"{charm_versions.metastore_db.app}/0"
+    postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
+
+    # Connect to PostgreSQL metastore database
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=METASTORE_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
         cursor.execute(""" SELECT * FROM "VERSION"; """)
         assert cursor.rowcount == 1
 
-    connection.close()
 
-
-@pytest.mark.abort_on_fail
-async def test_run_sql_queries_again_with_local_metastore(ops_test):
+def test_run_sql_queries_again_with_local_metastore(juju: jubilant.Juju) -> None:
     """Test running SQL queries again with local metastore."""
     logger.info(
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
     )
     time.sleep(30)
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=username, password=password
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
+        username=username,
+        password=password,
     )
 
 
-async def test_prepare_metastore_with_invalid_schema(ops_test, charm_versions):
+def test_prepare_metastore_with_invalid_schema(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Prepare an external metastore with invalid schema."""
     # Deploy the charm and wait for waiting status
     logger.info(
         f"Deploying a new instance of postgresql-k8s charm with alias {INVALID_METASTORE_APP_NAME}..."
     )
-    deploy_dict = charm_versions.postgres.deploy_dict()
-    deploy_dict.update({"application_name": INVALID_METASTORE_APP_NAME})
-    await ops_test.model.deploy(**deploy_dict)
+    deploy_dict = charm_versions.metastore_db.deploy_dict()
+    deploy_dict.update({"app": INVALID_METASTORE_APP_NAME})
+    juju.deploy(**deploy_dict)
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, INVALID_METASTORE_APP_NAME], timeout=1000, status="active"
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME), delay=10
     )
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
-    await ops_test.model.integrate(INVALID_METASTORE_APP_NAME, f"{APP_NAME}:metastore-db")
+    juju.integrate(INVALID_METASTORE_APP_NAME, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME, INVALID_METASTORE_APP_NAME], timeout=1000)
-
-    # Assert that both kyuubi-k8s and postgresql-k8s charms are in active state
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert ops_test.model.applications[INVALID_METASTORE_APP_NAME].status == "active"
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME), delay=20
+    )
 
     # By this time, the postgres database will have been initialized with the Hive metastore schema
     # Now remove the relation to mutate the schema externally
 
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:metastore-db", f"{INVALID_METASTORE_APP_NAME}:database"
-    )
+    juju.remove_relation(f"{APP_NAME}:metastore-db", f"{INVALID_METASTORE_APP_NAME}:database")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, INVALID_METASTORE_APP_NAME], timeout=1000, status="active"
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, INVALID_METASTORE_APP_NAME), delay=10
     )
 
     # Now attempt to mutate the schema
     logger.info("Mutating metastore schema to make it invalid...")
-    postgres_leader = await find_leader_unit(ops_test, app_name=INVALID_METASTORE_APP_NAME)
-    assert postgres_leader is not None
-    postgres_host = await get_address(ops_test, unit_name=postgres_leader.name)
 
-    action = await postgres_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
+    postgres_leader = f"{INVALID_METASTORE_APP_NAME}/0"
+    postgres_host = status.apps[INVALID_METASTORE_APP_NAME].units[postgres_leader].address
+
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
 
     # Connect to PostgreSQL metastore database
-    connection = psycopg2.connect(
-        host=postgres_host,
-        database=METASTORE_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    with connection.cursor() as cursor:
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=METASTORE_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
         cursor.execute(""" DROP TABLE "VERSION"; """)
         cursor.execute(""" DROP TABLE "DBS" CASCADE; """)
         connection.commit()
 
-    connection.close()
 
-
-@pytest.mark.abort_on_fail
-async def test_integrate_metastore_with_invalid_schema(ops_test):
+def test_integrate_metastore_with_invalid_schema(juju: jubilant.Juju) -> None:
     """Test the charm by integrating it with metastore with invalid schema."""
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s (invalid-metastore) charm...")
-    await ops_test.model.integrate(INVALID_METASTORE_APP_NAME, f"{APP_NAME}:metastore-db")
+    juju.integrate(INVALID_METASTORE_APP_NAME, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME, INVALID_METASTORE_APP_NAME], timeout=1000)
-
-    # Assert that postgresql-k8s charm is in active state
-    assert ops_test.model.applications[INVALID_METASTORE_APP_NAME].status == "active"
-
-    # Assert that Kyuubi charm is in blocked state, complaining about invalid schema
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.INVALID_METASTORE_SCHEMA.value
+    status = juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
+    assert (
+        status.apps[APP_NAME].app_status.message == Status.INVALID_METASTORE_SCHEMA.value.message
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_integrate_metastore_with_valid_schema_again(ops_test, charm_versions):
+def test_integrate_metastore_with_valid_schema_again(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test integration of Kyuubi charm with external metastore with valid schema again."""
     logger.info("Removing relation between postgresql-k8s and kyuubi-k8s...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
-        f"{APP_NAME}:metastore-db", f"{INVALID_METASTORE_APP_NAME}:database"
-    )
+    juju.remove_relation(f"{APP_NAME}:metastore-db", f"{INVALID_METASTORE_APP_NAME}:database")
 
     logger.info("Waiting for kyuubi-k8s app to be idle and active...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], timeout=1000, status="active")
-    # Assert that Kyuubi charm is in active state again
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME))
 
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm again...")
-    await ops_test.model.integrate(
-        charm_versions.postgres.application_name, f"{APP_NAME}:metastore-db"
-    )
+    juju.integrate(charm_versions.metastore_db.application_name, f"{APP_NAME}:metastore-db")
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, charm_versions.postgres.application_name], timeout=1000
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.metastore_db.app),
+        delay=10,
     )
 
     # Assert that postgresql-k8s charm is in active state
-    assert ops_test.model.applications[INVALID_METASTORE_APP_NAME].status == "active"
-
-    # Assert that Kyuubi charm is in active state again
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
+    assert status.apps[INVALID_METASTORE_APP_NAME].app_status.current == "active"
 
 
-@pytest.mark.abort_on_fail
-async def test_read_write_with_valid_schema_metastore_again(ops_test):
+def test_read_write_with_valid_schema_metastore_again(juju: jubilant.Juju) -> None:
     """Test whether previously written data can be read as well as new data can be written."""
-    kyuubi_leader = await find_leader_unit(ops_test, app_name=APP_NAME)
-    assert kyuubi_leader is not None
-
-    logger.info("Running action 'get-password' on kyuubi-k8s unit...")
-    action = await kyuubi_leader.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-
-    password = result.results.get("password")
-    logger.info(f"Fetched password: {password}")
-
     username = "admin"
-
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test,
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
         username=username,
         password=password,
         query_lines=[
@@ -371,6 +272,9 @@ async def test_read_write_with_valid_schema_metastore_again(ops_test):
             f"SELECT * FROM {TEST_EXTERNAL_TABLE_NAME};",
         ],
     )
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=username, password=password
+
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju,
+        username=username,
+        password=password,
     )

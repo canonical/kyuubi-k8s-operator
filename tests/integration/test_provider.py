@@ -3,13 +3,12 @@
 # See LICENSE file for licensing details.
 
 import logging
-import time
 from pathlib import Path
 
+import jubilant
 import psycopg2
 import pytest
 import yaml
-from pytest_operator.plugin import OpsTest
 from thrift.transport.TTransport import TTransportException
 
 from constants import (
@@ -19,10 +18,10 @@ from constants import (
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
-    find_leader_unit,
-    get_address,
+    get_leader_unit,
     validate_sql_queries_with_kyuubi,
 )
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
@@ -31,188 +30,155 @@ APP_NAME = METADATA["name"]
 TEST_CHARM_NAME = "application"
 
 
-@pytest.mark.abort_on_fail
-async def test_deploy_minimal_kyuubi_setup(
-    ops_test: OpsTest,
+def test_deploy_minimal_kyuubi_setup(
+    juju: jubilant.Juju,
     kyuubi_charm: Path,
-    charm_versions,
-    s3_bucket_and_creds,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
-    await deploy_minimal_kyuubi_setup(
-        ops_test=ops_test,
+    deploy_minimal_kyuubi_setup(
+        juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
     )
 
-    # Wait for everything to settle down
-    await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-            charm_versions.integration_hub.application_name,
-            charm_versions.s3.application_name,
-            charm_versions.auth_db.application_name,
-        ],
-        idle_period=20,
-        status="active",
-    )
+    # Assert that all charms that were deployed as part of minimal setup are in correct states.
+    juju.wait(jubilant.all_active, delay=15)
 
 
-@pytest.mark.abort_on_fail
-async def test_kyuubi_client_relation_joined(
-    ops_test: OpsTest, charm_versions, test_charm: Path
+def test_kyuubi_client_relation_joined(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_charm: Path
 ) -> None:
     """Test behavior of Kyuubi charm when a client application is related to it."""
     # Deploy the test charm and wait for waiting status
     logger.info("Deploying test charm...")
-    await ops_test.model.deploy(
-        test_charm,
-        application_name=TEST_CHARM_NAME,
-        num_units=1,
-        series="jammy",
-    )
+    juju.deploy(test_charm, app=TEST_CHARM_NAME, num_units=1)
 
     logger.info("Waiting for test charm to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=5
     )
 
     # Check number of users before integration
     # Fetch password for operator user from postgresql-k8s
-    postgres_unit = ops_test.model.applications[charm_versions.auth_db.application_name].units[0]
-    action = await postgres_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
+    postgres_leader = get_leader_unit(juju, charm_versions.auth_db.app)
+    postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
 
-    # Fetch host address of postgresql-k8s
-    status = await ops_test.model.get_status()
-    postgresql_host_address = status["applications"][charm_versions.auth_db.application_name][
-        "units"
-    ][f"{charm_versions.auth_db.application_name}/0"]["address"]
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
 
-    # Connect to PostgreSQL authentication database
-    connection = psycopg2.connect(
-        host=postgresql_host_address,
-        database=AUTHENTICATION_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
+    # Connect to PostgreSQL metastore database
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=AUTHENTICATION_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
+        # Fetch number of users excluding the default admin user
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
 
     assert num_users == 0
 
     logger.info("Integrating test charm with kyuubi-k8s charm...")
-    await ops_test.model.integrate(TEST_CHARM_NAME, APP_NAME)
+    juju.integrate(APP_NAME, TEST_CHARM_NAME)
 
     logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
-    )
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=10)
 
-    logger.info(
-        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
-    )
-    time.sleep(30)
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=AUTHENTICATION_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
+        # Fetch number of users excluding the default admin user
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()
+        kyuubi_username, kyuubi_password = cursor.fetchone()  # type: ignore
 
-    connection.close()
-
-    # Assert that a new user had indeed been created
+    # A new user has indeed been created
     assert num_users != 0
 
     logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
 
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju, username=kyuubi_username, password=kyuubi_password
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_kyuubi_client_relation_removed(ops_test: OpsTest, charm_versions):
+def test_kyuubi_client_relation_removed(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the behavior of Kyuubi when client application relation is removed from it."""
-    logger.info("Waiting for charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[TEST_CHARM_NAME, APP_NAME], timeout=1000, status="active"
-    )
-
-    # Fetch host address of postgresql-k8s
-    postgres_unit = await find_leader_unit(
-        ops_test, app_name=charm_versions.auth_db.application_name
-    )
-    assert postgres_unit is not None
-    postgresql_host_address = await get_address(ops_test, unit_name=postgres_unit.name)
-
+    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME))
     # Fetch password for operator user from postgresql-k8s
-    action = await postgres_unit.run_action(
-        action_name="get-password",
-    )
-    result = await action.wait()
-    password = result.results.get("password")
+    postgres_leader = get_leader_unit(juju, charm_versions.auth_db.app)
+    postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
+
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
 
     # Connect to PostgreSQL metastore database
-    connection = psycopg2.connect(
-        host=postgresql_host_address,
-        database=AUTHENTICATION_DATABASE_NAME,
-        user="operator",
-        password=password,
-    )
-
-    # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """ SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin'; """
-        )
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=AUTHENTICATION_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
+        # Fetch number of users excluding the default admin user
+        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users_before = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()
+        kyuubi_username, kyuubi_password = cursor.fetchone()  # type: ignore
 
     logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
     assert num_users_before != 0
 
-    assert await validate_sql_queries_with_kyuubi(
-        ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju, username=kyuubi_username, password=kyuubi_password
     )
 
     logger.info("Removing relation between test charm and kyuubi-k8s...")
-    await ops_test.model.applications[APP_NAME].remove_relation(
+    juju.remove_relation(
         f"{APP_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
         f"{TEST_CHARM_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
     )
 
     logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME, TEST_CHARM_NAME], timeout=1000, status="active"
-    )
-
-    logger.info(
-        "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
-    )
-    time.sleep(30)
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=3)
 
     # Fetch number of users excluding the default admin user
-    with connection.cursor() as cursor:
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=AUTHENTICATION_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users_after = cursor.rowcount
-
-    connection.close()
 
     # Assert that relation user created previously has been deleted
     assert num_users_after == 0
 
     with pytest.raises(TTransportException) as exc:
-        await validate_sql_queries_with_kyuubi(
-            ops_test=ops_test, username=kyuubi_username, password=kyuubi_password
+        validate_sql_queries_with_kyuubi(
+            juju=juju, username=kyuubi_username, password=kyuubi_password
         )
-        assert b"Error validating the login" in exc.value.message
+        assert b"Error validating the login" in getattr(exc.value, "message", b"")
