@@ -17,6 +17,7 @@ import jubilant
 import lightkube
 import requests
 import yaml
+from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
 from spark_test.core.kyuubi import KyuubiClient
 
@@ -581,7 +582,7 @@ def deploy_minimal_kyuubi_setup(
     logger.info("Successfully deployed minimal working Kyuubi setup.")
 
 
-def get_k8s_service(namespace: str, service_name: str):
+def get_k8s_service(namespace: str, service_name: str) -> Service | None:
     client = lightkube.Client()
     try:
         service = client.get(
@@ -635,7 +636,7 @@ def umask_named_temporary_file(*args, **kargs):
 def assert_service_status(
     namespace: str,
     service_type: str,
-):
+) -> Service:
     """Utility function to check status of managed K8s service created by Kyuubi charm."""
     service_name = f"{APP_NAME}-service"
     service = get_k8s_service(namespace=namespace, service_name=service_name)
@@ -644,17 +645,23 @@ def assert_service_status(
     assert service is not None
 
     service_spec = service.spec
+    assert service_spec is not None
     assert service_type == service_spec.type
     assert service_spec.selector == {"app.kubernetes.io/name": APP_NAME}
 
+    assert service_spec.ports is not None
     service_port = service_spec.ports[0]
+    assert service_port is not None
     assert service_port.port == JDBC_PORT
     assert service_port.targetPort == JDBC_PORT
     assert service_port.name == JDBC_PORT_NAME
     assert service_port.protocol == "TCP"
 
     if service_type in ("NodePort", "LoadBalancer"):
-        assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
+        assert service_port.nodePort is not None
+        assert NODEPORT_MIN_VALUE <= int(service_port.nodePort) <= NODEPORT_MAX_VALUE
+
+    return service
 
 
 def fetch_spark_properties(juju: jubilant.Juju, unit_name: str) -> dict[str, str]:

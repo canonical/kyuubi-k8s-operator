@@ -72,7 +72,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """Handle the on_config_changed event."""
         if self.charm.unit.is_leader():
             # Create / update the managed service to reflect the service type in config
-            self.service_manager.reconcile_services(self.charm.config.expose_external)
+            self.service_manager.reconcile_services(
+                self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
+            )
 
         self.kyuubi.update()
 
