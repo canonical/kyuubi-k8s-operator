@@ -100,11 +100,15 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         current_sans = self.tls_manager.get_current_sans()
 
         current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
-        expected_sans_ip = set(self.tls_manager.build_sans().sans_ip) if current_sans else set()
+        expected_sans_ip = (
+            set(self.tls_manager.build_sans().sans_ip) if self.context.cluster.tls else set()
+        )
         sans_ip_changed = current_sans_ip ^ expected_sans_ip
 
         current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
-        expected_sans_dns = set(self.tls_manager.build_sans().sans_dns) if current_sans else set()
+        expected_sans_dns = (
+            set(self.tls_manager.build_sans().sans_dns) if self.context.cluster.tls else set()
+        )
         sans_dns_changed = current_sans_dns ^ expected_sans_dns
         # TODO properly test this function when external access is merged.
         if sans_ip_changed or sans_dns_changed:

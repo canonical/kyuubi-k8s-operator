@@ -190,6 +190,91 @@ def test_enable_ssl(
     )
 
 
+def test_kill_pod(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
+) -> None:
+    """Check that a unit spawned by the stateful set still triggers the required events to setup tls."""
+    subprocess.check_output(["kubectl", "delete", "pod", f"{APP_NAME}-0", "-n", str(juju.model)])
+    juju.wait(jubilant.all_active, timeout=300, delay=10)
+
+    # get issued certificates
+    logger.info("Get certificate from self-signed certificate operator")
+    task = juju.run(f"{charm_versions.tls.app}/0", "get-issued-certificates")
+    assert task.return_code == 0
+    items = ast.literal_eval(task.results.get("certificates", "[]"))
+    certificates = json.loads(items[0])
+    cert = certificates["certificate"]
+
+    logger.info(f"Copy the certificate to the testpod in this location: {CERTIFICATE_LOCATION}")
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="cert-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as temp_file:
+        with open(temp_file.name, "w+") as f:
+            f.writelines(cert)
+        kubectl_command = [
+            "kubectl",
+            "cp",
+            "-n",
+            cast(str, juju.model),
+            temp_file.name,
+            f"{test_pod}:{CERTIFICATE_LOCATION}",
+            "-c",
+            "kyuubi",
+        ]
+        process = subprocess.run(kubectl_command, capture_output=True, check=True)
+        logger.info(process.stdout.decode())
+        logger.info(process.stderr.decode())
+        assert process.returncode == 0
+
+    c1 = ["rm", TRUSTSTORE_LOCATION]
+    run_command_in_pod(juju, "testpod", c1)
+
+    logger.info(f"Generating the trustore in the testpod in this location: {TRUSTSTORE_LOCATION}")
+    c2 = [
+        "keytool",
+        "-importcert",
+        "--noprompt",
+        "-alias",
+        "mycert",
+        "-file",
+        CERTIFICATE_LOCATION,
+        "-keystore",
+        TRUSTSTORE_LOCATION,
+        "-storepass",
+        TRUSTSTORE_PASSWORD,
+    ]
+
+    run_command_in_pod(juju, "testpod", c2)
+    # mod permission of the trustore
+    c3 = ["chmod", "u+x", TRUSTSTORE_LOCATION]
+    run_command_in_pod(juju, "testpod", c3)
+
+    # run query with tls
+    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
+    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
+    assert task.return_code == 0
+    jdbc_endpoint = task.results["endpoint"]
+    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
+
+    jdbc_endpoint_ssl = (
+        jdbc_endpoint
+        + f";ssl=true;trustStorePassword={TRUSTSTORE_PASSWORD};sslTrustStore={TRUSTSTORE_LOCATION}"
+    )
+    logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
+
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
+    )
+    username = "admin"
+    password = fetch_password(juju)
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint_ssl, username=username, password=password
+    )
+
+
 def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     # invalidate previous certs
     juju.config(charm_versions.tls.app, {"ca-common-name": "new-name"})
@@ -206,7 +291,7 @@ def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms)
     )
 
     assert "TLSv1.3" in response
-    assert "CN = new-name" in response
+    assert re.search(r"CN\s?=\s?new-name", response)
 
 
 def test_loadbalancer_service(
