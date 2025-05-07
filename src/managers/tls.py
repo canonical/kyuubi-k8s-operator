@@ -84,7 +84,7 @@ class TLSManager:
             ).splitlines()
         except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
             logger.error(e.stdout)
-            raise e
+            return None
         logger.info(f"sans line: {sans_lines}")
         for line in sans_lines:
             if "DNS" in line and "IP" in line:
@@ -139,8 +139,8 @@ class TLSManager:
                 #  Otherwise, Kyuubi would pick up the file change when it's empty, and crash its internal watcher thread
                 try:
                     self._rename_ca_in_truststore()
-                    self._delete_ca_in_truststore()
                     self._import_ca_in_truststore()
+                    self._delete_ca_in_truststore()
                 except ops.pebble.ExecError as e:
                     logger.error(str(e.stdout))
                     raise e
