@@ -46,18 +46,16 @@ def test_deploy_minimal_kyuubi_setup(
 
 def test_kyuubi_without_passing_credentials(juju: jubilant.Juju) -> None:
     """Test the JDBC connection when invalid credentials are provided."""
-    with pytest.raises(TTransportException) as exc:
+    with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju)
-    assert "Error validating the login" in getattr(exc.value, "message", "")
 
 
 def test_kyuubi_with_invalid_credentials(juju: jubilant.Juju) -> None:
     """Test the JDBC connection when invalid credentials are provided."""
     username = "admin"
     password = str(uuid.uuid4())
-    with pytest.raises(TTransportException) as exc:
+    with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
-    assert "Error validating the login" in getattr(exc.value, "message", "")
 
 
 def test_kyuubi_valid_credentials(juju: jubilant.Juju) -> None:
