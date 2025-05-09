@@ -13,7 +13,7 @@ ops = "^2.17.0"
 # NOTE(boto): 1.36+ incompatible with minio because of MD5 checksum
 boto3 = ">=1.28.0,<1.36"
 lightkube = "^0.15.2"
-psycopg2 = "^2.9.9"
+psycopg2-binary = "^2.9.9"
 tenacity = ">=8.0.1"
 spark8t = ">=0.0.11"
 
