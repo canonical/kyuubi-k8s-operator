@@ -46,36 +46,33 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.framework.observe(
             self.charm.on.auth_db_relation_broken, self._on_auth_db_relation_removed
         )
-        self.framework.observe(
-            self.charm.on.auth_db_relation_departed, self._on_auth_db_relation_departed
-        )
 
     @compute_status
     @defer_when_not_ready
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the event when authentication database is created."""
-        if not (auth_db := self.context.auth_db) or auth_db is None:
+        if not (auth_db := self.context.auth_db):
+            self.logger.debug(f"auth_db is {auth_db}, deferring event...")
             event.defer()
             return
 
-        self.logger.info("Authentication database created...")
-        auth = AuthenticationManager(auth_db)
-        auth.prepare_auth_db()
+        if self.charm.unit.is_leader():
+            auth = AuthenticationManager(auth_db)
+            auth.prepare_auth_db()
+            self.logger.info("Authentication database created...")
+
         self.kyuubi.update()
 
     @compute_status
+    @defer_when_not_ready
     def _on_auth_db_endpoints_changed(self, event) -> None:
         """Handle the event when authentication database endpoints are changed."""
-        self.logger.info("Authentication database endpoints changed...")
         self.kyuubi.update()
+        self.logger.info("Authentication database endpoints changed...")
 
     @compute_status
+    @defer_when_not_ready
     def _on_auth_db_relation_removed(self, event) -> None:
         """Handle the event when authentication database relation is removed."""
-        self.logger.info("Authentication database relation removed")
         self.kyuubi.update(set_auth_db_none=True)
-
-    @compute_status
-    def _on_auth_db_relation_departed(self, event) -> None:
-        """Handle the event when the authentication database relation is departed."""
-        self.logger.info("Authentication database relation departed")
+        self.logger.info("Authentication database relation removed")

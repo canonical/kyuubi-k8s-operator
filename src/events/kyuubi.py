@@ -177,6 +177,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
 
     @compute_status
+    @defer_when_not_ready
     def _on_peer_relation_changed(self, event: ops.RelationDepartedEvent):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")

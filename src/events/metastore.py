@@ -37,15 +37,15 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
         self.metastore_manager = HiveMetastoreManager(self.workload)
-        self.metatstore_db_handler = DatabaseRequirerEventHandlers(
+        self.metastore_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.metastore_db_requirer
         )
 
         self.framework.observe(
-            self.metatstore_db_handler.on.database_created, self._on_metastore_db_created
+            self.metastore_db_handler.on.database_created, self._on_metastore_db_created
         )
         self.framework.observe(
-            self.metatstore_db_handler.on.endpoints_changed, self._on_metastore_db_created
+            self.metastore_db_handler.on.endpoints_changed, self._on_metastore_db_created
         )
         self.framework.observe(
             self.charm.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
@@ -55,12 +55,20 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle event when metastore database is created."""
-        self.logger.info("Metastore database created...")
+        if not (metastore_db := self.context.metastore_db):
+            self.logger.debug(f"metastore_db is {metastore_db}, deferring event...")
+            event.defer()
+            return
+
         self.kyuubi.update()
-        self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
+
+        if self.charm.unit.is_leader():
+            self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
+            self.logger.info("Metastore database created...")
 
     @compute_status
+    @defer_when_not_ready
     def _on_metastore_db_relation_removed(self, event) -> None:
         """Handle event when metastore database relation is removed."""
-        self.logger.info("Mestastore database relation removed")
         self.kyuubi.update(set_metastore_db_none=True)
+        self.logger.info("Metastore database relation removed")

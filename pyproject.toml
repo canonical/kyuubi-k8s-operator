@@ -25,7 +25,7 @@ pydantic = "^1.10.17, <2"
 # grafana, loki, prometheus
 pyyaml = "^6.0.1"
 # prometheus, loki
-cosl = "^0.0.12"
+cosl = "^0.0.57"
 # tls_certificates_interface/v1/tls_certificates.py
 # tls_certificates lib uses a feature only available in cryptography >=42.0.5
 cryptography = ">=42.0.5"

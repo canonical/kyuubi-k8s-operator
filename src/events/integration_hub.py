@@ -58,12 +58,14 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update()
 
     @compute_status
+    @defer_when_not_ready
     def _on_spark_properties_changed(self, _: ServiceAccountPropertyChangedEvent):
         """Handle the spark service account relation changed event."""
         self.logger.info("Service account properties changed")
         self.kyuubi.update()
 
     @compute_status
+    @defer_when_not_ready
     def _on_account_gone(self, _: ServiceAccountGoneEvent):
         """Handle the `ServiceAccountGoneEvent` event from integration hub."""
         self.logger.info("Service account deleted")
