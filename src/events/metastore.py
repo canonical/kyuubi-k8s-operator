@@ -57,9 +57,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         """Handle event when metastore database is created."""
         self.logger.info("Metastore database created...")
         self.kyuubi.update()
-        self.metastore_manager.initialize(
-            schema_version=HIVE_SCHEMA_VERSION, username=event.username, password=event.password
-        )
+        self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
 
     @compute_status
     def _on_metastore_db_relation_removed(self, event) -> None:
