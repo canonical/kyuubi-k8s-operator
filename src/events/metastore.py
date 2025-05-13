@@ -61,8 +61,8 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
             self.logger.info(f"Context auth dbname {self.context.auth_db.endpoint}")
         else:
             self.logger.info("Auth db credentials are not there... defer the event...")
-            event.defer()
-            return
+            # event.defer()
+            # return
 
         self.kyuubi.update()
 

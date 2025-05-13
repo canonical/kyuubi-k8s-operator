@@ -119,6 +119,7 @@ class Context(WithLogging):
     def auth_db(self) -> DatabaseConnectionInfo | None:
         """The state of authentication DB connection."""
         for data in self.auth_db_requirer.fetch_relation_data().values():
+            self.logger.info(f"metastore databag: {data}")
             if any(key not in data for key in ["endpoints", "username", "password"]):
                 continue
             return DatabaseConnectionInfo(
