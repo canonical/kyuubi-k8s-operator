@@ -55,12 +55,24 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle event when metastore database is created."""
-        self.logger.info("Metastore database created...")
+        # TODO remove them
+        self.logger.info(f"Auth db: {self.context.auth_db is not None}")
+        if self.context.auth_db:
+            self.logger.info(f"Context auth dbname {self.context.auth_db.endpoint}")
+        else:
+            self.logger.info("Auth db credentials are not there... defer the event...")
+            # event.defer()
+            # return
+
         self.kyuubi.update()
-        self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
+
+        if self.charm.unit.is_leader():
+            self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
+            self.logger.info("Metastore database created...")
 
     @compute_status
+    @defer_when_not_ready
     def _on_metastore_db_relation_removed(self, event) -> None:
         """Handle event when metastore database relation is removed."""
-        self.logger.info("Mestastore database relation removed")
         self.kyuubi.update(set_metastore_db_none=True)
+        self.logger.info("Mestastore database relation removed")
