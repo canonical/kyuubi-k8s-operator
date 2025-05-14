@@ -118,8 +118,16 @@ class Context(WithLogging):
     @property
     def auth_db(self) -> DatabaseConnectionInfo | None:
         """The state of authentication DB connection."""
+        # debug remove it
+        rel = self.model.get_relation(POSTGRESQL_METASTORE_DB_REL)
+        if rel:
+            self.logger.info(f"Relation data: {rel.data}")
+        else:
+            self.logger.info("Something is really wrong")
+
         for data in self.auth_db_requirer.fetch_relation_data().values():
             self.logger.info(f"metastore databag: {data}")
+
             if any(key not in data for key in ["endpoints", "username", "password"]):
                 continue
             return DatabaseConnectionInfo(
