@@ -126,7 +126,12 @@ def s3_bucket_and_creds():
         service_name="s3",
         endpoint_url=endpoint_url,
         verify=False,
-        config=Config(connect_timeout=60, retries={"max_attempts": 4}),
+        config=Config(
+            connect_timeout=60,
+            retries={"max_attempts": 4},
+            request_checksum_calculation="when_supported",
+            response_checksum_validation="when_supported",
+        ),
     )
     test_bucket = s3.Bucket(TEST_BUCKET_NAME)
 
