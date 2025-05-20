@@ -37,15 +37,15 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi = KyuubiManager(self.workload, self.context)
         self.metastore_manager = HiveMetastoreManager(self.workload)
-        self.metatstore_db_handler = DatabaseRequirerEventHandlers(
+        self.metastore_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.metastore_db_requirer
         )
 
         self.framework.observe(
-            self.metatstore_db_handler.on.database_created, self._on_metastore_db_created
+            self.metastore_db_handler.on.database_created, self._on_metastore_db_created
         )
         self.framework.observe(
-            self.metatstore_db_handler.on.endpoints_changed, self._on_metastore_db_created
+            self.metastore_db_handler.on.endpoints_changed, self._on_metastore_db_created
         )
         self.framework.observe(
             self.charm.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
@@ -55,14 +55,10 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle event when metastore database is created."""
-        # TODO remove them
-        self.logger.info(f"Auth db: {self.context.auth_db is not None}")
-        if self.context.auth_db:
-            self.logger.info(f"Context auth dbname {self.context.auth_db.endpoint}")
-        else:
-            self.logger.info("Auth db credentials are not there... defer the event...")
-            # event.defer()
-            # return
+        if not (metastore_db := self.context.metastore_db) or metastore_db is None:
+            self.logger.debug("metastore_db is None.")
+            event.defer()
+            return
 
         self.kyuubi.update()
 

@@ -52,6 +52,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the event when authentication database is created."""
         if not (auth_db := self.context.auth_db) or auth_db is None:
+            self.logger.debug("Auth_db is None.")
             event.defer()
             return
 
