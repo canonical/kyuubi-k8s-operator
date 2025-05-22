@@ -138,7 +138,9 @@ def s3_bucket_and_creds():
     # Delete test bucket if it exists
     if test_bucket in s3.buckets.all():
         logger.info(f"The bucket {TEST_BUCKET_NAME} already exists. Deleting it...")
-        test_bucket.objects.all().delete()
+        for obj in test_bucket.objects.all():
+            # We need to iterate over keys because delete_objects (plural) has mandatory checksum
+            obj.delete()
         test_bucket.delete()
 
     # Create the test bucket
@@ -154,7 +156,10 @@ def s3_bucket_and_creds():
     }
 
     logger.info("Tearing down test bucket...")
-    test_bucket.objects.all().delete()
+    for obj in test_bucket.objects.all():
+        # We need to iterate over keys because delete_objects (plural) has mandatory checksum
+        obj.delete()
+
     test_bucket.delete()
 
 
