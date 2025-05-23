@@ -66,7 +66,6 @@ jobs:
           - integration-ha
           - integration-external-access
           - integration-dynamic-allocation
-          - integration-upgrade
           - integration-iceberg
           - integration-provider
           - integration-trust
@@ -131,5 +130,62 @@ jobs:
           fi
       - name: Run integration tests
         run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}' --keep-models
+        env:
+          CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+
+  test-inplace-upgrades:
+    strategy:
+      fail-fast: false
+      matrix:
+        multi: ["--inplace-upgrades-multi-units", ""]
+        tls: ["--inplace-upgrades-tls", ""]
+        image: ["--inplace-upgrades-image", ""]
+        metastore: ["--inplace-upgrades-metastore", ""]
+    name: Inplace upgrade ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
+    needs:
+      - lint
+      - unit-test
+      - build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: (GitHub hosted) Free up disk space
+        shell: bash
+        run: |
+          printf '\nDisk usage before cleanup\n'
+          df --human-readable
+          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
+          rm -r /usr/share/dotnet
+          rm -r /opt/hostedtoolcache/
+          printf '\nDisk usage after cleanup\n'
+          df --human-readable
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup operator environment
+        # TODO: Replace with custom image on self-hosted runner
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          juju-channel: 3.6/stable
+          provider: microk8s
+          channel: 1.32-strict/stable
+          microk8s-group: snap_microk8s
+          microk8s-addons: "rbac hostpath-storage dns minio"
+      - name: Download packed charm(s)
+        uses: actions/download-artifact@v4
+        with:
+          artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+          merge-multiple: true
+      - id: cache-image
+        name: Cache Spark Image Locally
+        run: |
+          # Download image for avoiding time out
+          IMAGE=$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
+          docker pull $IMAGE
+          docker save $IMAGE -o image.tar
+          sudo microk8s ctr images import --base-name $IMAGE image.tar
+          docker rmi $IMAGE
+          rm image.tar
+      - name: Run inplace upgrade tests
+        run: tox run -e integration-inplace -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
