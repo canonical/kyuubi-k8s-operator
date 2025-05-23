@@ -126,14 +126,21 @@ def s3_bucket_and_creds():
         service_name="s3",
         endpoint_url=endpoint_url,
         verify=False,
-        config=Config(connect_timeout=60, retries={"max_attempts": 4}),
+        config=Config(
+            connect_timeout=60,
+            retries={"max_attempts": 4},
+            request_checksum_calculation="when_supported",
+            response_checksum_validation="when_supported",
+        ),
     )
     test_bucket = s3.Bucket(TEST_BUCKET_NAME)
 
     # Delete test bucket if it exists
     if test_bucket in s3.buckets.all():
         logger.info(f"The bucket {TEST_BUCKET_NAME} already exists. Deleting it...")
-        test_bucket.objects.all().delete()
+        for obj in test_bucket.objects.all():
+            # We need to iterate over keys because delete_objects (plural) has mandatory checksum
+            obj.delete()
         test_bucket.delete()
 
     # Create the test bucket
@@ -149,7 +156,10 @@ def s3_bucket_and_creds():
     }
 
     logger.info("Tearing down test bucket...")
-    test_bucket.objects.all().delete()
+    for obj in test_bucket.objects.all():
+        # We need to iterate over keys because delete_objects (plural) has mandatory checksum
+        obj.delete()
+
     test_bucket.delete()
 
 
