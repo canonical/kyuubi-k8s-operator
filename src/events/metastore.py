@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
@@ -60,11 +61,14 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        self.kyuubi.update()
-
         if self.charm.unit.is_leader():
             self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
             self.logger.info("Metastore database created...")
+
+            # Trigger status update of units via peer relation data
+            self.context.cluster.update({"refresh-token": str(uuid4())})
+
+        self.kyuubi.update()
 
     @compute_status
     @defer_when_not_ready
