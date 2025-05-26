@@ -97,10 +97,6 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 lambda: self.get_app_status() != Status.ACTIVE.value,
                 "The action failed because the charm is not in active state.",
             ),
-            (
-                lambda: not self.charm.upgrade_events.idle,
-                f"Cannot set password while upgrading (upgrade_stack: {self.charm.upgrade_events.upgrade_stack})",
-            ),
         ]
 
         for check, msg in failure_conditions:
