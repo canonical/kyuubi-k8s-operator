@@ -7,8 +7,11 @@
 
 """Charm the Kyuubi service."""
 
+from __future__ import annotations
+
 import logging
 
+import charm_refresh
 import ops
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
@@ -19,7 +22,6 @@ from constants import (
     COS_LOG_RELATION_NAME_SERVER,
     COS_METRICS_PATH,
     COS_METRICS_PORT,
-    DEPENDENCIES,
     KYUUBI_CONTAINER_NAME,
 )
 from core.config import CharmConfig
@@ -32,7 +34,7 @@ from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.provider import KyuubiClientProviderEvents
 from events.tls import TLSEvents
-from events.upgrade import KyuubiDependencyModel, UpgradeEvents
+from events.upgrade import KyuubiRefresh
 from events.zookeeper import ZookeeperEvents
 
 # Log messages can be retrieved using juju debug-log
@@ -62,12 +64,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.action_events = ActionEvents(self, self.context, self.workload)
-        self.upgrade_events = UpgradeEvents(
-            self,
-            self.context,
-            self.workload,
-            KyuubiDependencyModel(**DEPENDENCIES),  # type: ignore
-        )
         self.tls_events = TLSEvents(self, self.context, self.workload)
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 
@@ -90,6 +86,23 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         # Server logs from Pebble
         self._log_forwarder = LogForwarder(self, relation_name=COS_LOG_RELATION_NAME_SERVER)
 
+        self.refresh: charm_refresh.Kubernetes | None
+        try:
+            self.refresh = charm_refresh.Kubernetes(
+                KyuubiRefresh(
+                    workload_name="Kyuubi",
+                    charm_name="kyuubi-k8",
+                    oci_resource_name="kyuubi-image",
+                    _charm=self,
+                )
+            )
+        except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
+            self.refresh = None
+        # TODO: Add refresh status logic in base event handler
+        # self._reconcile_refresh_status()
+        if self.refresh is not None and not self.refresh.next_unit_allowed_to_refresh:
+            self.refresh.next_unit_allowed_to_refresh = True
+
 
 if __name__ == "__main__":  # pragma: nocover
-    ops.main(KyuubiCharm)  # type: ignore
+    ops.main(KyuubiCharm)

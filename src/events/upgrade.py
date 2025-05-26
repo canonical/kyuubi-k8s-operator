@@ -6,132 +6,49 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from charms.data_platform_libs.v0.upgrade import (
-    ClusterNotReadyError,
-    DataUpgrade,
-    DependencyModel,
-    EventBase,
-    KubernetesClientError,
-)
-from lightkube.core.client import Client
-from lightkube.core.exceptions import ApiError
-from lightkube.resources.apps_v1 import StatefulSet
-from ops import ModelError
-from pydantic import BaseModel
-from tenacity import retry, stop_after_attempt, wait_random
-
-from constants import KYUUBI_CONTAINER_NAME
-from core.context import Context
-from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler
-from managers.kyuubi import KyuubiManager
+import charm_refresh
 
 if TYPE_CHECKING:
     from charm import KyuubiCharm
 
 
-class KyuubiDependencyModel(BaseModel):
-    """Model for Kyuubi Operator dependencies."""
+@dataclass(eq=False)
+class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
+    """Implement callbacks and configuration for in-place refreshes."""
 
-    service: DependencyModel
+    _charm: KyuubiCharm
 
+    @staticmethod
+    def run_pre_refresh_checks_after_1_unit_refreshed() -> None:
+        """Ignored."""
+        pass
 
-class UpgradeEvents(DataUpgrade, BaseEventHandler):
-    """Class implementing Upgrade integration event hooks."""
+    def run_pre_refresh_checks_before_any_units_refreshed(self) -> None:
+        """Run compatibility checks."""
+        # TODO: Check metastore schema compatibility on refreshed unit
+        if not self._charm.metastore_events.metastore_manager.is_metastore_valid():
+            raise charm_refresh.PrecheckFailed("Metastore is not valid")
 
-    def __init__(
-        self,
-        charm: KyuubiCharm,
-        context: Context,
-        workload: KyuubiWorkload,
-        dependency_model: BaseModel,
-    ) -> None:
-        super().__init__(charm, dependency_model=dependency_model, substrate="k8s")  # type: ignore
+        # TODO: Check image compatibility with regards to spark?
+        # We might need to write our own, more permissive, custom logic to handle this use
+        # case.
 
-        self.charm = charm
-        self.context = context
-        self.workload = workload
-
-        self.kyuubi = KyuubiManager(self.workload, self.context)
-        self.framework.observe(
-            getattr(self.charm.on, "upgrade_charm"), self._on_kyuubi_pebble_ready_upgrade
+    @classmethod
+    def is_compatible(
+        cls,
+        *,
+        old_charm_version: charm_refresh.CharmVersion,
+        new_charm_version: charm_refresh.CharmVersion,
+        old_workload_version: str,
+        new_workload_version: str,
+    ) -> bool:
+        """Check charm version compatibility."""
+        return super().is_compatible(
+            old_charm_version=old_charm_version,
+            new_charm_version=new_charm_version,
+            old_workload_version=old_workload_version,
+            new_workload_version=new_workload_version,
         )
-
-    def _on_kyuubi_pebble_ready_upgrade(self, _: EventBase):
-        """Handler for the `upgrade-charm` events during the in-place upgrades."""
-        self.logger.info("Kyuubi upgrade...")
-
-        # ensure pebble-ready only fires after normal peer-relation-driven server init
-        if not self.workload.ready():
-            self.logger.info("Workload is not ready")
-            return
-
-        # useful to have a log here to indicate that the upgrade is progressing
-        try:
-            # check if workload is active
-            self.workload.active()
-        except ModelError:
-            self.logger.info(
-                f"{KYUUBI_CONTAINER_NAME} workload service not running, re-initialising..."
-            )
-
-        # re-initialise + replan pebble layer if no service, or service not running
-        self.kyuubi.update()
-
-        # check if upgrade is successful and set unit upgrade status
-        try:
-            self.post_upgrade_check()
-        except Exception as e:
-            self.logger.error(e)
-            self.set_unit_failed()
-            return
-
-        self.set_unit_completed()
-        self.logger.info("Upgrade completed.")
-
-    @retry(stop=stop_after_attempt(5), wait=wait_random(min=1, max=5), reraise=True)
-    def post_upgrade_check(self) -> None:
-        """Runs necessary checks validating the unit is in a healthy state after upgrade."""
-        self.logger.info("Post upgrade checks")
-        self.pre_upgrade_check()
-
-    def pre_upgrade_check(self) -> None:
-        """Pre-upgrade-tests function."""
-        self.logger.info("Post upgrade check")
-        default_message = "Pre-upgrade check failed and cannot safely upgrade"
-
-        if not self.workload.active():
-            raise ClusterNotReadyError(message=default_message, cause="Cluster is not healthy")
-
-    def log_rollback_instructions(self) -> None:
-        """Return rollback instructions."""
-        self.logger.critical(
-            "\n".join(
-                [
-                    "Unit failed to refresh and requires manual rollback to previous stable version.",
-                    "    1. Re-run `pre-upgrade-check` action on the leader unit to enter 'recovery' state",
-                    "    2. Run `juju refresh` to the previously deployed charm revision",
-                ]
-            )
-        )
-        return
-
-    def _set_rolling_update_partition(self, partition: int) -> None:
-        """Set the rolling update partition to a specific value."""
-        try:
-            patch = {"spec": {"updateStrategy": {"rollingUpdate": {"partition": partition}}}}
-            Client().patch(  # pyright: ignore [reportArgumentType]
-                StatefulSet,
-                name=self.charm.model.app.name,
-                namespace=self.charm.model.name,
-                obj=patch,
-            )
-            self.logger.debug(f"Kubernetes StatefulSet partition set to {partition}")
-        except ApiError as e:
-            if e.status.code == 403:
-                cause = "`juju trust` needed"
-            else:
-                cause = str(e)
-            raise KubernetesClientError("Kubernetes StatefulSet patch failed", cause)
