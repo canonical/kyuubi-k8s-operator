@@ -84,6 +84,7 @@ parts:
     source: .
     prime:
       - LICENSE
+      - refresh_versions.toml
   libpq:
     build-packages:
       - libpq-dev

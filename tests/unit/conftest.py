@@ -116,3 +116,10 @@ def mock_lightkube_client():
     """A fixture to run unit tests even in non K8s environment."""
     with patch("lightkube.Client") as mock_client:
         yield mock_client
+
+
+@pytest.fixture(autouse=True)
+def mock_refresh():
+    """Fixture to shunt refresh logic and events."""
+    with patch("charm_refresh.Kubernetes"):
+        yield
