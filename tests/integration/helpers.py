@@ -427,6 +427,8 @@ def deploy_minimal_kyuubi_setup(
         "channel": "edge",
         "base": "ubuntu@22.04",
         "trust": trust,
+        # TODO(ga): Use stable revision
+        "revision": 52,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -684,6 +686,7 @@ def validate_sql_queries_with_kyuubi(
     query_lines: list[str] | None = None,
     db_name: str | None = None,
     table_name: str | None = None,
+    use_tls: bool = False,
 ):
     """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
     if not kyuubi_host:
@@ -705,7 +708,7 @@ def validate_sql_queries_with_kyuubi(
         args.update({"username": username})
     if password:
         args.update({"password": password})
-    kyuubi_client = KyuubiClient(**args)
+    kyuubi_client = KyuubiClient(**args, use_ssl=use_tls)
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         for line in query_lines:
