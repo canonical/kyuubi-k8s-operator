@@ -1,2 +1,5 @@
 charm_major = 1
 workload = "1.10"
+
+# FIXME: remove before merging (should be added at packing time)
+charm = "3.4/1.0.0"
