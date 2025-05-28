@@ -433,6 +433,22 @@ pyyaml = ">=6.0.2"
 tomli = ">=2.0.1"
 
 [[package]]
+name = "charm-refresh-build-version"
+version = "0.2.0"
+description = "Write `charm` version in refresh_versions.toml from git tag"
+optional = false
+python-versions = ">=3.8"
+groups = ["build-refresh-version"]
+files = [
+    {file = "charm_refresh_build_version-0.2.0-py3-none-any.whl", hash = "sha256:5a6965772e74549dddfa91eb6c9114605eb9f437ef98e610d7fb428bbd3a934c"},
+    {file = "charm_refresh_build_version-0.2.0.tar.gz", hash = "sha256:1ec97659f669f18fc1ff759b5e535ea4dba716c509116b05d8dc4d1f3e7d49a8"},
+]
+
+[package.dependencies]
+dunamai = ">=1.23.1"
+tomlkit = ">=0.13.2"
+
+[[package]]
 name = "charset-normalizer"
 version = "3.4.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
@@ -741,6 +757,21 @@ wrapt = ">=1.10,<2"
 
 [package.extras]
 dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "setuptools ; python_version >= \"3.12\"", "tox"]
+
+[[package]]
+name = "dunamai"
+version = "1.24.1"
+description = "Dynamic version generation"
+optional = false
+python-versions = ">=3.5"
+groups = ["build-refresh-version"]
+files = [
+    {file = "dunamai-1.24.1-py3-none-any.whl", hash = "sha256:4370e406d8ce195fc4b066b5c326bfa9adb269c4b8719b4e4fd90b63a2144bf7"},
+    {file = "dunamai-1.24.1.tar.gz", hash = "sha256:3aa3348f77242da8628b23f11e89569343440f0f912bcef32a1fa891cf8e7215"},
+]
+
+[package.dependencies]
+packaging = ">=20.9"
 
 [[package]]
 name = "envyaml"
@@ -1232,7 +1263,7 @@ version = "25.0"
 description = "Core utilities for Python packages"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "integration", "unit"]
+groups = ["main", "build-refresh-version", "integration", "unit"]
 files = [
     {file = "packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484"},
     {file = "packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f"},
@@ -1868,6 +1899,18 @@ files = [
     {file = "tomli-2.2.1.tar.gz", hash = "sha256:cd45e1dc79c835ce60f7404ec8119f2eb06d38b1deba146f07ced3bbc44505ff"},
 ]
 markers = {integration = "python_version == \"3.10\"", lint = "python_version == \"3.10\"", unit = "python_full_version <= \"3.11.0a6\""}
+
+[[package]]
+name = "tomlkit"
+version = "0.13.2"
+description = "Style preserving TOML library"
+optional = false
+python-versions = ">=3.8"
+groups = ["build-refresh-version"]
+files = [
+    {file = "tomlkit-0.13.2-py3-none-any.whl", hash = "sha256:7a974427f6e119197f670fbbbeae7bef749a6c14e793db934baefc1b5f03efde"},
+    {file = "tomlkit-0.13.2.tar.gz", hash = "sha256:fff5fe59a87295b278abd31bec92c15d9bc4a06885ab12bcea52c71119392e79"},
+]
 
 [[package]]
 name = "types-awscrt"
@@ -2518,4 +2561,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "4cb1b7e191f5d54c5d8f951c44580efad69ba4496ecd9e004682224f7328dd38"
+content-hash = "fb8dd64806e81271e785fd9988a35954434bf81cb7845326c5f8572b47a5a52d"

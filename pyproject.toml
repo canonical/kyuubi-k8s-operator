@@ -68,6 +68,12 @@ tenacity = "^8.2.2"
 spark-k8s-test = "^0.0.4"
 jubilant = "^1.0.0"
 
+[tool.poetry.group.build-refresh-version]
+optional = true
+
+[tool.poetry.group.build-refresh-version.dependencies]
+charm-refresh-build-version = "^0.2.0"
+
 [tool.ruff]
 line-length = 99
 extend-exclude = ["__pycache__", "*.egg_info"]
