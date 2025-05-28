@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from ops import pebble
@@ -121,5 +121,8 @@ def mock_lightkube_client():
 @pytest.fixture(autouse=True)
 def mock_refresh():
     """Fixture to shunt refresh logic and events."""
-    with patch("charm_refresh.Kubernetes"):
+    with (
+        patch("charm_refresh.Kubernetes"),
+        patch("charm.KyuubiRefresh", Mock(return_value=None)),
+    ):
         yield
