@@ -98,6 +98,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             )
         except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
             self.refresh = None
+
         # TODO: Add refresh status logic in base event handler
         # self._reconcile_refresh_status()
         if self.refresh is not None and not self.refresh.next_unit_allowed_to_refresh:
