@@ -8,8 +8,6 @@ from pathlib import Path
 import jubilant
 import yaml
 
-from core.domain import Status
-
 from .helpers import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
@@ -45,7 +43,7 @@ def test_build_and_deploy(
 
     assert (
         status.apps[APP_NAME].app_status.message
-        == Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value.message
+        == "Run `juju trust kyuubi-k8s --scope=cluster`. Needed for in-place refreshes"
     )
 
 
