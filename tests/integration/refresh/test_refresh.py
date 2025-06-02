@@ -231,7 +231,7 @@ def test_fail_and_rollback(juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bo
 
     with inject_dependency_fault(kyuubi_charm) as faulty_charm:
         logger.info("Refreshing the charm")
-        juju.refresh(APP_NAME, path=faulty_charm)
+        juju.refresh(APP_NAME, path=faulty_charm.absolute())
 
     logger.info("Waiting for upgrade to fail")
 
