@@ -139,15 +139,15 @@ jobs:
           echo "Done"
 
 
-  test-inplace-upgrades:
+  test-refresh:
     strategy:
       fail-fast: false
       matrix:
-        multi: ["--inplace-upgrades-multi-units", ""]
-        tls: ["--inplace-upgrades-tls", ""]
-        image: ["--inplace-upgrades-image", ""]
-        metastore: ["--inplace-upgrades-metastore", ""]
-    name: Inplace upgrade ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
+        multi: ["--refresh-multi-units", ""]
+        tls: ["--refresh-tls", ""]
+        image: ["--refresh-image", ""]
+        metastore: ["--refresh-metastore", ""]
+    name: Refresh ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
     needs:
       - lint
       - unit-test
@@ -192,7 +192,7 @@ jobs:
           docker rmi $IMAGE
           rm image.tar
       - name: Run inplace upgrade tests
-        run: tox run -e integration-inplace -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
+        run: tox run -e integration-refresh -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
       - name: Collect logs if job failed

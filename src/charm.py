@@ -33,8 +33,8 @@ from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.provider import KyuubiClientProviderEvents
+from events.refresh import KyuubiRefresh
 from events.tls import TLSEvents
-from events.upgrade import KyuubiRefresh
 from events.zookeeper import ZookeeperEvents
 
 # Log messages can be retrieved using juju debug-log
