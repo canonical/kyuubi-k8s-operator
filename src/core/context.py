@@ -6,6 +6,8 @@
 
 from ipaddress import IPv4Address, IPv6Address
 
+from ops.model import Unit
+
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequirerData,
     DataPeerData,
@@ -196,3 +198,11 @@ class Context(WithLogging):
     def client_relations(self) -> set[Relation]:
         """The relations of all client applications."""
         return set(self.model.relations[KYUUBI_CLIENT_RELATION_NAME])
+
+    @property
+    def app_units(self) -> set[Unit]:
+        """The peer-related units in the application."""
+        if not self._peer_relation:
+            return set()
+
+        return {self.model.unit, *self._peer_relation.units}
