@@ -6,14 +6,13 @@
 
 from ipaddress import IPv4Address, IPv6Address
 
-from ops.model import Unit
-
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequirerData,
     DataPeerData,
     DataPeerUnitData,
 )
 from ops import Model, Relation
+from ops.model import Unit
 
 from common.relation.spark_sa import SparkServiceAccountRequirerData
 from constants import (
