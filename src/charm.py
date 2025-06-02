@@ -99,7 +99,13 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
             self.refresh = None
 
-        if self.refresh is not None and not self.refresh.next_unit_allowed_to_refresh:
+        if (
+            self.refresh is not None
+            and not self.refresh.next_unit_allowed_to_refresh
+            and self.refresh.workload_allowed_to_start
+        ):
+            # Reconcile status
+            self.on.update_status.emit()
             self.refresh.next_unit_allowed_to_refresh = True
 
 
