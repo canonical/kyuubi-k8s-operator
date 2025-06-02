@@ -6,8 +6,6 @@
 
 from ipaddress import IPv4Address, IPv6Address
 
-from ops.model import Unit
-
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequirerData,
     DataPeerData,
@@ -17,6 +15,7 @@ from charms.spark_integration_hub_k8s.v0.spark_service_account import (
     SparkServiceAccountRequirerData,
 )
 from ops import Model, Relation
+from ops.model import Unit
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,

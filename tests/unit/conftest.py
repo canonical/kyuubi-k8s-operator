@@ -124,7 +124,7 @@ def mock_lightkube_client():
 def mock_refresh():
     """Fixture to shunt refresh logic and events."""
     with (
-        patch("charm_refresh.Kubernetes"),
+        patch("charm_refresh.Kubernetes", Mock(return_value=None)),
         patch("charm.KyuubiRefresh", Mock(return_value=None)),
     ):
         yield
