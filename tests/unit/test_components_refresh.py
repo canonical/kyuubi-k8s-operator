@@ -5,9 +5,11 @@ import json
 from pathlib import Path
 from subprocess import check_output
 
+import pytest
 import yaml
 
 from constants import KYUUBI_OCI_IMAGE
+from events.refresh import is_workload_compatible
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 
@@ -30,3 +32,18 @@ def test_images_same_spark_version(skopeo: str) -> None:
 
     # Then
     assert workload_version == job_version
+
+
+@pytest.mark.parametrize(
+    "old, new, expected",
+    [
+        ("1.9", "1.9", True),
+        ("1.9", "1.10", True),
+        ("1.9", "1.10.1", True),  # Patch version do not mess with the major.minor logic
+        ("1.10", "1.9", False),  # No minor downgrade allowed
+        ("1.9", "2.0", False),  # No major bump allowed
+    ],
+)
+def test_is_workload_compatible(old, new, expected):
+    # Then
+    assert is_workload_compatible(old, new) is expected
