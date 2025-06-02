@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+import shutil
+from subprocess import check_output
 from unittest.mock import Mock, patch
 
 import pytest
@@ -126,3 +128,14 @@ def mock_refresh():
         patch("charm.KyuubiRefresh", Mock(return_value=None)),
     ):
         yield
+
+
+@pytest.fixture(scope="session")
+def skopeo() -> str:
+    """Check that skopeo is in path and runnable."""
+    if (skopeo_path := shutil.which("skopeo")) is None:
+        if (skopeo_path := shutil.which("rockcraft.skopeo")) is None:
+            raise FileNotFoundError("Could not find 'skopeo' in PATH.")
+
+    check_output([skopeo_path, "-v"])
+    return skopeo_path
