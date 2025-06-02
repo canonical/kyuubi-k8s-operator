@@ -56,36 +56,44 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
             old_workload_version=old_workload_version,
             new_workload_version=new_workload_version,
         ):
-            # Will log the error
+            # The call above will log the reason
             return False
 
-        try:
-            old_major, old_minor, *_ = (
-                int(component) for component in old_workload_version.split(".")
-            )
-            new_major, new_minor, *_ = (
-                int(component) for component in new_workload_version.split(".")
-            )
-        except ValueError:
-            # Not enough values to unpack or cannot convert
-            logger.error(
-                "Unable to parse workload versions."
-                f"Got {old_workload_version} to {new_workload_version}"
-            )
-            return False
+        return is_workload_compatible(old_workload_version, new_workload_version)
 
-        if old_major != new_major:
-            logger.error(
-                "Upgrading to a different major workload is not supported. "
-                f"Got {old_major} to {new_major}"
-            )
-            return False
 
-        if not new_minor >= old_minor:
-            logger.error(
-                "Upgrading to a previous minor workload is not supported. "
-                f"Got {old_major}.{old_minor} to {new_major}.{new_minor}"
-            )
-            return False
+def is_workload_compatible(old_workload_version: str, new_workload_version: str) -> bool:
+    """Define Kyuubi workload compatibility strategy.
 
-        return True
+    Patch version are ignored.
+    """
+    try:
+        old_major, old_minor, *_ = (
+            int(component) for component in old_workload_version.split(".")
+        )
+        new_major, new_minor, *_ = (
+            int(component) for component in new_workload_version.split(".")
+        )
+    except ValueError:
+        # Not enough values to unpack or cannot convert
+        logger.error(
+            "Unable to parse workload versions."
+            f"Got {old_workload_version} to {new_workload_version}"
+        )
+        return False
+
+    if old_major != new_major:
+        logger.error(
+            "Upgrading to a different major workload is not supported. "
+            f"Got {old_major} to {new_major}"
+        )
+        return False
+
+    if not new_minor >= old_minor:
+        logger.error(
+            "Upgrading to a previous minor workload is not supported. "
+            f"Got {old_major}.{old_minor} to {new_major}.{new_minor}"
+        )
+        return False
+
+    return True
