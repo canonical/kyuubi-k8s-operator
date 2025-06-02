@@ -2,13 +2,13 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""This test module supports testing inplace upgrades in various scenarios.
+"""This test module supports juju refresh in various scenarios.
 
 We are talking about a test matrix with:
 - external metastore; or not
 - tls enabled; or not
 - "ha" mode with multiple units; or a single one
-- Upgrading the workload OCI on top of the charm; or keeping the same one
+- Upgrading the workload OCI on top of the charm; or keeping the default one
 """
 
 import logging
@@ -22,6 +22,7 @@ from integration.helpers import (
     APP_NAME,
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
+    get_leader_unit,
     validate_sql_queries_with_kyuubi,
 )
 from integration.types import IntegrationTestsCharms, S3Info
@@ -111,51 +112,70 @@ def test_populate(
     )
 
 
+def test_pre_refresh_check(juju: jubilant.Juju) -> None:
+    """Test that the pre-refresh-check action runs successfully."""
+    logger.info("Get leader unit")
+    leader_unit = get_leader_unit(juju, APP_NAME)
+
+    logger.info("Run pre-refresh-check action")
+    task = juju.run(leader_unit, "pre-refresh-check")
+    assert task.return_code == 0
+
+
 def test_run_inplace_upgrade(
-    juju: jubilant.Juju, kyuubi_charm: Path, with_image_upgrade: bool
+    juju: jubilant.Juju,
+    kyuubi_charm: Path,
+    with_image_upgrade: bool,
+    with_multi_units: bool,
 ) -> None:
     """Test that the inplace upgrade leads to an active deployment."""
-    if not with_image_upgrade:
-        image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    else:
+    refresh_args: dict = {"path": str(kyuubi_charm)}
+    if with_image_upgrade:
         # spark-3.4.4, release date 01/01/25
         image_version = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708"
+        refresh_args["resources"] = {"kyuubi-image": image_version}
+        logger.info(f"Will upgrade workload image to: {image_version}")
 
-    logger.info(f"Image version: {image_version}")
-
-    status = juju.status()
-    leader_unit = None
-    for name, unit in status.apps[APP_NAME].units.items():
-        if unit.leader:
-            leader_unit = name
-    assert leader_unit
-
-    # TODO trigger pre-upgrade checks after the release of the first charm with the upgrade feature available.
-
-    # test upgrade procedure
-    logger.info("Upgrading Kyuubi...")
+    logger.info("Refreshing Kyuubi")
 
     # start refresh by upgrading to the current version
-    juju.refresh(
-        APP_NAME,
-        path=kyuubi_charm,
-        # revision=49,
-        resources={"kyuubi-image": image_version},
-    )
+    juju.refresh(APP_NAME, **refresh_args)
+
+    logger.info("Waiting for upgrade to start")
+
+    if not with_multi_units:
+        # fast track, one unit will not block in any case
+        juju.wait(jubilant.all_active, delay=10)
+        return
 
     status = juju.wait(lambda status: jubilant.all_agents_idle(status, APP_NAME), delay=10)
+    # Highest to lowest unit number
+    refresh_order = sorted(
+        status.apps[APP_NAME].units.keys(),
+        key=lambda unit: int(unit.split("/")[1]),
+        reverse=True,
+    )
 
-    logger.info("Resume upgrade...")
-    leader_unit = None
-    for name, unit in status.apps[APP_NAME].units.items():
-        if unit.leader:
-            leader_unit = name
-    assert leader_unit
-    try:
-        juju.run(leader_unit, "resume-upgrade")
-    except Exception:
-        pass
+    assert (
+        "Refresh incompatible"
+        in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+    ), "Application refresh not blocked due to incompatibility"
 
+    task_params = {"check-compatibility": False}
+    if with_image_upgrade:
+        task_params["check-workload-container"] = False
+
+    task = juju.run(refresh_order[0], "force-refresh-start", task_params)
+    assert task.return_code == 0
+
+    logger.info("Waiting for first unit to upgrade")
+    status = juju.wait(lambda status: jubilant.all_agents_idle(status, APP_NAME), delay=10)
+
+    logger.info("Running resume-refresh action")
+    leader_unit = get_leader_unit(juju, APP_NAME)
+    task = juju.run(leader_unit, "resume-refresh")
+
+    logger.info("Waiting for refresh to complete")
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
 
