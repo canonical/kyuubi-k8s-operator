@@ -108,7 +108,7 @@ class SparkServiceAccountInfo(RelationState):
 
     def __bool__(self):
         """Return flag of whether the class is ready to be used."""
-        return super().__bool__() and "service-account" in self.relation_data.keys()
+        return super().__bool__() and bool(self.relation_data.get("service-account", ""))
 
     @property
     def service_account(self):
