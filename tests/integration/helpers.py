@@ -720,7 +720,9 @@ def validate_sql_queries_with_kyuubi(
 def inject_dependency_fault(original_charm_file: Path) -> Generator[Path, None, None]:
     """Inject a dependency fault into the Kyuubi charm."""
     filename = Path(original_charm_file).name
-    fault_charm = Path("/tmp", f"{filename}.fault.charm")
+    tmp = Path("tmp")
+    tmp.mkdir(exist_ok=True)
+    fault_charm = tmp / filename
     shutil.copy(original_charm_file, fault_charm)
 
     logger.info("Inject dependency fault")
@@ -736,3 +738,4 @@ def inject_dependency_fault(original_charm_file: Path) -> Generator[Path, None, 
     yield fault_charm
 
     fault_charm.unlink(missing_ok=True)
+    tmp.rmdir()
