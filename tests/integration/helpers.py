@@ -2,20 +2,25 @@
 # See LICENSE file for licensing details.
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import uuid
+import zipfile
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, cast
+from typing import Generator, cast
 
 import jubilant
 import lightkube
 import requests
+import tomli
+import tomli_w
 import yaml
 from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
@@ -597,7 +602,7 @@ def get_k8s_service(namespace: str, service_name: str) -> Service | None:
 def run_command_in_pod(
     juju: jubilant.Juju,
     pod_name: str,
-    pod_command: List[str],
+    pod_command: list[str],
 ) -> tuple[str, str]:
     """Load certificate in the pod."""
     kubectl_command = [
@@ -709,3 +714,25 @@ def validate_sql_queries_with_kyuubi(
             cursor.execute(line)
         results = cursor.fetchall()
         return len(results) == 1
+
+
+@contextlib.contextmanager
+def inject_dependency_fault(original_charm_file: Path) -> Generator[Path, None, None]:
+    """Inject a dependency fault into the Kyuubi charm."""
+    filename = Path(original_charm_file).name
+    fault_charm = Path("/tmp", f"{filename}.fault.charm")
+    shutil.copy(original_charm_file, fault_charm)
+
+    logger.info("Inject dependency fault")
+    with Path("refresh_versions.toml").open("rb") as file:
+        versions = tomli.load(file)
+
+    versions["charm"] = "1/0.0.0"  # Let's use a track that does not exist
+
+    # Overwrite refresh_versions.toml with incompatible version.
+    with zipfile.ZipFile(fault_charm, mode="a") as charm_zip:
+        charm_zip.writestr("refresh_versions.toml", tomli_w.dumps(versions))
+
+    yield fault_charm
+
+    fault_charm.unlink(missing_ok=True)

@@ -23,6 +23,7 @@ from integration.helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
     get_leader_unit,
+    inject_dependency_fault,
     validate_sql_queries_with_kyuubi,
 )
 from integration.types import IntegrationTestsCharms, S3Info
@@ -207,4 +208,41 @@ def test_validate_previous_data(
             f"SELECT * FROM {TABLE_NAME};",
         ],
         use_tls=with_tls,
+    )
+
+
+@pytest.mark.usefixtures("skipif_single_unit")
+def test_fail_and_rollback(juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bool) -> None:
+    """Test that we can rollback after a failed upgrade.
+
+    The test is skipped if we only have a single unit, as we cannot run compatibility checks.
+    """
+    logger.info("Get leader unit")
+    leader_unit = get_leader_unit(juju, APP_NAME)
+
+    logger.info("Run pre-refresh-check action")
+    task = juju.run(leader_unit, "pre-refresh-check")
+    assert task.return_code == 0
+
+    with inject_dependency_fault(kyuubi_charm) as faulty_charm:
+        logger.info("Refreshing the charm")
+        juju.refresh(APP_NAME, path=faulty_charm)
+
+    logger.info("Waiting for upgrade to fail")
+
+    status = juju.wait(jubilant.any_blocked, delay=5)
+    assert "incompatible" in status.apps[APP_NAME].app_status.message.lower()
+
+    logger.info("Re-refresh the charm")
+
+    juju.refresh(APP_NAME, path=kyuubi_charm)
+
+    logger.info("Wait for application to recover")
+    status = juju.wait(jubilant.all_active, delay=10)
+
+    logger.info("Checking that deployment is working once again")
+    username = "admin"
+    password = fetch_password(juju)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju, username=username, password=password, use_tls=with_tls
     )
