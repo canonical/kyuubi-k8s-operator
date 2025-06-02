@@ -430,11 +430,11 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "edge",
+        "channel": "latest/edge/refresh",
         "base": "ubuntu@22.04",
         "trust": trust,
         # TODO(ga): Use stable revision
-        "revision": 52,
+        "revision": 69,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
