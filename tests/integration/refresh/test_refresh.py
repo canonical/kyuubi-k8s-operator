@@ -235,7 +235,7 @@ def test_fail_and_rollback(juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bo
 
     logger.info("Waiting for upgrade to fail")
 
-    status = juju.wait(jubilant.any_blocked, delay=5)
+    status = juju.wait(lambda status: jubilant.all_agents_idle(status, APP_NAME), delay=10)
 
     # Highest to lowest unit number
     refresh_order = sorted(
