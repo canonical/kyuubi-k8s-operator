@@ -47,12 +47,13 @@ def get_random_name():
 
 
 def get_leader_unit(juju: jubilant.Juju, app: str) -> str:
+    """Get application leader unit."""
     status = juju.status()
     leader_unit = None
     for name, unit in status.apps[app].units.items():
         if unit.leader:
             leader_unit = name
-    assert leader_unit
+    assert leader_unit, f"No leader unit found for {app}"
     return leader_unit
 
 
