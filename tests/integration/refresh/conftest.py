@@ -56,3 +56,9 @@ def with_image_upgrade(request) -> bool:
 def skipif_no_metastore(with_metastore: bool) -> None:
     if not with_metastore:
         pytest.skip("No metastore available")
+
+
+@pytest.fixture(scope="module")
+def skipif_single_unit(with_multi_units: bool) -> None:
+    if not with_multi_units:
+        pytest.skip("Cannot test on single unit setup")
