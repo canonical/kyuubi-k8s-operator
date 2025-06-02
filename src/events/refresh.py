@@ -25,8 +25,29 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
     _charm: KyuubiCharm
 
     def run_pre_refresh_checks_after_1_unit_refreshed(self) -> None:
-        """TBD."""
-        logger.warning("Running pre checks")
+        """Checks to run before and during refresh."""
+        if (planned_units := self._charm.model.app.planned_units()) != len(
+            self._charm.context.app_units
+        ):
+            # We don't need to check for the peer relation since `charm_refresh.PeerRelationNotReady`
+            # would've been raised otherwise
+            raise charm_refresh.PrecheckFailed(
+                "Cluster is unstable; unit addition/removal ongoing"
+            )
+
+        if planned_units == 1:
+            logger.warning(
+                "Refreshing a single unit deployment is not recommended, "
+                "as compatibility check will not be run."
+            )
+
+        if not self._charm.context.metastore_db:
+            logging.warning(
+                "Application is not related to an external metastore. "
+                "Refreshing will lead to local data loss."
+            )
+        elif not self._charm.metastore_events.metastore_manager.is_metastore_valid():
+            raise charm_refresh.PrecheckFailed("Metastore is invalid")
 
     @classmethod
     def is_compatible(
@@ -41,7 +62,8 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
 
         On top of the default compatibility check, we need:
         - same MAJOR.MINOR for spark, enforced at the 'track' level
-        - same MAJOR for kyuubi, greater or equal MINOR, enforced by the 'workload'
+        - same MAJOR for kyuubi, greater or equal MINOR, enforced by the 'workload' key
+          in refresh_versions.toml
         """
         if not old_charm_version.track == new_charm_version.track:
             logger.error(
