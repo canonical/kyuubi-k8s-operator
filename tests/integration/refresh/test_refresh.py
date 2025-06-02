@@ -236,7 +236,18 @@ def test_fail_and_rollback(juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bo
     logger.info("Waiting for upgrade to fail")
 
     status = juju.wait(jubilant.any_blocked, delay=5)
-    assert "incompatible" in status.apps[APP_NAME].app_status.message.lower()
+
+    # Highest to lowest unit number
+    refresh_order = sorted(
+        status.apps[APP_NAME].units.keys(),
+        key=lambda unit: int(unit.split("/")[1]),
+        reverse=True,
+    )
+
+    assert (
+        "Refresh incompatible"
+        in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+    ), "Application refresh not blocked due to incompatibility"
 
     logger.info("Re-refresh the charm")
 
