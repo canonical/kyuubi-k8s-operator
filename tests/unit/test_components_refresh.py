@@ -8,7 +8,7 @@ from subprocess import check_output
 import pytest
 import yaml
 
-from constants import KYUUBI_OCI_IMAGE
+from constants import JOB_OCI_IMAGE
 from events.refresh import is_workload_compatible
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
@@ -22,7 +22,7 @@ def inspect_image(skopeo: str, image: str) -> dict:
 def test_images_same_spark_version(skopeo: str) -> None:
     # Given
     charm_workload_image = METADATA["resources"]["kyuubi-image"]["upstream-source"]
-    job_image = KYUUBI_OCI_IMAGE
+    job_image = JOB_OCI_IMAGE
 
     # When
     workload_version = inspect_image(skopeo, charm_workload_image)["Labels"][

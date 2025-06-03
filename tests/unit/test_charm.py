@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from ops.testing import Container, Context, Relation, State
 
-from constants import KYUUBI_CONTAINER_NAME, KYUUBI_OCI_IMAGE
+from constants import JOB_OCI_IMAGE, KYUUBI_CONTAINER_NAME
 from core.domain import Status
 
 logger = logging.getLogger(__name__)
@@ -415,5 +415,5 @@ def test_spark_property_priorities(
 
     # Property read from service account (via spark8t) should
     # override the property of same name set by Kyuubi charm.
-    assert spark_properties["spark.kubernetes.container.image"] != KYUUBI_OCI_IMAGE
+    assert spark_properties["spark.kubernetes.container.image"] != JOB_OCI_IMAGE
     assert spark_properties["spark.kubernetes.container.image"] == "image_from_service_account"
