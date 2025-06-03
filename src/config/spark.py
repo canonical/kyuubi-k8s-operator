@@ -9,7 +9,7 @@ from typing import Optional
 
 from lightkube import Client
 
-from constants import KYUUBI_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
+from constants import JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
 from core.config import CharmConfig
 from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
@@ -36,7 +36,7 @@ class SparkConfig(WithLogging):
         """Return base Spark configurations."""
         conf = {
             "spark.master": self._get_spark_master(),
-            "spark.kubernetes.container.image": KYUUBI_OCI_IMAGE,
+            "spark.kubernetes.container.image": JOB_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
         }
         if self.charm_config.enable_dynamic_allocation:
