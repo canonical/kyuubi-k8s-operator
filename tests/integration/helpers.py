@@ -2,20 +2,25 @@
 # See LICENSE file for licensing details.
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import uuid
+import zipfile
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, cast
+from typing import Generator, cast
 
 import jubilant
 import lightkube
 import requests
+import tomli
+import tomli_w
 import yaml
 from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
@@ -47,12 +52,13 @@ def get_random_name():
 
 
 def get_leader_unit(juju: jubilant.Juju, app: str) -> str:
+    """Get application leader unit."""
     status = juju.status()
     leader_unit = None
     for name, unit in status.apps[app].units.items():
         if unit.leader:
             leader_unit = name
-    assert leader_unit
+    assert leader_unit, f"No leader unit found for {app}"
     return leader_unit
 
 
@@ -424,11 +430,11 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "edge",
+        "channel": "latest/edge/refresh",
         "base": "ubuntu@22.04",
         "trust": trust,
         # TODO(ga): Use stable revision
-        "revision": 52,
+        "revision": 69,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -603,7 +609,7 @@ def get_k8s_service(namespace: str, service_name: str) -> Service | None:
 def run_command_in_pod(
     juju: jubilant.Juju,
     pod_name: str,
-    pod_command: List[str],
+    pod_command: list[str],
 ) -> tuple[str, str]:
     """Load certificate in the pod."""
     kubectl_command = [
@@ -715,3 +721,28 @@ def validate_sql_queries_with_kyuubi(
             cursor.execute(line)
         results = cursor.fetchall()
         return len(results) == 1
+
+
+@contextlib.contextmanager
+def inject_dependency_fault(original_charm_file: Path) -> Generator[Path, None, None]:
+    """Inject a dependency fault into the Kyuubi charm."""
+    filename = Path(original_charm_file).name
+    tmp = Path("tmp")
+    tmp.mkdir(exist_ok=True)
+    fault_charm = tmp / filename
+    shutil.copy(original_charm_file, fault_charm)
+
+    logger.info("Inject dependency fault")
+    with Path("refresh_versions.toml").open("rb") as file:
+        versions = tomli.load(file)
+
+    versions["charm"] = "1/0.0.0"  # Let's use a track that does not exist
+
+    # Overwrite refresh_versions.toml with incompatible version.
+    with zipfile.ZipFile(fault_charm, mode="a") as charm_zip:
+        charm_zip.writestr("refresh_versions.toml", tomli_w.dumps(versions))
+
+    yield fault_charm
+
+    fault_charm.unlink(missing_ok=True)
+    tmp.rmdir()

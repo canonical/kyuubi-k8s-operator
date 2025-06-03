@@ -1,7 +1,9 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-from unittest.mock import patch
+import shutil
+from subprocess import check_output
+from unittest.mock import Mock, patch
 
 import pytest
 from ops import pebble
@@ -25,7 +27,7 @@ def kyuubi_charm():
 @pytest.fixture
 def kyuubi_context(kyuubi_charm):
     """Provide fixture for scenario context based on the Kyuubi charm."""
-    return Context(charm_type=kyuubi_charm)
+    return Context(charm_type=kyuubi_charm, app_trusted=True)
 
 
 @pytest.fixture
@@ -116,3 +118,24 @@ def mock_lightkube_client():
     """A fixture to run unit tests even in non K8s environment."""
     with patch("lightkube.Client") as mock_client:
         yield mock_client
+
+
+@pytest.fixture(autouse=True)
+def mock_refresh():
+    """Fixture to shunt refresh logic and events."""
+    with (
+        patch("charm_refresh.Kubernetes", Mock(return_value=None)),
+        patch("charm.KyuubiRefresh", Mock(return_value=None)),
+    ):
+        yield
+
+
+@pytest.fixture(scope="session")
+def skopeo() -> str:
+    """Check that skopeo is in path and runnable."""
+    if (skopeo_path := shutil.which("skopeo")) is None:
+        if (skopeo_path := shutil.which("rockcraft.skopeo")) is None:
+            raise FileNotFoundError("Could not find 'skopeo' in PATH.")
+
+    check_output([skopeo_path, "-v"])
+    return skopeo_path

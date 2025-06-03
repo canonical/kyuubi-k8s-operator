@@ -30,10 +30,17 @@ class BaseEventHandler(Object, WithLogging):
     charm: KyuubiCharm
     context: Context
 
-    def get_app_status(  # noqa: C901
-        self,
+    def get_app_status(  # noqa: C901 - ignore complexity threshold
+        self, check_refresh: bool = False
     ) -> StatusBase:
         """Return the status of the charm."""
+        if (
+            check_refresh
+            and self.charm.refresh is not None
+            and (refresh_status := self.charm.refresh.unit_status_higher_priority) is not None
+        ):
+            return refresh_status
+
         if not self.workload.ready():
             return Status.WAITING_PEBBLE.value
 
@@ -41,11 +48,9 @@ class BaseEventHandler(Object, WithLogging):
             return Status.MISSING_INTEGRATION_HUB.value
 
         k8s_manager = K8sManager(
-            service_account_info=self.context.service_account, workload=self.workload
+            service_account_info=self.context.service_account,
+            workload=self.workload,
         )
-
-        if not k8s_manager.has_cluster_permissions():
-            return Status.INSUFFICIENT_CLUSTER_PERMISSIONS.value
 
         # Check whether any one of object storage backend has been configured
         # Currently, we do this check on the basis of presence of Spark properties
@@ -83,6 +88,13 @@ class BaseEventHandler(Object, WithLogging):
         ):
             return Status.WAITING_FOR_SERVICE.value
 
+        if (
+            check_refresh
+            and self.charm.refresh is not None
+            and (refresh_status := self.charm.refresh.unit_status_lower_priority()) is not None
+        ):
+            return refresh_status
+
         return Status.ACTIVE.value
 
 
@@ -96,8 +108,14 @@ def compute_status(
         """Return output after resetting statuses."""
         res = hook(event_handler, event)
         if event_handler.charm.unit.is_leader():
+            if (
+                (refresh := event_handler.charm.refresh) is not None
+                and refresh.in_progress
+                and (refresh_app_status := refresh.app_status_higher_priority) is not None
+            ):
+                event_handler.charm.app.status = refresh_app_status
             event_handler.charm.app.status = event_handler.get_app_status()
-        event_handler.charm.unit.status = event_handler.get_app_status()
+        event_handler.charm.unit.status = event_handler.get_app_status(check_refresh=True)
         return res
 
     return wrapper_hook
