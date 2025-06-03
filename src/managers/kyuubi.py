@@ -56,18 +56,8 @@ class KyuubiManager(WithLogging):
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
         tls_info = None if set_tls_none else self.context.tls
 
-        # auth is mandatory
-        if not auth_db_info:
-            self.logger.info("Workload stopped because auth db is missing.")
-            try:
-                self.workload.stop()
-            except Exception:
-                # Stopping on best effort basis for now
-                pass
-            return
-
         # Restart workload only if some configuration has changed.
-        if any(
+        if not any(
             [
                 self._compare_and_update_file(
                     SparkConfig(
@@ -93,8 +83,21 @@ class KyuubiManager(WithLogging):
                 force_restart,
             ]
         ):
-            self.workload.restart()
-        else:
             self.logger.info(
                 "Workload restart skipped because the configurations have not changed."
             )
+            return
+
+        # Stop Kyuubi workload if auth-db is missing
+        if not auth_db_info:
+            self.logger.info("Workload stopped because auth db is missing.")
+            try:
+                self.workload.stop()
+            except Exception:
+                self.logger.warning("Could not stop Kyuubi workload even when auth db is missing.")
+                # Stopping on best effort basis for now
+                pass
+            return
+
+        self.logger.info("Restarting kyuubi workload...")
+        self.workload.restart()

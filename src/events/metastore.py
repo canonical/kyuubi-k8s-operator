@@ -64,7 +64,6 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
 
         if self.charm.unit.is_leader():
             self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
-            self.logger.info("Metastore database created...")
 
     @compute_status
     @defer_when_not_ready
