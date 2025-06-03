@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - main
+      - 3.4/edge
+      - 3.5/edge
 
 jobs:
 
@@ -14,7 +16,7 @@ jobs:
     name: Create charm refresh compatibility version git tag
     uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v32.0.0
     with:
-      # TODO(ga): Update to track 1/
+      # TODO(ga): Update to track 3.4 on 3.4/edge and 3.5 on 3.5/edge
       track: latest
     permissions:
       contents: write # Needed to create git tag
