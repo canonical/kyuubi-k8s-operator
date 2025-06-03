@@ -34,6 +34,9 @@ DB_NAME = "inplace_db"
 TABLE_NAME = "inplace_table"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 
+# spark-3.4.4, release date 01/01/25
+WORKLOAD_IMAGE_UPGRADE = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708"
+
 
 def test_deploy(
     juju: jubilant.Juju,
@@ -132,10 +135,8 @@ def test_run_inplace_upgrade(
     """Test that the inplace upgrade leads to an active deployment."""
     refresh_args: dict = {"path": str(kyuubi_charm)}
     if with_image_upgrade:
-        # spark-3.4.4, release date 01/01/25
-        image_version = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708"
-        refresh_args["resources"] = {"kyuubi-image": image_version}
-        logger.info(f"Will upgrade workload image to: {image_version}")
+        refresh_args["resources"] = {"kyuubi-image": WORKLOAD_IMAGE_UPGRADE}
+        logger.info(f"Will upgrade workload image to: {WORKLOAD_IMAGE_UPGRADE}")
 
     logger.info("Refreshing Kyuubi")
 
@@ -157,13 +158,19 @@ def test_run_inplace_upgrade(
         reverse=True,
     )
 
-    assert (
-        "Refresh incompatible"
-        in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
-    ), "Application refresh not blocked due to incompatibility"
-
     task_params = {"check-compatibility": False}
-    if with_image_upgrade:
+
+    if not with_image_upgrade:
+        assert (
+            "Refresh incompatible"
+            in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+        ), "Application refresh not blocked due to incompatibility"
+
+    else:
+        assert (
+            "missing/incorrect OCI resource"
+            in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+        ), "Application refresh not blocked due to image incompatibility"
         task_params["check-workload-container"] = False
 
     task = juju.run(refresh_order[0], "force-refresh-start", task_params)
@@ -217,7 +224,9 @@ def test_validate_previous_data(
 
 
 @pytest.mark.usefixtures("skipif_single_unit")
-def test_fail_and_rollback(juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bool) -> None:
+def test_fail_and_rollback(
+    juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bool, with_image_upgrade: bool
+) -> None:
     """Test that we can rollback after a failed upgrade.
 
     The test is skipped if we only have a single unit, as we cannot run compatibility checks.
@@ -244,14 +253,23 @@ def test_fail_and_rollback(juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bo
         reverse=True,
     )
 
-    assert (
-        "Refresh incompatible"
-        in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
-    ), "Application refresh not blocked due to incompatibility"
+    if not with_image_upgrade:
+        assert (
+            "Refresh incompatible"
+            in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+        ), "Application refresh not blocked due to incompatibility"
+        image = METADATA["resources"]["kyuubi-image"]["upstream-source"]
+
+    else:
+        assert (
+            "missing/incorrect OCI resource"
+            in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+        ), "Application refresh not blocked due to image incompatibility"
+        image = WORKLOAD_IMAGE_UPGRADE
 
     logger.info("Re-refresh the charm")
 
-    juju.refresh(APP_NAME, path=kyuubi_charm)
+    juju.refresh(APP_NAME, path=kyuubi_charm, resources={"kyuubi-image": image})
 
     logger.info("Wait for application to recover")
     status = juju.wait(jubilant.all_active, delay=10)
