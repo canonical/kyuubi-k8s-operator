@@ -5,7 +5,6 @@
 """Manager for building necessary files for Java TLS auth."""
 
 import logging
-import os
 import socket
 import subprocess
 
@@ -29,11 +28,13 @@ class TLSManager:
 
     def get_subject(self) -> str:
         """Get subject name for the unit."""
-        if self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value:
-            if isinstance(lb := self.context.unit_server.loadbalancer_endpoint, DNSEndpoint):
-                return lb.host
+        if (
+            self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value
+            and (lb := self.context.unit_server.loadbalancer_endpoint) is not None
+        ):
+            return lb.host
 
-        return os.uname()[1]
+        return socket.getfqdn()
 
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""

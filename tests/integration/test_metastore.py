@@ -278,3 +278,66 @@ def test_read_write_with_valid_schema_metastore_again(juju: jubilant.Juju) -> No
         username=username,
         password=password,
     )
+
+
+def test_remove_relations_and_applications(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Remove applications from the model."""
+    juju.remove_relation(f"{APP_NAME}:metastore-db", charm_versions.metastore_db.app)
+    juju.remove_relation(f"{APP_NAME}:auth-db", charm_versions.auth_db.app)
+    juju.remove_relation(APP_NAME, charm_versions.integration_hub.app)
+    juju.wait(jubilant.all_agents_idle)
+
+    juju.remove_application(charm_versions.s3.app)
+    juju.remove_application(charm_versions.auth_db.app)
+    juju.remove_application(charm_versions.integration_hub.app)
+    juju.remove_application(charm_versions.metastore_db.app)
+    juju.remove_application(INVALID_METASTORE_APP_NAME)
+    juju.wait(jubilant.all_blocked)
+
+
+def test_metastore_initialization_with_blocked_kyuubi(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Test that metastore initialization happens even when Kyuubi is in blocked state."""
+    logger.info("Deploying new postgresql-k8s charm for metastore...")
+    juju.deploy(**charm_versions.metastore_db.deploy_dict())
+    juju.wait(lambda status: jubilant.all_active(status, charm_versions.metastore_db.app))
+    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
+
+    logger.info("Integrate Kyuubi with metastore DB")
+    juju.integrate(f"{APP_NAME}:metastore-db", charm_versions.metastore_db.app)
+    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
+
+    status = juju.wait(
+        lambda status: jubilant.all_active(status, charm_versions.metastore_db.app),
+        delay=10,
+    )
+
+    postgres_leader = f"{charm_versions.metastore_db.app}/0"
+    postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
+
+    # Connect to PostgreSQL metastore database
+    with (
+        psycopg2.connect(
+            host=postgres_host,
+            database=METASTORE_DATABASE_NAME,
+            user="operator",
+            password=password,
+        ) as connection,
+        connection.cursor() as cursor,
+    ):
+        cursor.execute(""" SELECT * FROM "VERSION"; """)
+        assert cursor.rowcount == 1
+
+    # ssh schematool validate should return 0
+    output = juju.ssh(
+        f"{APP_NAME}/0",
+        command="/opt/hive/bin/schematool.sh -validate -dbType postgres",
+        container="kyuubi",
+    )
+    assert "Done with metastore validation: [SUCCESS]" in output
