@@ -98,6 +98,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.logger.info(f"ip: {sans.sans_ip} tls: {sans.sans_dns}")
 
+        self.logger.info(f"Subject: {subject}")
         csr = generate_csr(
             private_key=self.context.unit_server.private_key.encode("utf-8"),
             subject=subject,
