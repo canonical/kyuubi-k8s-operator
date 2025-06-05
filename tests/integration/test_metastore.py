@@ -309,7 +309,7 @@ def test_metastore_initialization_with_blocked_kyuubi(
     logger.info("Integrate Kyuubi with metastore DB")
     juju.integrate(f"{APP_NAME}:metastore-db", charm_versions.metastore_db.app)
     juju.wait(jubilant.all_agents_idle)
-    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
+    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=10)
     status = juju.wait(
         lambda status: jubilant.all_active(status, charm_versions.metastore_db.app),
     )
