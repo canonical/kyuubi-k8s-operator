@@ -119,7 +119,7 @@ def test_action_workload_not_active(ctx: Context, base_state: State, action: str
     with (
         patch(
             "events.base.BaseEventHandler.get_app_status",
-            return_value=Status.MISSING_OBJECT_STORAGE_BACKEND,
+            return_value=Status.MISSING_OBJECT_STORAGE_BACKEND.value,
         ),
         pytest.raises(ActionFailed) as exc_info,
     ):
