@@ -108,13 +108,12 @@ def compute_status(
         """Return output after resetting statuses."""
         res = hook(event_handler, event)
         if event_handler.charm.unit.is_leader():
-            if (
-                (refresh := event_handler.charm.refresh) is not None
-                and refresh.in_progress
-                and (refresh_app_status := refresh.app_status_higher_priority) is not None
-            ):
+            if (refresh := event_handler.charm.refresh) is not None and (
+                refresh_app_status := refresh.app_status_higher_priority
+            ) is not None:
                 event_handler.charm.app.status = refresh_app_status
-            event_handler.charm.app.status = event_handler.get_app_status()
+            else:
+                event_handler.charm.app.status = event_handler.get_app_status()
         event_handler.charm.unit.status = event_handler.get_app_status(check_refresh=True)
         return res
 
