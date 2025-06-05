@@ -104,9 +104,10 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             and not self.refresh.next_unit_allowed_to_refresh
             and self.refresh.workload_allowed_to_start
         ):
-            # Reconcile status
-            self.on.update_status.emit()
             self.refresh.next_unit_allowed_to_refresh = True
+
+        # Reconcile app and unit status
+        self.on.update_status.emit()
 
 
 if __name__ == "__main__":  # pragma: nocover
