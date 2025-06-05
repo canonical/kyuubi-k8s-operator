@@ -11,7 +11,7 @@ from spark_test.core.kyuubi import KyuubiClient
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     get_leader_unit,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -41,14 +41,15 @@ def test_deploy_kyuubi_setup(
     juju.wait(jubilant.all_active, delay=5)
 
 
-def test_iceberg_with_iceberg_catalog(juju: jubilant.Juju) -> None:
+def test_iceberg_with_iceberg_catalog(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test Iceberg capabilities using the `iceberg` catalog created by default."""
     status = juju.status()
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     # Put some load by executing some Kyuubi SQL queries
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
@@ -84,8 +85,7 @@ def test_iceberg_external_metastore(
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 
@@ -119,8 +119,7 @@ def test_disconnect_and_reconnect_external_metastore(
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 
@@ -134,14 +133,15 @@ def test_disconnect_and_reconnect_external_metastore(
 
 
 # Test normal tables can be written / read using the iceberg catalog
-def test_normal_table_format_with_iceberg_catalog(juju: jubilant.Juju) -> None:
+def test_normal_table_format_with_iceberg_catalog(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test that tables using non-iceberg format can be read and written using iceberg catalog."""
     status = juju.status()
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 
@@ -157,7 +157,9 @@ def test_normal_table_format_with_iceberg_catalog(juju: jubilant.Juju) -> None:
         assert len(results) == 1
 
 
-def test_iceberg_with_spark_catalog(juju: jubilant.Juju) -> None:
+def test_iceberg_with_spark_catalog(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
     logger.info("Changing Iceberg catalog to default spark_catalog...")
     juju.config(APP_NAME, {"iceberg-catalog-name": "spark_catalog"})
@@ -167,8 +169,7 @@ def test_iceberg_with_spark_catalog(juju: jubilant.Juju) -> None:
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     # Put some load by executing some Kyuubi SQL queries
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
@@ -184,14 +185,15 @@ def test_iceberg_with_spark_catalog(juju: jubilant.Juju) -> None:
         assert len(results) == 1
 
 
-def test_reading_table_written_by_other_catalog(juju: jubilant.Juju) -> None:
+def test_reading_table_written_by_other_catalog(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test whether one is able to read data written using iceberg catalog using spark_catalog."""
     status = juju.status()
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 
@@ -204,14 +206,15 @@ def test_reading_table_written_by_other_catalog(juju: jubilant.Juju) -> None:
         assert len(results) == 1
 
 
-def test_normal_table_format_with_iceberg_enabled_spark_catalog(juju: jubilant.Juju) -> None:
+def test_normal_table_format_with_iceberg_enabled_spark_catalog(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test that tables using non-iceberg format can be read and written using iceberg enabled spark_catalog."""
     status = juju.status()
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 

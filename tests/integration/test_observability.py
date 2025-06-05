@@ -12,7 +12,7 @@ from tenacity import Retrying, stop_after_attempt, wait_fixed
 from .helpers import (
     all_prometheus_exporters_data,
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     get_cos_address,
     published_grafana_dashboards,
     published_loki_logs,
@@ -51,10 +51,9 @@ def test_build_and_deploy(
     juju.wait(jubilant.all_active, delay=15)
 
 
-def test_run_some_sql_queries(juju: jubilant.Juju) -> None:
+def test_run_some_sql_queries(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     """Test running SQL queries without an external metastore."""
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 

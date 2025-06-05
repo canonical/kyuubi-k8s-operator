@@ -46,9 +46,7 @@ def ctx() -> Context:
     return ctx
 
 
-@pytest.mark.parametrize(
-    ["action"], [("get-password",), ("set-password",), ("get-jdbc-endpoint",)]
-)
+@pytest.mark.parametrize(["action"], [("get-password",), ("set-password",)])
 def test_action_not_leader(action: str, ctx: Context, base_state: State) -> None:
     # Given
     state_in = dataclasses.replace(base_state, leader=False)
@@ -74,9 +72,7 @@ def test_password_action_not_related(ctx: Context, base_state: State, action: st
     assert "The action can only be run when authentication is enabled" in exc_info.value.message
 
 
-@pytest.mark.parametrize(
-    ["action"], [("get-password",), ("set-password",), ("get-jdbc-endpoint",)]
-)
+@pytest.mark.parametrize(["action"], [("get-password",), ("set-password",)])
 def test_action_workload_not_ready(ctx: Context, action: str) -> None:
     # Given
     relation_db = Relation(
@@ -103,9 +99,7 @@ def test_action_workload_not_ready(ctx: Context, action: str) -> None:
     assert exc_info.value.message == "The action failed because the workload is not ready yet."
 
 
-@pytest.mark.parametrize(
-    ["action"], [("get-password",), ("set-password",), ("get-jdbc-endpoint",)]
-)
+@pytest.mark.parametrize(["action"], [("get-password",), ("set-password",)])
 def test_action_workload_not_active(ctx: Context, base_state: State, action: str) -> None:
     # Given
     relation_db = Relation(

@@ -13,8 +13,7 @@ import yaml
 from .helpers import (
     assert_service_status,
     deploy_minimal_kyuubi_setup,
-    fetch_jdbc_endpoint,
-    fetch_password,
+    fetch_connection_info,
     is_entire_cluster_responding_requests,
     run_sql_test_against_jdbc_endpoint,
 )
@@ -50,22 +49,21 @@ def test_default_deploy(
     # Ensure that Kyuubi is exposed with ClusterIP service
     assert_service_status(namespace=cast(str, juju.model), service_type="ClusterIP")
 
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
     assert is_entire_cluster_responding_requests(
-        juju, test_pod=test_pod, username=username, password=password
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
 def test_nodeport_service(
-    juju: jubilant.Juju,
-    test_pod: str,
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'nodeport'."""
     logger.info("Changing expose-external to 'nodeport' for kyuubi-k8s charm...")
@@ -79,22 +77,21 @@ def test_nodeport_service(
 
     assert_service_status(namespace=cast(str, juju.model), service_type="NodePort")
 
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
     assert is_entire_cluster_responding_requests(
-        juju, test_pod=test_pod, username=username, password=password
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
 def test_loadbalancer_service(
-    juju: jubilant.Juju,
-    test_pod: str,
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'loadbalancer'."""
     logger.info("Changing expose-external to 'nodeport' for kyuubi-k8s charm...")
@@ -116,22 +113,21 @@ def test_loadbalancer_service(
     annotations = getattr(service.metadata, "annotations", {})
     assert annotations.get("foo", "") == "bar"
 
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
     assert is_entire_cluster_responding_requests(
-        juju, test_pod=test_pod, username=username, password=password
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
 def test_clusterip_service(
-    juju: jubilant.Juju,
-    test_pod: str,
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'false'."""
     logger.info("Changing expose-external to 'false' for kyuubi-k8s charm...")
@@ -144,16 +140,16 @@ def test_clusterip_service(
     )
     assert_service_status(namespace=cast(str, juju.model), service_type="ClusterIP")
 
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
     assert is_entire_cluster_responding_requests(
-        juju, test_pod=test_pod, username=username, password=password
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 

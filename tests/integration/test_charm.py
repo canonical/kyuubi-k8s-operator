@@ -11,7 +11,7 @@ import yaml
 from core.domain import Status
 
 from .helpers import (
-    fetch_password,
+    fetch_connection_info,
     fetch_spark_properties,
     jubilant,
     validate_sql_queries_with_kyuubi,
@@ -236,6 +236,17 @@ def test_integration_hub_realtime_updates(
     assert "foo" not in props
 
 
+def test_relate_data_integrator(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
+    logger.info("Waiting for data-integrator charm to be idle...")
+    juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
+    logger.info("Integrating kyuubi charm with zookeeper charm...")
+    juju.integrate(charm_versions.data_integrator.app, APP_NAME)
+    juju.wait(jubilant.all_active, delay=5)
+
+
 # TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
 def test_integration_with_zookeeper(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
@@ -254,8 +265,7 @@ def test_integration_with_zookeeper(
     logger.info("Waiting for zookeeper-k8s and kyuubi charms to be idle idle...")
     juju.wait(jubilant.all_active, delay=5)
 
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)
 
 
@@ -270,6 +280,5 @@ def test_remove_zookeeper_relation(
     logger.info("Waiting for zookeeper-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(jubilant.all_active, delay=5)
 
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)

@@ -41,45 +41,8 @@ class ActionEvents(BaseEventHandler, WithLogging):
             app_name=self.charm.app.name,
         )
 
-        self.framework.observe(self.charm.on.get_jdbc_endpoint_action, self._on_get_jdbc_endpoint)
         self.framework.observe(self.charm.on.get_password_action, self._on_get_password)
         self.framework.observe(self.charm.on.set_password_action, self._on_set_password)
-
-    def _on_get_jdbc_endpoint(self, event: ActionEvent):
-        """Action event handler that returns back with a JDBC endpoint."""
-        failure_conditions = [
-            (
-                lambda: not self.charm.unit.is_leader(),
-                "Action must be ran on the application leader",
-            ),
-            (
-                lambda: not self.workload.ready(),
-                "The action failed because the workload is not ready yet.",
-            ),
-            (
-                lambda: self.get_app_status() != Status.ACTIVE.value,
-                "The action failed because the charm is not in active state.",
-            ),
-        ]
-
-        for check, msg in failure_conditions:
-            if check():
-                self.logger.error(msg)
-                event.set_results({"error": msg})
-                event.fail(msg)
-                return
-
-        address = self.service_manager.get_service_endpoint(
-            expose_external=self.charm.config.expose_external
-        )
-        if address is None:
-            event.fail(
-                "The action failed because the Kubernetes service is not available at the moment."
-            )
-            return
-        endpoint = f"jdbc:hive2://{address.host}:{address.port}/"
-        result = {"endpoint": endpoint}
-        event.set_results(result)
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for admin user."""

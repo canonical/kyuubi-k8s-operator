@@ -85,7 +85,7 @@ def test_kyuubi_client_relation_joined(
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
 
-    assert num_users == 0
+    assert num_users == 1  # data-integrator
 
     logger.info("Integrating test charm with kyuubi-k8s charm...")
     juju.integrate(APP_NAME, TEST_CHARM_NAME)
@@ -105,10 +105,10 @@ def test_kyuubi_client_relation_joined(
         # Fetch number of users excluding the default admin user
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()  # type: ignore
+        kyuubi_username, kyuubi_password = cursor.fetchall()[-1]  # type: ignore
 
     # A new user has indeed been created
-    assert num_users != 0
+    assert num_users != 1
 
     logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
 
@@ -143,10 +143,10 @@ def test_kyuubi_client_relation_removed(
         # Fetch number of users excluding the default admin user
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users_before = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchone()  # type: ignore
+        kyuubi_username, kyuubi_password = cursor.fetchall()[-1]  # type: ignore
 
     logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
-    assert num_users_before != 0
+    assert num_users_before != 1
 
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=kyuubi_username, password=kyuubi_password
@@ -175,7 +175,7 @@ def test_kyuubi_client_relation_removed(
         num_users_after = cursor.rowcount
 
     # Assert that relation user created previously has been deleted
-    assert num_users_after == 0
+    assert num_users_after == 1  # data-integrator
 
     with pytest.raises(TTransportException) as exc:
         validate_sql_queries_with_kyuubi(
