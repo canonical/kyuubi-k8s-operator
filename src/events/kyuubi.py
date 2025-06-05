@@ -72,9 +72,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """Handle the on_config_changed event."""
         if self.charm.unit.is_leader():
             # Create / update the managed service to reflect the service type in config
-            self.service_manager.reconcile_services(
+            if self.service_manager.reconcile_services(
                 self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
-            )
+            ):
+                self.charm.provider_events.update_clients_endpoints()
 
         self.kyuubi.update()
 
@@ -183,3 +184,4 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.logger.info("Kyuubi peer relation changed...")
         # check if certificate need to be reloaded
         self.check_if_certificate_needs_reload()
+        self.charm.provider_events.update_clients_endpoints()
