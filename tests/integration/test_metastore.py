@@ -23,7 +23,7 @@ from .types import IntegrationTestsCharms, S3Info
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
-APP_NAME = METADATA["name"]
+APP_NAME: str = METADATA["name"]
 INVALID_METASTORE_APP_NAME = "invalid-metastore"
 TEST_EXTERNAL_DB_NAME = "dbext"
 TEST_EXTERNAL_TABLE_NAME = "text"
@@ -308,11 +308,10 @@ def test_metastore_initialization_with_blocked_kyuubi(
 
     logger.info("Integrate Kyuubi with metastore DB")
     juju.integrate(f"{APP_NAME}:metastore-db", charm_versions.metastore_db.app)
+    juju.wait(jubilant.all_agents_idle)
     juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
-
     status = juju.wait(
         lambda status: jubilant.all_active(status, charm_versions.metastore_db.app),
-        delay=10,
     )
 
     postgres_leader = f"{charm_versions.metastore_db.app}/0"
