@@ -34,6 +34,11 @@ class TLSManager:
             and (lb := self.context.unit_server.loadbalancer_endpoint) is not None
         ):
             return lb.host
+        elif (
+            self.context.config.expose_external.value == ExposeExternal.NODEPORT.value
+            and (node_ip := self.context.unit_server.node_ip) != ""
+        ):
+            return node_ip
 
         return os.uname()[1]
 
