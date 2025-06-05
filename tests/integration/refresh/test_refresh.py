@@ -118,6 +118,7 @@ def test_populate(
 
 def test_pre_refresh_check(juju: jubilant.Juju) -> None:
     """Test that the pre-refresh-check action runs successfully."""
+    assert False
     logger.info("Get leader unit")
     leader_unit = get_leader_unit(juju, APP_NAME)
 
@@ -184,8 +185,8 @@ def test_run_inplace_upgrade(
     try:
         juju.run(leader_unit, "resume-refresh")
     except jubilant.TaskError:
-        # TODO: Ask about this
-        # Not sure why we get a task terminated while things are apparently going fine.
+        # Juju bug
+        # see https://github.com/canonical/charm-refresh/blob/4c82e341084b50443144511b1ca40218bcaa6165/charm_refresh/_main.py#L1872-L1874
         pass
 
     logger.info("Waiting for refresh to complete")
