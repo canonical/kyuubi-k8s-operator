@@ -5,6 +5,7 @@
 """Manager for building necessary files for Java TLS auth."""
 
 import logging
+import os
 import socket
 import subprocess
 
@@ -34,7 +35,7 @@ class TLSManager:
         ):
             return lb.host
 
-        return socket.getfqdn()
+        return os.uname()[1]
 
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""
