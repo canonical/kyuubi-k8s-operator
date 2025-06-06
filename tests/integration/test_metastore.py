@@ -15,7 +15,7 @@ from core.domain import Status
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -49,10 +49,11 @@ def test_deploy_minimal_kyuubi_setup(
     juju.wait(jubilant.all_active, delay=15)
 
 
-def test_sql_queries_local_metastore(juju: jubilant.Juju) -> None:
+def test_sql_queries_local_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test running SQL queries without an external metastore."""
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         username=username,
@@ -103,10 +104,11 @@ def test_integrate_external_metastore(
         assert cursor.rowcount == 1
 
 
-def test_sql_queries_external_metastore(juju: jubilant.Juju) -> None:
+def test_sql_queries_external_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test running SQL queries with an external metastore."""
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         db_name=TEST_EXTERNAL_DB_NAME,
@@ -149,14 +151,15 @@ def test_remove_external_metastore(
         assert cursor.rowcount == 1
 
 
-def test_run_sql_queries_again_with_local_metastore(juju: jubilant.Juju) -> None:
+def test_run_sql_queries_again_with_local_metastore(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test running SQL queries again with local metastore."""
     logger.info(
         "Waiting for extra 30 seconds as cool-down period before proceeding with the test..."
     )
     time.sleep(30)
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         username=username,
@@ -260,10 +263,11 @@ def test_integrate_metastore_with_valid_schema_again(
     assert status.apps[INVALID_METASTORE_APP_NAME].app_status.current == "active"
 
 
-def test_read_write_with_valid_schema_metastore_again(juju: jubilant.Juju) -> None:
+def test_read_write_with_valid_schema_metastore_again(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test whether previously written data can be read as well as new data can be written."""
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         username=username,

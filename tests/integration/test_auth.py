@@ -13,7 +13,7 @@ from thrift.transport.TTransport import TTransportException
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     get_leader_unit,
     validate_sql_queries_with_kyuubi,
 )
@@ -58,11 +58,12 @@ def test_kyuubi_with_invalid_credentials(juju: jubilant.Juju) -> None:
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
-def test_kyuubi_valid_credentials(juju: jubilant.Juju) -> None:
+def test_kyuubi_valid_credentials(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the JDBC connection when invalid credentials are provided."""
     logger.info("Running action 'get-password' on kyuubi unit")
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 

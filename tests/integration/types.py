@@ -64,3 +64,4 @@ class IntegrationTestsCharms(BaseModel):
     integration_hub: TestCharm
     zookeeper: TestCharm
     tls: TestCharm
+    data_integrator: TestCharm

@@ -88,17 +88,24 @@ def charm_versions() -> IntegrationTestsCharms:
         ),
         zookeeper=TestCharm(
             name="zookeeper-k8s",
-            channel="3/edge",
-            revision=70,
+            channel="3/stable",
+            revision=78,
             base="ubuntu@22.04",
             alias="zookeeper",
         ),
         tls=TestCharm(
             name="self-signed-certificates",
-            channel="edge",
+            channel="latest/stable",
             revision=163,  # FIXME (certs): Unpin the revision once the charm is fixed
             base="ubuntu@22.04",
             alias="self-signed-certificates",
+        ),
+        data_integrator=TestCharm(
+            name="data-integrator",
+            channel="latest/stable",
+            revision=161,
+            base="ubuntu@22.04",
+            alias="data-integrator",
         ),
     )
 

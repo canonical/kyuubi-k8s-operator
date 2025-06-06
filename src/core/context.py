@@ -17,6 +17,7 @@ from common.relation.spark_sa import SparkServiceAccountRequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     HA_ZNODE_NAME,
+    KYUUBI_CLIENT_RELATION_NAME,
     METASTORE_DATABASE_NAME,
     PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
@@ -188,3 +189,8 @@ class Context(WithLogging):
             data_interface=self.peer_app_interface,
             component=self.model.app,
         )
+
+    @property
+    def client_relations(self) -> set[Relation]:
+        """The relations of all client applications."""
+        return set(self.model.relations[KYUUBI_CLIENT_RELATION_NAME])

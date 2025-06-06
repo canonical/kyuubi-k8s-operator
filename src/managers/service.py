@@ -216,8 +216,11 @@ class ServiceManager(WithLogging):
             return False
         return True
 
-    def reconcile_services(self, expose_external: str, lb_extra_annotation: str) -> None:
-        """Update the services according to the desired service type."""
+    def reconcile_services(self, expose_external: str, lb_extra_annotation: str) -> bool:
+        """Update the services according to the desired service type.
+
+        Return True in case of service reconciliation.
+        """
         desired_service_type = {
             "false": _ServiceType.CLUSTER_IP,
             "nodeport": _ServiceType.NODE_PORT,
@@ -243,7 +246,7 @@ class ServiceManager(WithLogging):
                 self.logger.info(
                     f"Kyuubi is already exposed on a service of type {desired_service_type}."
                 )
-                return
+                return False
 
             # self.delete_service()
 
@@ -254,6 +257,7 @@ class ServiceManager(WithLogging):
             owner_references=getattr(pod0.metadata, "ownerReferences", []),
             annotations=annotations,
         )
+        return True
 
     def get_node_ip(self, pod_name: str) -> str:
         """Gets the IP Address of the Node of a given Pod via the K8s API."""

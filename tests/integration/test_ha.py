@@ -17,8 +17,7 @@ from core.domain import Status
 from .helpers import (
     delete_pod,
     deploy_minimal_kyuubi_setup,
-    fetch_jdbc_endpoint,
-    fetch_password,
+    fetch_connection_info,
     get_active_kyuubi_servers_list,
     get_kyuubi_pid,
     is_entire_cluster_responding_requests,
@@ -51,12 +50,14 @@ def test_build_and_deploy_cluster_with_no_zookeeper(
     juju.wait(jubilant.all_active, delay=10)
 
 
-def test_standalone_kyuubi_works_without_zookeeper(juju: jubilant.Juju, test_pod: str) -> None:
-    username = "admin"
-    password = fetch_password(juju)
+def test_standalone_kyuubi_works_without_zookeeper(
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
+) -> None:
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
@@ -101,18 +102,18 @@ def test_zookeeper_relation_with_three_units_of_kyuubi(
     assert set(active_servers) == set(expected_servers)
 
     # Run SQL test against the cluster
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
     # Assert the entire cluster is usable
     assert is_entire_cluster_responding_requests(
-        juju, test_pod, username=username, password=password
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
@@ -142,18 +143,18 @@ def test_pod_reschedule(
     assert len(active_servers) == 3
 
     # Run SQL test against the cluster
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
     # Assert the entire cluster is usable
     assert is_entire_cluster_responding_requests(
-        juju, test_pod, username=username, password=password
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
@@ -194,18 +195,18 @@ def test_kill_kyuubi_process(
     assert len(active_servers) == 3
 
     # Run SQL test against the cluster
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
     # Assert the entire cluster is usable
     assert is_entire_cluster_responding_requests(
-        juju, test_pod, username=username, password=password
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
@@ -228,18 +229,18 @@ def test_scale_down_kyuubi_from_three_to_two_with_zookeeper(
     assert len(active_servers) == 2
 
     # Run SQL test against the cluster
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
     # Assert the entire cluster is usable
     assert is_entire_cluster_responding_requests(
-        juju, test_pod, username=username, password=password
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
@@ -261,18 +262,18 @@ def test_scale_down_to_standalone_kyuubi_with_zookeeper(
     assert len(active_servers) == 1
 
     # Run SQL test against the cluster
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
     # Assert the entire cluster is usable
     assert is_entire_cluster_responding_requests(
-        juju, test_pod, username=username, password=password
+        juju, test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
 
 
@@ -290,11 +291,11 @@ def test_remove_zookeeper_relation_on_single_unit(
     )
 
     # Run SQL test against the cluster
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )

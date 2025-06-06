@@ -56,27 +56,16 @@ def get_leader_unit(juju: jubilant.Juju, app: str) -> str:
     return leader_unit
 
 
-def fetch_jdbc_endpoint(juju: jubilant.Juju) -> str:
-    """Return the JDBC endpoint for clients to connect to Kyuubi server."""
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    leader_unit = get_leader_unit(juju, APP_NAME)
+def fetch_connection_info(juju: jubilant.Juju, data_integrator: str) -> tuple[str, str, str]:
+    """Return the JDBC endpoint and credentials for clients to connect to Kyuubi server."""
+    logger.info("Running action 'get-credentials' on data-integrator unit...")
     task = juju.run(
-        leader_unit,
-        "get-jdbc-endpoint",
+        f"{data_integrator}/0",
+        "get-credentials",
     )
     assert task.return_code == 0
-    jdbc_endpoint = task.results["endpoint"]
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
-    return jdbc_endpoint
-
-
-def fetch_password(juju: jubilant.Juju) -> str:
-    """Fetch kyuubi admin password."""
-    leader = get_leader_unit(juju, APP_NAME)
-    task = juju.run(leader, "get-password")
-    assert task.return_code == 0
-    return task.results["password"]
+    kyuubi_info = task.results["kyuubi"]
+    return kyuubi_info["uris"], kyuubi_info["username"], kyuubi_info["password"]
 
 
 def run_sql_test_against_jdbc_endpoint(
@@ -222,11 +211,9 @@ def kill_kyuubi_process(juju: jubilant.Juju, unit: str, kyuubi_pid: str) -> None
 
 
 def is_entire_cluster_responding_requests(
-    juju: jubilant.Juju, test_pod: str, username: str, password: str
+    juju: jubilant.Juju, test_pod: str, jdbc_endpoint: str, username: str, password: str
 ) -> bool:
     """Return whether the entire Kyuubi cluster is responding to requests from client."""
-    jdbc_endpoint = fetch_jdbc_endpoint(juju)
-
     status = juju.status()
     kyuubi_pods = {unit.replace("/", "-") for unit in status.apps[APP_NAME].units.keys()}
     logger.info(f"Nodes in the cluster being tested: {','.join(kyuubi_pods)}")
@@ -580,6 +567,12 @@ def deploy_minimal_kyuubi_setup(
             ),
             delay=5,
         )
+
+    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
+    logger.info("Waiting for data-integrator charm to be idle...")
+    juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
+    logger.info("Integrating kyuubi charm with zookeeper charm...")
+    juju.integrate(charm_versions.data_integrator.app, APP_NAME)
 
     logger.info("Successfully deployed minimal working Kyuubi setup.")
 

@@ -18,7 +18,7 @@ import yaml
 from .helpers import (
     assert_service_status,
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     run_command_in_pod,
     run_sql_test_against_jdbc_endpoint,
     umask_named_temporary_file,
@@ -58,6 +58,7 @@ def test_build_and_deploy(
         lambda status: jubilant.all_active(
             status,
             APP_NAME,
+            charm_versions.data_integrator.app,
             charm_versions.integration_hub.app,
             charm_versions.s3.app,
         ),
@@ -65,20 +66,16 @@ def test_build_and_deploy(
     )
 
 
-def test_jdbc_endpoint_with_default_metastore(juju: jubilant.Juju, test_pod: str) -> None:
+def test_jdbc_endpoint_with_default_metastore(
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the JDBC endpoint exposed by the charm."""
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-
-    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
-    assert task.return_code == 0
-    jdbc_endpoint = task.results["endpoint"]
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
     logger.info(
         "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
     )
-    username = "admin"
-    password = fetch_password(juju)
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod, jdbc_endpoint, username=username, password=password
@@ -167,24 +164,18 @@ def test_enable_ssl(
     run_command_in_pod(juju, "testpod", c3)
 
     # run query with tls
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
-    assert task.return_code == 0
 
-    jdbc_endpoint = task.results["endpoint"]
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
+    )
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
     jdbc_endpoint_ssl = (
         jdbc_endpoint
         + f";ssl=true;trustStorePassword={TRUSTSTORE_PASSWORD};sslTrustStore={TRUSTSTORE_LOCATION}"
     )
     logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
-
-    logger.info(
-        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
-    )
-    username = "admin"
-    password = fetch_password(juju)
 
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod, jdbc_endpoint=jdbc_endpoint_ssl, username=username, password=password
@@ -254,23 +245,18 @@ def test_kill_pod(
     run_command_in_pod(juju, "testpod", c3)
 
     # run query with tls
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
-    assert task.return_code == 0
-    jdbc_endpoint = task.results["endpoint"]
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
 
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
+    )
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
     jdbc_endpoint_ssl = (
         jdbc_endpoint
         + f";ssl=true;trustStorePassword={TRUSTSTORE_PASSWORD};sslTrustStore={TRUSTSTORE_LOCATION}"
     )
     logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
-
-    logger.info(
-        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
-    )
-    username = "admin"
-    password = fetch_password(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod, jdbc_endpoint=jdbc_endpoint_ssl, username=username, password=password
     )
@@ -369,23 +355,17 @@ def test_tls_with_external_exposure(
     run_command_in_pod(juju, "testpod", c3)
 
     # run query with tls
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    task = juju.run(f"{APP_NAME}/0", "get-jdbc-endpoint")
-    assert task.return_code == 0
-    jdbc_endpoint = task.results["endpoint"]
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
+    logger.info(
+        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
+    )
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
     jdbc_endpoint_ssl = (
         jdbc_endpoint
         + f";ssl=true;trustStorePassword={TRUSTSTORE_PASSWORD};sslTrustStore={TRUSTSTORE_LOCATION}"
     )
     logger.info(f"JDBC endpoint with SSL: {jdbc_endpoint_ssl}")
-
-    logger.info(
-        "Testing JDBC endpoint by connecting with beeline and executing a few SQL queries..."
-    )
-    username = "admin"
-    password = fetch_password(juju)
     assert run_sql_test_against_jdbc_endpoint(
         juju, test_pod, jdbc_endpoint=jdbc_endpoint_ssl, username=username, password=password
     )

@@ -54,6 +54,44 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             self.database_provides.on.database_requested, self._on_database_requested
         )
 
+    def update_clients_endpoints(self) -> None:
+        """Update related clients.
+
+        Used if expose-external or TLS is changed
+        """
+        if not self.charm.unit.is_leader():
+            return
+
+        service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
+
+        kyuubi_endpoint = service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        )
+        if kyuubi_endpoint is None:
+            return
+
+        # FIXME: What about nodeports? Same in _on_database_requested
+        jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
+        endpoint = f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}"
+
+        for client in self.context.client_relations:
+            self.database_provides.set_endpoints(
+                client.id,
+                endpoint,
+            )
+
+            self.database_provides.set_uris(client.id, jdbc_uri)
+            self.database_provides.set_version(client.id, self.workload.kyuubi_version)
+            self.database_provides.set_tls(
+                client.id, "True" if self.context.cluster.tls else "False"
+            )
+            if self.context.cluster.tls:
+                self.database_provides.set_tls_ca(client.id, self.context.unit_server.ca_cert)
+
     def _on_database_requested(self, event: DatabaseRequestedEvent) -> None:
         """Handle the database-requested event.
 

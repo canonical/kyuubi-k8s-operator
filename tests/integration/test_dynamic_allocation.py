@@ -14,7 +14,7 @@ from spark_test.utils import get_spark_executors
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     get_leader_unit,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -53,14 +53,16 @@ def test_deploy_kyuubi_setup(
     )
 
 
-def test_dynamic_allocation_disabled(juju: jubilant.Juju) -> None:
+def test_dynamic_allocation_disabled(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test running Kyuubi SQL queries when dynamic allocation option is disabled in Kyuubi charm."""
     status = juju.status()
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 
@@ -80,7 +82,9 @@ def test_dynamic_allocation_disabled(juju: jubilant.Juju) -> None:
     assert n2 == n1 == 2
 
 
-def test_dynamic_allocation_enabled(juju: jubilant.Juju) -> None:
+def test_dynamic_allocation_enabled(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test running Kyuubi SQL queries when dynamic allocation option is enabled in Kyuubi charm."""
     logger.info("Changing enable-dynamic-allocation to 'true' for kyuubi-k8s charm...")
     juju.config(APP_NAME, {"enable-dynamic-allocation": "true"})
@@ -91,8 +95,7 @@ def test_dynamic_allocation_enabled(juju: jubilant.Juju) -> None:
     leader = get_leader_unit(juju, APP_NAME)
     host = status.apps[APP_NAME].units[leader].address
     port = 10009
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
 
     kyuubi_client = KyuubiClient(host=host, port=port, username=username, password=password)
 

@@ -21,7 +21,7 @@ import yaml
 from integration.helpers import (
     APP_NAME,
     deploy_minimal_kyuubi_setup,
-    fetch_password,
+    fetch_connection_info,
     validate_sql_queries_with_kyuubi,
 )
 from integration.types import IntegrationTestsCharms, S3Info
@@ -93,13 +93,14 @@ def test_deploy(
     juju.wait(jubilant.all_active, delay=15, timeout=1000)
 
 
-def test_populate(juju: jubilant.Juju, with_tls: bool) -> None:
+def test_populate(
+    juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
+) -> None:
     """Populate the database.
 
     We will use this to assert that we can still query data written prior to the inplace upgrade.
     """
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         db_name=DB_NAME,
@@ -158,23 +159,25 @@ def test_run_inplace_upgrade(
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
 
-def test_create_new_data(juju: jubilant.Juju, with_tls: bool) -> None:
+def test_create_new_data(
+    juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test that the upgraded deployment is valid (can connect with auth, and write)."""
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
     )
 
 
 @pytest.mark.usefixtures("skipif_no_metastore")
-def test_validate_previous_data(juju: jubilant.Juju, with_tls: bool) -> None:
+def test_validate_previous_data(
+    juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test that we can still access data from before the upgrade.
 
     This test is skipped if we were relying on the local metastore, since it would be gone.
     """
-    username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         username=username,
