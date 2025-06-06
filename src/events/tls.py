@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import base64
-import os
 import re
 from typing import TYPE_CHECKING
 
@@ -99,6 +98,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.logger.info(f"ip: {sans.sans_ip} tls: {sans.sans_dns}")
 
+        self.logger.info(f"Subject: {subject}")
         csr = generate_csr(
             private_key=self.context.unit_server.private_key.encode("utf-8"),
             subject=subject,
@@ -142,7 +142,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
             self.logger.error("Missing unit private key and/or old csr")
             return
 
-        subject = os.uname()[1]
+        subject = self.tls_manager.get_subject()
         sans = self.tls_manager.build_sans()
 
         new_csr = generate_csr(

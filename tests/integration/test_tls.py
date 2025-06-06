@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import cast
 
 import jubilant
+import pytest
 import yaml
 
 from .helpers import (
@@ -294,19 +295,23 @@ def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms)
     assert re.search(r"CN\s?=\s?new-name", response)
 
 
-def test_loadbalancer_service(
+@pytest.mark.parametrize(
+    "expose_external,service_type", [("nodeport", "NodePort"), ("loadbalancer", "LoadBalancer")]
+)
+def test_tls_with_external_exposure(
     juju: jubilant.Juju,
     test_pod: str,
     charm_versions: IntegrationTestsCharms,
+    expose_external: str,
+    service_type: str,
 ) -> None:
     """Test the tls connection with loadbalancer."""
-    logger.info("Changing expose-external to 'loadbalancer' for kyuubi-k8s charm...")
-    juju.config(APP_NAME, {"expose-external": "loadbalancer"})
+    logger.info(f"Changing expose-external to '{expose_external}' for kyuubi-k8s charm...")
+    juju.config(APP_NAME, {"expose-external": expose_external})
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
-
-    assert_service_status(namespace=cast(str, juju.model), service_type="LoadBalancer")
+    assert_service_status(namespace=cast(str, juju.model), service_type=service_type)
 
     # get issued certificates
     logger.info("Get certificate from self-signed certificate operator")

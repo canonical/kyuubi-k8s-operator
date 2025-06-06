@@ -29,9 +29,16 @@ class TLSManager:
 
     def get_subject(self) -> str:
         """Get subject name for the unit."""
-        if self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value:
-            if isinstance(lb := self.context.unit_server.loadbalancer_endpoint, DNSEndpoint):
-                return lb.host
+        if (
+            self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value
+            and (lb := self.context.unit_server.loadbalancer_endpoint) is not None
+        ):
+            return lb.host
+        elif (
+            self.context.config.expose_external.value == ExposeExternal.NODEPORT.value
+            and (node_ip := self.context.unit_server.node_ip) != ""
+        ):
+            return node_ip
 
         return os.uname()[1]
 
