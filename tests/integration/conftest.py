@@ -89,7 +89,7 @@ def charm_versions() -> IntegrationTestsCharms:
         zookeeper=TestCharm(
             name="zookeeper-k8s",
             channel="3/stable",
-            revision=70,
+            revision=78,
             base="ubuntu@22.04",
             alias="zookeeper",
         ),
