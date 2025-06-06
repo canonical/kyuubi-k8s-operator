@@ -132,6 +132,12 @@ jobs:
         run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}' --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+      - name: Collect logs if job failed
+        if: ${{ failure() }}   
+        run: |
+          juju-crashdump
+          echo "Done"
+
 
   test-inplace-upgrades:
     strategy:
@@ -189,3 +195,8 @@ jobs:
         run: tox run -e integration-inplace -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+      - name: Collect logs if job failed
+        if: ${{ failure() }}   
+        run: |
+          juju-crashdump
+          echo "Done"
