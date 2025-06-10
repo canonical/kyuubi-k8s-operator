@@ -39,6 +39,8 @@ class BaseEventHandler(Object, WithLogging):
             and self.charm.refresh is not None
             and (refresh_status := self.charm.refresh.unit_status_higher_priority) is not None
         ):
+            # If we have a high priority refresh status for the unit, then we must display
+            # it before anything else.
             return refresh_status
 
         if not self.workload.ready():
@@ -93,6 +95,8 @@ class BaseEventHandler(Object, WithLogging):
             and self.charm.refresh is not None
             and (refresh_status := self.charm.refresh.unit_status_lower_priority()) is not None
         ):
+            # If we have a low priority refresh status for the unit, then we can display
+            # it after all the others requiring domain logic.
             return refresh_status
 
         return Status.ACTIVE.value
@@ -105,7 +109,13 @@ def compute_status(
 
     @wraps(hook)
     def wrapper_hook(event_handler: BaseEventHandler, event: EventBase):
-        """Return output after resetting statuses."""
+        """Return output after resetting statuses.
+
+        We have 4 kinds of statuses in the charm: domain-logic ones, refresh app, refresh
+        unit high priority and refresh unit low priority.
+        Refresh app status, if set, must be displayed before domain-logic one. Same for
+        refresh unit high priority.
+        """
         res = hook(event_handler, event)
         if event_handler.charm.unit.is_leader():
             if (refresh := event_handler.charm.refresh) is not None and (
