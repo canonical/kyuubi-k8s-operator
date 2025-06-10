@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2024 Canonical Limited
+# Copyright 2025 Canonical Limited
 # See LICENSE file for licensing details.
 
 """Refresh related event handlers."""
