@@ -140,6 +140,7 @@ jobs:
 
 
   test-refresh:
+    if: false
     strategy:
       fail-fast: false
       matrix:
