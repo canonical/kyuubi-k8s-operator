@@ -226,7 +226,11 @@ def test_validate_previous_data(
 
 @pytest.mark.usefixtures("skipif_single_unit")
 def test_fail_and_rollback(
-    juju: jubilant.Juju, kyuubi_charm: Path, with_tls: bool, with_image_upgrade: bool
+    juju: jubilant.Juju,
+    kyuubi_charm: Path,
+    with_tls: bool,
+    with_image_upgrade: bool,
+    charm_versions: IntegrationTestsCharms,
 ) -> None:
     """Test that we can rollback after a failed upgrade.
 
@@ -277,7 +281,7 @@ def test_fail_and_rollback(
 
     logger.info("Checking that deployment is working once again")
     username = "admin"
-    password = fetch_password(juju)
+    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
     )
