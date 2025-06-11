@@ -4,26 +4,31 @@
 
 """Kyuubi related event handlers."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import ops
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops import SecretChangedEvent
 
 from constants import PEER_REL
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
 from utils.logging import WithLogging
 
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
+
 
 class KyuubiEvents(BaseEventHandler, WithLogging):
     """Class implementing Kyuubi related event hooks."""
 
-    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload) -> None:
         super().__init__(charm, "kyuubi")
 
         self.charm = charm
@@ -67,7 +72,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """Handle the on_config_changed event."""
         if self.charm.unit.is_leader():
             # Create / update the managed service to reflect the service type in config
-            self.service_manager.reconcile_services(self.charm.config.expose_external)
+            if self.service_manager.reconcile_services(
+                self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
+            ):
+                self.charm.provider_events.update_clients_endpoints()
 
         self.kyuubi.update()
 
@@ -93,17 +101,21 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         current_sans = self.tls_manager.get_current_sans()
 
         current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
-        expected_sans_ip = set(self.tls_manager.build_sans().sans_ip) if current_sans else set()
+        expected_sans_ip = (
+            set(self.tls_manager.build_sans().sans_ip) if self.context.cluster.tls else set()
+        )
         sans_ip_changed = current_sans_ip ^ expected_sans_ip
 
         current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
-        expected_sans_dns = set(self.tls_manager.build_sans().sans_dns) if current_sans else set()
+        expected_sans_dns = (
+            set(self.tls_manager.build_sans().sans_dns) if self.context.cluster.tls else set()
+        )
         sans_dns_changed = current_sans_dns ^ expected_sans_dns
         # TODO properly test this function when external access is merged.
         if sans_ip_changed or sans_dns_changed:
             self.logger.info(
                 (
-                    f'SERVER {self.charm.unit.name.split("/")[1]} updating certificate SANs - '
+                    f"SERVER {self.charm.unit.name.split('/')[1]} updating certificate SANs - "
                     f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
                     f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
                     f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
@@ -160,13 +172,16 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if event.secret.label == self.context.cluster.data_interface._generate_secret_label(
             PEER_REL,
             self.context.cluster.relation.id,
-            "extra",  # type:ignore noqa  -- Changes with the https://github.com/canonical/data-platform-libs/issues/124
+            "extra",  # type: ignore
+            # Changes with the https://github.com/canonical/data-platform-libs/issues/124
         ):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
 
     @compute_status
+    @defer_when_not_ready
     def _on_peer_relation_changed(self, event: ops.RelationDepartedEvent):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")
         # check if certificate need to be reloaded
         self.check_if_certificate_needs_reload()
+        self.charm.provider_events.update_clients_endpoints()

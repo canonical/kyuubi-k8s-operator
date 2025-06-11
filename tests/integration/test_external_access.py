@@ -2,43 +2,39 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+import json
 import logging
 from pathlib import Path
+from typing import cast
 
-import pytest
+import jubilant
 import yaml
-from juju.errors import JujuUnitError
-
-from core.domain import Status
 
 from .helpers import (
     assert_service_status,
-    check_status,
     deploy_minimal_kyuubi_setup,
-    fetch_jdbc_endpoint,
+    fetch_connection_info,
     is_entire_cluster_responding_requests,
     run_sql_test_against_jdbc_endpoint,
 )
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 
 
-@pytest.mark.abort_on_fail
-async def test_default_deploy(
-    ops_test,
-    kyuubi_charm,
-    charm_versions,
-    s3_bucket_and_creds,
-    test_pod,
-):
+def test_default_deploy(
+    juju: jubilant.Juju,
+    kyuubi_charm: Path,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
+    test_pod: str,
+) -> None:
     """Test the status of default managed K8s service when Kyuubi is deployed."""
-    await deploy_minimal_kyuubi_setup(
-        ops_test=ops_test,
+    deploy_minimal_kyuubi_setup(
+        juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
@@ -48,125 +44,126 @@ async def test_default_deploy(
     )
 
     # Wait for everything to settle down
-    await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-            charm_versions.integration_hub.application_name,
-            charm_versions.zookeeper.application_name,
-            charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
-    )
-
-    # Assert that all charms that were deployed as part of minimal setup are in correct states.
-    assert check_status(ops_test.model.applications[APP_NAME], Status.ACTIVE.value)
-    assert (
-        ops_test.model.applications[charm_versions.integration_hub.application_name].status
-        == "active"
-    )
-    assert ops_test.model.applications[charm_versions.s3.application_name].status == "active"
-    assert (
-        ops_test.model.applications[charm_versions.zookeeper.application_name].status == "active"
-    )
+    juju.wait(jubilant.all_active, delay=15)
 
     # Ensure that Kyuubi is exposed with ClusterIP service
-    assert_service_status(namespace=ops_test.model_name, service_type="ClusterIP")
+    assert_service_status(namespace=cast(str, juju.model), service_type="ClusterIP")
+
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
 
     # Run SQL tests against JDBC endpoint
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+    assert is_entire_cluster_responding_requests(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
+    )
 
 
-@pytest.mark.abort_on_fail
-async def test_nodeport_service(
-    ops_test,
-    test_pod,
-):
+def test_nodeport_service(
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'nodeport'."""
     logger.info("Changing expose-external to 'nodeport' for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config({"expose-external": "nodeport"})
+    juju.config(APP_NAME, {"expose-external": "nodeport"})
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="active",
-        timeout=1000,
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME),
+        delay=5,
     )
 
-    assert_service_status(namespace=ops_test.model_name, service_type="NodePort")
+    assert_service_status(namespace=cast(str, juju.model), service_type="NodePort")
 
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+
+    # Run SQL tests against JDBC endpoint
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
+    )
+    assert is_entire_cluster_responding_requests(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
+    )
 
 
-@pytest.mark.abort_on_fail
-async def test_loadbalancer_service(
-    ops_test,
-    test_pod,
-):
+def test_loadbalancer_service(
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'loadbalancer'."""
     logger.info("Changing expose-external to 'nodeport' for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config({"expose-external": "loadbalancer"})
+    juju.config(
+        APP_NAME,
+        {
+            "expose-external": "loadbalancer",
+            "loadbalancer-extra-annotations": json.dumps({"foo": "bar"}),
+        },
+    )
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="active",
-        timeout=1000,
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME),
+        delay=5,
     )
 
-    assert_service_status(namespace=ops_test.model_name, service_type="LoadBalancer")
+    service = assert_service_status(namespace=cast(str, juju.model), service_type="LoadBalancer")
+    annotations = getattr(service.metadata, "annotations", {})
+    assert annotations.get("foo", "") == "bar"
 
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+
+    # Run SQL tests against JDBC endpoint
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
+    )
+    assert is_entire_cluster_responding_requests(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
+    )
 
 
-@pytest.mark.abort_on_fail
-async def test_clusterip_service(
-    ops_test,
-    test_pod,
-):
+def test_clusterip_service(
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test the status of managed K8s service when `expose-external` is set to 'false'."""
     logger.info("Changing expose-external to 'false' for kyuubi-k8s charm...")
-    await ops_test.model.applications[APP_NAME].set_config({"expose-external": "false"})
+    juju.config(APP_NAME, {"expose-external": "false"})
 
     logger.info("Waiting for kyuubi-k8s app to be active and idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
-        status="active",
-        timeout=1000,
+    juju.wait(
+        lambda status: jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
+    assert_service_status(namespace=cast(str, juju.model), service_type="ClusterIP")
+
+    jdbc_endpoint, username, password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
     )
 
-    assert_service_status(namespace=ops_test.model_name, service_type="ClusterIP")
-
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-    assert await run_sql_test_against_jdbc_endpoint(
-        ops_test, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint
+    # Run SQL tests against JDBC endpoint
+    assert run_sql_test_against_jdbc_endpoint(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
     )
-    assert await is_entire_cluster_responding_requests(ops_test=ops_test, test_pod=test_pod)
+    assert is_entire_cluster_responding_requests(
+        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
+    )
 
 
-@pytest.mark.abort_on_fail
-async def test_invalid_service_type(
-    ops_test,
+def test_invalid_service_type(
+    juju: jubilant.Juju,
 ):
     """Test the status of managed K8s service when `expose-external` is set to invalid value."""
-    with pytest.raises(JujuUnitError):
-        logger.info("Changing expose-external to an invalid value for kyuubi-k8s charm...")
-        await ops_test.model.applications[APP_NAME].set_config({"expose-external": "invalid"})
+    logger.info("Changing expose-external to an invalid value for kyuubi-k8s charm...")
+    juju.config(APP_NAME, {"expose-external": "invalid"})
 
-        logger.info("Waiting for kyuubi-k8s app to be idle...")
-        await ops_test.model.wait_for_idle(
-            apps=[APP_NAME],
-            timeout=1000,
-        )
+    juju.wait(
+        lambda status: {
+            status.apps[APP_NAME].units[unit].workload_status.current
+            for unit in status.apps[APP_NAME].units
+        }
+        == {"error"}
+    )

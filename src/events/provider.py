@@ -3,23 +3,29 @@
 
 """Kyuubi client relation hooks & helpers."""
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, cast
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequestedEvent,
 )
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from ops.charm import RelationBrokenEvent
 from ops.model import BlockedStatus
 
 from constants import KYUUBI_CLIENT_RELATION_NAME
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.domain import DatabaseConnectionInfo
+from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
+
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +38,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         - relation-broken
     """
 
-    def __init__(self, charm: TypedCharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload):
         super().__init__(charm, "kyuubi-client-provider")
 
         self.charm = charm
@@ -48,6 +54,44 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             self.database_provides.on.database_requested, self._on_database_requested
         )
 
+    def update_clients_endpoints(self) -> None:
+        """Update related clients.
+
+        Used if expose-external or TLS is changed
+        """
+        if not self.charm.unit.is_leader():
+            return
+
+        service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
+
+        kyuubi_endpoint = service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        )
+        if kyuubi_endpoint is None:
+            return
+
+        # FIXME: What about nodeports? Same in _on_database_requested
+        jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
+        endpoint = f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}"
+
+        for client in self.context.client_relations:
+            self.database_provides.set_endpoints(
+                client.id,
+                endpoint,
+            )
+
+            self.database_provides.set_uris(client.id, jdbc_uri)
+            self.database_provides.set_version(client.id, self.workload.kyuubi_version)
+            self.database_provides.set_tls(
+                client.id, "True" if self.context.cluster.tls else "False"
+            )
+            if self.context.cluster.tls:
+                self.database_provides.set_tls_ca(client.id, self.context.unit_server.ca_cert)
+
     def _on_database_requested(self, event: DatabaseRequestedEvent) -> None:
         """Handle the database-requested event.
 
@@ -57,20 +101,21 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
 
         if not self.charm.unit.is_leader():
             return
-
-        if not self.context.is_authentication_enabled():
-            raise NotImplementedError(
-                "Authentication has not been enabled yet! "
-                "Please integrate kyuubi-k8s with postgresql-k8s "
-                "over auth-db relation endpoint."
-            )
-        auth = AuthenticationManager(self.context.auth_db)
-        service_manager = ServiceManager(
-            namespace=self.charm.model.name,
-            unit_name=self.charm.unit.name,
-            app_name=self.charm.app.name,
-        )
         try:
+            if not self.context.is_authentication_enabled():
+                raise NotImplementedError(
+                    "Authentication has not been enabled yet! "
+                    "Please integrate kyuubi-k8s with postgresql-k8s "
+                    "over auth-db relation endpoint."
+                )
+
+            auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+            service_manager = ServiceManager(
+                namespace=self.charm.model.name,
+                unit_name=self.charm.unit.name,
+                app_name=self.charm.app.name,
+            )
+
             username = f"relation_id_{event.relation.id}"
             password = auth.generate_password()
             auth.create_user(username=username, password=password)
@@ -78,12 +123,17 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             kyuubi_endpoint = service_manager.get_service_endpoint(
                 expose_external=self.charm.config.expose_external
             )
-            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint}/" if kyuubi_endpoint else ""
+
+            if kyuubi_endpoint is None:
+                event.defer()
+                return
+
+            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
 
             # Set the JDBC endpoint.
             self.database_provides.set_endpoints(
                 event.relation.id,
-                kyuubi_endpoint,
+                f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}",
             )
 
             # Set the JDBC URI
@@ -106,7 +156,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                     event.relation.id, self.context.unit_server.ca_cert
                 )
 
-        except (Exception) as e:
+        except Exception as e:
             logger.exception(e)
             self.charm.unit.status = BlockedStatus(str(e))
 
@@ -117,7 +167,8 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
-        auth = AuthenticationManager(self.context.auth_db)
+        # FIXME: There is not guarantee here
+        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
         username = f"relation_id_{event.relation.id}"
 
         try:

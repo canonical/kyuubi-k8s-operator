@@ -4,21 +4,25 @@
 options:
   namespace:
     type: string
-    description: The namespace to be used by driver to create executor pods. If not configured, the model namespace will be used. 
-    default: ''
+    description: The namespace to be used by driver to create executor pods. If not configured, the model namespace will be used.
+    default: ""
   service-account:
     type: string
     description: The service account to be used by driver to create executor pods.
-    default: 'kyuubi-spark-engine'
+    default: "kyuubi-spark-engine"
   expose-external:
     type: string
     description: The mode in which the service should be exposed externally. Valid values are false, nodeport and loadbalancer.
-    default: 'false' 
+    default: "false"
   loadbalancer-extra-annotations:
     type: string
     description: Optional extra annotations to be supplied to the load balancer service.
-    default: ''
+    default: "{}"
   enable-dynamic-allocation:
     type: boolean
     description: Enable dynamic allocation of pods for Spark jobs.
     default: false
+  iceberg-catalog-name:
+    type: string
+    description: The name of the catalog that has Iceberg capabilities.
+    default: iceberg

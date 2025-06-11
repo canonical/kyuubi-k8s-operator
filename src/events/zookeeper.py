@@ -4,22 +4,28 @@
 
 """Zookeeper related event handlers."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequirerEventHandlers
-from ops import CharmBase
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 
 from constants import ZOOKEEPER_REL
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
-from events.base import BaseEventHandler, compute_status
+from core.workload.kyuubi import KyuubiWorkload
+from events.base import BaseEventHandler, compute_status, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
+
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
 
 
 class ZookeeperEvents(BaseEventHandler, WithLogging):
     """Class implementing Zookeeper integration event hooks."""
 
-    def __init__(self, charm: CharmBase, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload) -> None:
         super().__init__(charm, "zookeeper")
 
         self.charm = charm
@@ -39,17 +45,13 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
         )
 
     @compute_status
+    @defer_when_not_ready
     def _on_zookeeper_changed(self, event: RelationChangedEvent):
         self.logger.info("Zookeeper relation changed new...")
-        if not self.workload.ready():
-            event.defer()
-            return
         self.kyuubi.update()
 
     @compute_status
+    @defer_when_not_ready
     def _on_zookeeper_broken(self, event: RelationBrokenEvent):
         self.logger.info("Zookeeper relation broken...")
-        if not self.workload.ready():
-            event.defer()
-            return
         self.kyuubi.update(set_zookeeper_none=True)

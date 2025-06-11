@@ -1,3 +1,7 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+from __future__ import annotations
+
 import datetime
 import json
 import logging
@@ -6,29 +10,27 @@ import re
 import subprocess
 import uuid
 from pathlib import Path
-from subprocess import PIPE, check_output
 from tempfile import NamedTemporaryFile
-from typing import List
+from typing import List, cast
 
+import jubilant
 import lightkube
 import requests
 import yaml
-from juju.application import Application
-from juju.unit import Unit
-from ops import StatusBase
-from pytest_operator.plugin import OpsTest
+from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
+from spark_test.core.kyuubi import KyuubiClient
 
 from constants import COS_METRICS_PORT, HA_ZNODE_NAME
 from core.domain import Status
+
+from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 ZOOKEEPER_NAME = "zookeeper-k8s"
-TEST_CHARM_PATH = "./tests/integration/app-charm"
-TEST_CHARM_NAME = "application"
 ZOOKEEPER_PORT = 2181
 
 PROCESS_NAME_PATTERN = "org.apache.kyuubi.server.KyuubiServer"
@@ -44,39 +46,32 @@ def get_random_name():
     return str(uuid.uuid4()).replace("-", "_")
 
 
-def check_status(entity: Application | Unit, status: StatusBase):
-    if isinstance(entity, Application):
-        return entity.status == status.name and entity.status_message == status.message
-    elif isinstance(entity, Unit):
-        return (
-            entity.workload_status == status.name
-            and entity.workload_status_message == status.message
-        )
-    else:
-        raise ValueError(f"entity type {type(entity)} is not allowed")
+def get_leader_unit(juju: jubilant.Juju, app: str) -> str:
+    status = juju.status()
+    leader_unit = None
+    for name, unit in status.apps[app].units.items():
+        if unit.leader:
+            leader_unit = name
+    assert leader_unit
+    return leader_unit
 
 
-async def fetch_jdbc_endpoint(ops_test):
-    """Return the JDBC endpoint for clients to connect to Kyuubi server."""
-    logger.info("Running action 'get-jdbc-endpoint' on kyuubi-k8s unit...")
-    for unit in ops_test.model.applications[APP_NAME].units:
-        if await unit.is_leader_from_status():
-            kyuubi_unit = unit
-    action = await kyuubi_unit.run_action(
-        action_name="get-jdbc-endpoint",
+def fetch_connection_info(juju: jubilant.Juju, data_integrator: str) -> tuple[str, str, str]:
+    """Return the JDBC endpoint and credentials for clients to connect to Kyuubi server."""
+    logger.info("Running action 'get-credentials' on data-integrator unit...")
+    task = juju.run(
+        f"{data_integrator}/0",
+        "get-credentials",
     )
-    result = await action.wait()
-
-    jdbc_endpoint = result.results.get("endpoint")
-    logger.info(f"JDBC endpoint: {jdbc_endpoint}")
-
-    return jdbc_endpoint
+    assert task.return_code == 0
+    kyuubi_info = task.results["kyuubi"]
+    return kyuubi_info["uris"], kyuubi_info["username"], kyuubi_info["password"]
 
 
-async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_endpoint=None):
+def run_sql_test_against_jdbc_endpoint(
+    juju: jubilant.Juju, test_pod: str, jdbc_endpoint: str, username: str, password: str
+) -> bool:
     """Verify the JDBC endpoint exposed by the charm with some SQL queries."""
-    if jdbc_endpoint is None:
-        jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
     database_name = get_random_name()
     table_name = get_random_name()
     logger.info(
@@ -87,10 +82,12 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_e
         [
             "./tests/integration/test_jdbc_endpoint.sh",
             test_pod,
-            ops_test.model_name,
+            cast(str, juju.model),
             jdbc_endpoint,
             get_random_name(),
             get_random_name(),
+            username,
+            password,
         ],
         capture_output=True,
     )
@@ -102,20 +99,21 @@ async def run_sql_test_against_jdbc_endpoint(ops_test: OpsTest, test_pod, jdbc_e
     return process.returncode == 0
 
 
-async def get_zookeeper_quorum(ops_test: OpsTest, zookeeper_name: str) -> str:
+def get_zookeeper_quorum(juju: jubilant.Juju, zookeeper_name: str) -> str:
     addresses = []
-    for unit in ops_test.model.applications[zookeeper_name].units:
-        host = await get_address(ops_test, unit.name)
+    status = juju.status()
+    for unit in status.apps[zookeeper_name].units.values():
+        host = unit.address
         port = ZOOKEEPER_PORT
         addresses.append(f"{host}:{port}")
     return ",".join(addresses)
 
 
-async def get_active_kyuubi_servers_list(
-    ops_test: OpsTest, zookeeper_name=ZOOKEEPER_NAME
+def get_active_kyuubi_servers_list(
+    juju: jubilant.Juju, zookeeper_name=ZOOKEEPER_NAME
 ) -> list[str]:
     """Return the list of Kyuubi servers that are live in the cluster."""
-    zookeeper_quorum = await get_zookeeper_quorum(ops_test=ops_test, zookeeper_name=zookeeper_name)
+    zookeeper_quorum = get_zookeeper_quorum(juju=juju, zookeeper_name=zookeeper_name)
     logger.info(f"Zookeeper quorum: {zookeeper_quorum}")
     pod_command = [
         "/opt/kyuubi/bin/kyuubi-ctl",
@@ -135,7 +133,7 @@ async def get_active_kyuubi_servers_list(
         "-c",
         "kyuubi",
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         *pod_command,
     ]
@@ -153,27 +151,19 @@ async def get_active_kyuubi_servers_list(
             continue
         servers.append(match.group("node"))
 
-    return servers
+    return list(set(servers))
 
 
-async def find_leader_unit(ops_test, app_name):
-    """Returns the leader unit of a given application."""
-    for unit in ops_test.model.applications[app_name].units:
-        if await unit.is_leader_from_status():
-            return unit
-    return None
-
-
-async def delete_pod(pod_name, namespace):
+def delete_pod(pod_name: str, namespace: str) -> None:
     """Delete a pod with given name and namespace."""
     command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
     process = subprocess.run(command, capture_output=True, check=True)
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
-async def get_kyuubi_pid(ops_test: OpsTest, unit):
+def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     """Return the process ID of Kyuubi process in given pod."""
-    pod_name = unit.name.replace("/", "-")
+    pod_name = unit.replace("/", "-")
     command = [
         "kubectl",
         "exec",
@@ -181,15 +171,15 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
         "-c",
         KYUUBI_CONTAINER_NAME,
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         "ps",
         "aux",
     ]
     process = subprocess.run(command, capture_output=True, check=True)
-    assert (
-        process.returncode == 0
-    ), f"Command: {command} returned with return code {process.returncode}"
+    assert process.returncode == 0, (
+        f"Command: {command} returned with return code {process.returncode}"
+    )
 
     for line in process.stdout.decode().splitlines():
         match = re.search(re.escape(PROCESS_NAME_PATTERN), line)
@@ -200,9 +190,9 @@ async def get_kyuubi_pid(ops_test: OpsTest, unit):
     return None
 
 
-async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
+def kill_kyuubi_process(juju: jubilant.Juju, unit: str, kyuubi_pid: str) -> None:
     """Kill the Kyuubi process with given PID running in the given unit."""
-    pod_name = unit.name.replace("/", "-")
+    pod_name = unit.replace("/", "-")
     command = [
         "kubectl",
         "exec",
@@ -210,7 +200,7 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
         "-c",
         KYUUBI_CONTAINER_NAME,
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         "kill",
         "-SIGKILL",
@@ -220,13 +210,12 @@ async def kill_kyuubi_process(ops_test, unit, kyuubi_pid):
     assert process.returncode == 0, f"Could not kill Kyuubi process with pid {kyuubi_pid}."
 
 
-async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> bool:
+def is_entire_cluster_responding_requests(
+    juju: jubilant.Juju, test_pod: str, jdbc_endpoint: str, username: str, password: str
+) -> bool:
     """Return whether the entire Kyuubi cluster is responding to requests from client."""
-    jdbc_endpoint = await fetch_jdbc_endpoint(ops_test)
-
-    kyuubi_pods = {
-        unit.name.replace("/", "-") for unit in ops_test.model.applications[APP_NAME].units
-    }
+    status = juju.status()
+    kyuubi_pods = {unit.replace("/", "-") for unit in status.apps[APP_NAME].units.keys()}
     logger.info(f"Nodes in the cluster being tested: {','.join(kyuubi_pods)}")
     pods_that_responded = set()
 
@@ -238,13 +227,23 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
         logger.info(f"Trying the {tries + 1}-th connection to see if entire cluster responds...")
         unique_id = get_random_name()
         query = f"SELECT '{unique_id}'"
-        pod_command = ["/opt/kyuubi/bin/beeline", "-u", jdbc_endpoint, "-e", query]
+        pod_command = [
+            "/opt/kyuubi/bin/beeline",
+            "-u",
+            jdbc_endpoint,
+            "-n",
+            username,
+            "-p",
+            password,
+            "-e",
+            query,
+        ]
         kubectl_command = [
             "kubectl",
             "exec",
             test_pod,
             "-n",
-            ops_test.model_name,
+            cast(str, juju.model),
             "--",
             *pod_command,
         ]
@@ -259,7 +258,7 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
                 "logs",
                 pod_name,
                 "-n",
-                ops_test.model_name,
+                cast(str, juju.model),
                 "-c",
                 "kyuubi",
                 "--since-time",
@@ -295,68 +294,64 @@ async def is_entire_cluster_responding_requests(ops_test: OpsTest, test_pod) -> 
     return False
 
 
-async def juju_sleep(ops: OpsTest, time: int, app: str | None = None):
-    """Sleep for given amount of time while waiting for the given application to be idle."""
-    app_name = app if app else ops.model.applications[0]
-
-    await ops.model.wait_for_idle(
-        apps=[app_name],
-        idle_period=time,
-        timeout=300,
-    )
-
-
 def prometheus_exporter_data(host: str) -> str | None:
     """Check if a given host has metric service available and it is publishing."""
     url = f"http://{host}:{COS_METRICS_PORT}/metrics"
     try:
         response = requests.get(url)
     except requests.exceptions.RequestException:
-        return
+        return None
+
     if response.status_code == 200:
         return response.text
 
+    return None
 
-async def all_prometheus_exporters_data(ops_test: OpsTest, check_field) -> bool:
+
+def all_prometheus_exporters_data(juju: jubilant.Juju, check_field: str) -> bool:
     """Check if a all units has metric service available and publishing."""
     result = True
-    for unit in ops_test.model.applications[APP_NAME].units:
-        unit_ip = await get_address(ops_test, unit.name)
-        result = result and check_field in prometheus_exporter_data(unit_ip)
+    status = juju.status()
+    for unit in status.apps[APP_NAME].units.values():
+        result = result and check_field in (prometheus_exporter_data(unit.address) or "")
     return result
 
 
-def published_prometheus_alerts(ops_test: OpsTest, host: str) -> dict | None:
+def published_prometheus_alerts(juju: jubilant.Juju, host: str) -> dict:
     """Retrieve all Prometheus Alert rules that have been published."""
     if "http://" in host:
         host = host.split("//")[1]
-    url = f"http://{host}/{ops_test.model.name}-prometheus-0/api/v1/rules"
+    url = f"http://{host}/{cast(str, juju.model)}-prometheus-0/api/v1/rules"
     try:
         response = requests.get(url)
     except requests.exceptions.RequestException:
-        return
+        return {}
 
     if response.status_code == 200:
         return response.json()
 
+    return {}
 
-def published_prometheus_data(ops_test: OpsTest, host: str, field: str) -> dict | None:
+
+def published_prometheus_data(juju: jubilant.Juju, host: str, field: str) -> dict | None:
     """Check the existence of field among Prometheus published data."""
     if "http://" in host:
         host = host.split("//")[1]
-    url = f"http://{host}/{ops_test.model.name}-prometheus-0/api/v1/query?query={field}"
+    url = f"http://{host}/{cast(str, juju.model)}-prometheus-0/api/v1/query?query={field}"
     try:
         response = requests.get(url)
     except requests.exceptions.RequestException:
-        return
+        return None
 
     if response.status_code == 200:
         return response.json()
 
+    return None
 
-async def published_grafana_dashboards(ops_test: OpsTest) -> str | None:
+
+def published_grafana_dashboards(juju: jubilant.Juju) -> dict | None:
     """Get the list of dashboards published to Grafana."""
-    base_url, pw = await get_grafana_access(ops_test)
+    base_url, pw = get_grafana_access(juju)
     url = f"{base_url}/api/search?query=&starred=false"
 
     try:
@@ -364,87 +359,63 @@ async def published_grafana_dashboards(ops_test: OpsTest) -> str | None:
         session.auth = ("admin", pw)
         response = session.get(url)
     except requests.exceptions.RequestException:
-        return
+        return None
     if response.status_code == 200:
         return response.json()
 
+    return None
 
-async def published_loki_logs(
-    ops_test: OpsTest, field: str, value: str, limit: int = 300
-) -> str | None:
+
+def published_loki_logs(
+    juju: jubilant.Juju, field: str, value: str, limit: int = 300
+) -> dict | None:
     """Get the list of dashboards published to Grafana."""
-    base_url = await get_cos_address(ops_test)
-    url = f"{base_url}/{ops_test.model.name}-loki-0/loki/api/v1/query_range"
+    base_url = get_cos_address(juju)
+    url = f"{base_url}/{cast(str, juju.model)}-loki-0/loki/api/v1/query_range"
 
+    params: dict[str, str | int] = {"query": f'{{{field}=~"{value}"}}', "limit": limit}
     try:
-        response = requests.get(url, params={"query": f'{{{field}=~"{value}"}}', "limit": limit})
+        response = requests.get(url, params=params)
     except requests.exceptions.RequestException:
-        return
+        return None
     if response.status_code == 200:
         return response.json()
 
+    return None
 
-async def get_cos_address(ops_test: OpsTest) -> str:
+
+def get_cos_address(juju: jubilant.Juju) -> str:
     """Retrieve the URL where COS services are available."""
-    cos_addr_res = check_output(
-        f"JUJU_MODEL={ops_test.model.name} juju run traefik/0 show-proxied-endpoints --format json",
-        stderr=PIPE,
-        shell=True,
-        universal_newlines=True,
-    )
-
-    try:
-        cos_addr = json.loads(cos_addr_res)
-    except json.JSONDecodeError:
-        raise ValueError
-
-    endpoints = cos_addr["traefik/0"]["results"]["proxied-endpoints"]
-    return json.loads(endpoints)["traefik"]["url"]
+    task = juju.run("traefik/0", "show-proxied-endpoints")
+    assert task.return_code == 0
+    return json.loads(task.results["proxied-endpoints"])["traefik"]["url"]
 
 
-async def get_grafana_access(ops_test: OpsTest) -> tuple[str, str]:
+def get_grafana_access(juju: jubilant.Juju) -> tuple[str, str]:
     """Get Grafana URL and password."""
-    grafana_res = check_output(
-        f"JUJU_MODEL={ops_test.model.name} juju run grafana/0 get-admin-password --format json",
-        stderr=PIPE,
-        shell=True,
-        universal_newlines=True,
-    )
-
-    try:
-        grafana_data = json.loads(grafana_res)
-    except json.JSONDecodeError:
-        raise ValueError
-
-    url = grafana_data["grafana/0"]["results"]["url"]
-    password = grafana_data["grafana/0"]["results"]["admin-password"]
-    return url, password
+    task = juju.run("grafana/0", "get-admin-password")
+    assert task.return_code == 0
+    return task.results["url"], task.results["admin-password"]
 
 
-async def get_address(ops_test: OpsTest, unit_name: str) -> str:
-    """Get the address for a unit."""
-    status = await ops_test.model.get_status()  # noqa: F821
-    app_name = unit_name.split("/")[0]
-    address = status["applications"][app_name]["units"][f"{unit_name}"]["address"]
-    return address
-
-
-async def deploy_minimal_kyuubi_setup(
-    ops_test: OpsTest,
-    kyuubi_charm: str,
-    charm_versions,
-    s3_bucket_and_creds,
+def deploy_minimal_kyuubi_setup(
+    juju: jubilant.Juju,
+    kyuubi_charm: str | Path,
+    charm_versions: IntegrationTestsCharms,
+    s3_bucket_and_creds: S3Info,
     trust: bool = True,
     num_units=1,
     integrate_zookeeper=False,
     deploy_from_charmhub=False,
-) -> str:
+) -> None:
     deploy_args = {
-        "application_name": APP_NAME,
+        "app": APP_NAME,
         "num_units": num_units,
         "channel": "edge",
-        "series": "jammy",
+        "base": "ubuntu@22.04",
         "trust": trust,
+        # TODO(ga): Use stable revision
+        "revision": 52,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -453,143 +424,160 @@ async def deploy_minimal_kyuubi_setup(
 
         deploy_args.update({"resources": resources})
 
-    # Deploy the Kyuubi charm and wait
     logger.info("Deploying kyuubi-k8s charm...")
-    await ops_test.model.deploy(kyuubi_charm, **deploy_args)
-    logger.info("Waiting for kyuubi-k8s app to be settle...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked")
-    logger.info(f"State of kyuubi-k8s app: {ops_test.model.applications[APP_NAME].status}")
+    juju.deploy(kyuubi_charm, **deploy_args)
 
-    # Set Kyuubi config options and wait
-    logger.info("Setting configuration for kyuubi-k8s charm...")
-    namespace = ops_test.model.name
+    logger.info("Waiting for kyuubi-k8s app to be settle...")
+    status = juju.wait(jubilant.all_blocked)
+    logger.info(f"State of kyuubi-k8s app: {status.apps[APP_NAME]}")
+
+    logger.info("Configuring kyuubi-k8s charm...")
+    namespace = juju.model
     username = "kyuubi-spark-engine"
     charm_config = {"namespace": namespace, "service-account": username}
+    juju.config(APP_NAME, charm_config)
 
-    await ops_test.model.applications[APP_NAME].set_config(charm_config)
     logger.info("Waiting for kyuubi-k8s app to settle...")
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", idle_period=20)
-    assert check_status(
-        ops_test.model.applications[APP_NAME], Status.MISSING_INTEGRATION_HUB.value
+    status = juju.wait(jubilant.all_blocked)
+    assert status.apps[APP_NAME].app_status.message == Status.MISSING_INTEGRATION_HUB.value.message
+
+    logger.info("Deploying mandatory charms...")
+    juju.deploy(**charm_versions.s3.deploy_dict())
+    juju.deploy(**charm_versions.integration_hub.deploy_dict())
+    juju.deploy(**charm_versions.auth_db.deploy_dict())
+
+    logger.info("Waiting for s3-integrator app to be idle...")
+    status = juju.wait(
+        lambda status: jubilant.all_blocked(status, charm_versions.s3.app),
     )
 
-    # Deploy the S3 Integrator charm and wait
-    logger.info("Deploying s3-integrator charm...")
-    await ops_test.model.deploy(**charm_versions.s3.deploy_dict())
-    logger.info("Waiting for s3-integrator app to be idle...")
-    await ops_test.model.wait_for_idle(apps=[charm_versions.s3.application_name])
-
-    # Receive S3 params from fixture, apply them and wait
+    logger.info("Configuring s3-integrator...")
     endpoint_url = s3_bucket_and_creds["endpoint"]
     access_key = s3_bucket_and_creds["access_key"]
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
     logger.info("Setting up s3 credentials in s3-integrator charm")
-    s3_integrator_unit = ops_test.model.applications[charm_versions.s3.application_name].units[0]
-    action = await s3_integrator_unit.run_action(
-        action_name="sync-s3-credentials", **{"access-key": access_key, "secret-key": secret_key}
+    task = juju.run(
+        f"{charm_versions.s3.app}/0",
+        "sync-s3-credentials",
+        {"access-key": access_key, "secret-key": secret_key},
     )
-    await action.wait()
+    assert task.return_code == 0
     logger.info("Setting configuration for s3-integrator charm...")
-    await ops_test.model.applications[charm_versions.s3.application_name].set_config(
+    juju.config(
+        charm_versions.s3.app,
         {
             "bucket": bucket_name,
             "path": path,
             "endpoint": endpoint_url,
-        }
+        },
     )
     logger.info("Waiting for s3-integrator app to be idle and active...")
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[charm_versions.s3.application_name], status="active"
-        )
+    juju.wait(lambda status: jubilant.all_active(status, charm_versions.s3.app))
 
-    # Deploy the integration hub charm and wait
-    logger.info("Deploying integration-hub charm...")
-    await ops_test.model.deploy(**charm_versions.integration_hub.deploy_dict())
     logger.info("Waiting for integration_hub and s3-integrator app to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[charm_versions.integration_hub.application_name, charm_versions.s3.application_name],
-        status="active",
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.s3.app,
+            charm_versions.integration_hub.app,
+        )
     )
 
-    # Integrate integration hub with S3 integrator and wait
     logger.info("Integrating integration-hub charm with s3-integrator charm...")
-    await ops_test.model.integrate(
-        charm_versions.s3.application_name, charm_versions.integration_hub.application_name
-    )
+    juju.integrate(charm_versions.s3.app, charm_versions.integration_hub.app)
+
     logger.info("Waiting for s3-integrator and integration-hub charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[
-            charm_versions.integration_hub.application_name,
-            charm_versions.s3.application_name,
-        ],
-        status="active",
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.s3.app,
+            charm_versions.integration_hub.app,
+        ),
+        delay=5,
     )
 
     # Add configuration key to prevent resource starvation during tests
-    unit = ops_test.model.applications[charm_versions.integration_hub.application_name].units[0]
-    action = await unit.run_action(
-        action_name="add-config", conf="spark.kubernetes.executor.request.cores=0.1"
+    task = juju.run(
+        f"{charm_versions.integration_hub.app}/0",
+        "add-config",
+        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
     )
-    _ = await action.wait()
+    assert task.return_code == 0
 
-    # Integrate Kyuubi with Integration Hub and wait
     logger.info("Integrating kyuubi charm with integration-hub charm...")
-    await ops_test.model.integrate(charm_versions.integration_hub.application_name, APP_NAME)
+    juju.integrate(charm_versions.integration_hub.app, APP_NAME)
+
     logger.info("Waiting for s3-integrator and integration_hub charms to be idle and active...")
-    await ops_test.model.wait_for_idle(
-        apps=[
-            charm_versions.integration_hub.application_name,
-            charm_versions.s3.application_name,
-        ],
-        idle_period=20,
-        status="active",
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.s3.app,
+            charm_versions.integration_hub.app,
+        ),
+        delay=5,
     )
-    logger.info("Waiting for kyuubi charm to be idle...")
-    await ops_test.model.wait_for_idle(
-        apps=[
-            APP_NAME,
-        ],
-        idle_period=20,
+
+    logger.info("Waiting for auth-db charm to be idle and active...")
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.auth_db.app,
+        ),
+        delay=10,
+        timeout=2000,
+    )
+    logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
+    juju.integrate(charm_versions.auth_db.application_name, f"{APP_NAME}:auth-db")
+
+    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.auth_db.app,
+        ),
+        delay=15,
+        timeout=1000,
     )
 
     if integrate_zookeeper:
         # Deploy Zookeeper and wait
-        await ops_test.model.deploy(**charm_versions.zookeeper.deploy_dict())
+        juju.deploy(**charm_versions.zookeeper.deploy_dict())
         logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
-        await ops_test.model.wait_for_idle(
-            apps=[charm_versions.zookeeper.application_name], idle_period=20, status="active"
+        juju.wait(
+            lambda status: jubilant.all_active(
+                status,
+                charm_versions.zookeeper.app,
+            ),
         )
 
         # Integrate Kyuubi with Zookeeper and wait
         logger.info("Integrating kyuubi charm with zookeeper charm...")
-        await ops_test.model.integrate(charm_versions.zookeeper.application_name, APP_NAME)
+        juju.integrate(charm_versions.zookeeper.app, APP_NAME)
         logger.info(
             "Waiting for s3-integrator, integration_hub and zookeeper to be idle and active..."
         )
-        await ops_test.model.wait_for_idle(
-            apps=[
-                charm_versions.integration_hub.application_name,
-                charm_versions.zookeeper.application_name,
-                charm_versions.s3.application_name,
-            ],
-            idle_period=20,
-            status="active",
+        juju.wait(
+            lambda status: jubilant.all_active(
+                status,
+                charm_versions.s3.app,
+                charm_versions.integration_hub.app,
+                charm_versions.zookeeper.app,
+            ),
+            delay=5,
         )
-        logger.info("Waiting for Kyuubi charm to be idle...")
-        await ops_test.model.wait_for_idle(
-            apps=[
-                APP_NAME,
-            ],
-            idle_period=20,
-        )
+
+    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
+    logger.info("Waiting for data-integrator charm to be idle...")
+    juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
+    logger.info("Integrating kyuubi charm with zookeeper charm...")
+    juju.integrate(charm_versions.data_integrator.app, APP_NAME)
 
     logger.info("Successfully deployed minimal working Kyuubi setup.")
 
 
-def get_k8s_service(namespace: str, service_name: str):
+def get_k8s_service(namespace: str, service_name: str) -> Service | None:
     client = lightkube.Client()
     try:
         service = client.get(
@@ -605,8 +593,8 @@ def get_k8s_service(namespace: str, service_name: str):
     return service
 
 
-async def run_command_in_pod(
-    ops_test: OpsTest,
+def run_command_in_pod(
+    juju: jubilant.Juju,
     pod_name: str,
     pod_command: List[str],
 ) -> tuple[str, str]:
@@ -618,7 +606,7 @@ async def run_command_in_pod(
         "-c",
         "kyuubi",
         "-n",
-        ops_test.model_name,
+        cast(str, juju.model),
         "--",
         *pod_command,
     ]
@@ -641,9 +629,9 @@ def umask_named_temporary_file(*args, **kargs):
 
 
 def assert_service_status(
-    namespace,
-    service_type,
-):
+    namespace: str,
+    service_type: str,
+) -> Service:
     """Utility function to check status of managed K8s service created by Kyuubi charm."""
     service_name = f"{APP_NAME}-service"
     service = get_k8s_service(namespace=namespace, service_name=service_name)
@@ -652,27 +640,71 @@ def assert_service_status(
     assert service is not None
 
     service_spec = service.spec
+    assert service_spec is not None
     assert service_type == service_spec.type
     assert service_spec.selector == {"app.kubernetes.io/name": APP_NAME}
 
+    assert service_spec.ports is not None
     service_port = service_spec.ports[0]
+    assert service_port is not None
     assert service_port.port == JDBC_PORT
     assert service_port.targetPort == JDBC_PORT
     assert service_port.name == JDBC_PORT_NAME
     assert service_port.protocol == "TCP"
 
     if service_type in ("NodePort", "LoadBalancer"):
-        assert NODEPORT_MIN_VALUE <= service_port.nodePort <= NODEPORT_MAX_VALUE
+        assert service_port.nodePort is not None
+        assert NODEPORT_MIN_VALUE <= int(service_port.nodePort) <= NODEPORT_MAX_VALUE
+
+    return service
 
 
-async def fetch_spark_properties(ops_test: OpsTest, unit_name: str) -> dict[str, str]:
+def fetch_spark_properties(juju: jubilant.Juju, unit_name: str) -> dict[str, str]:
     pod_name = unit_name.replace("/", "-")
     command = ["cat", "/etc/spark8t/conf/spark-defaults.conf"]
-    stdout, stderr = await run_command_in_pod(
-        ops_test=ops_test, pod_name=pod_name, pod_command=command
-    )
+    stdout, _ = run_command_in_pod(juju, pod_name=pod_name, pod_command=command)
     with NamedTemporaryFile(mode="w+") as temp_file:
         temp_file.write(stdout)
         temp_file.seek(0)
         props = PropertyFile.read(temp_file.name).props
         return props
+
+
+def validate_sql_queries_with_kyuubi(
+    juju: jubilant.Juju,
+    kyuubi_host: str | None = None,
+    kyuubi_port: str | int = 10009,
+    username: str | None = None,
+    password: str | None = None,
+    query_lines: list[str] | None = None,
+    db_name: str | None = None,
+    table_name: str | None = None,
+    use_tls: bool = False,
+):
+    """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
+    if not kyuubi_host:
+        kyuubi_host = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
+    if not db_name:
+        db_name = str(uuid.uuid4()).replace("-", "_")
+    if not table_name:
+        table_name = str(uuid.uuid4()).replace("-", "_")
+    if not query_lines:
+        query_lines = [
+            f"CREATE DATABASE `{db_name}`; ",
+            f"USE `{db_name}`; ",
+            f"CREATE TABLE `{table_name}` (id INT); ",
+            f"INSERT INTO `{table_name}` VALUES (12345); ",
+            f"SELECT * FROM `{table_name}`; ",
+        ]
+    args = {"host": kyuubi_host, "port": int(kyuubi_port)}
+    if username:
+        args.update({"username": username})
+    if password:
+        args.update({"password": password})
+    kyuubi_client = KyuubiClient(**args, use_ssl=use_tls)
+
+    with kyuubi_client.connection as conn, conn.cursor() as cursor:
+        for line in query_lines:
+            cursor.execute(line)
+        results = cursor.fetchall()
+        return len(results) == 1

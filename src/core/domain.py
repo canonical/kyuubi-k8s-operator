@@ -19,7 +19,7 @@ from typing_extensions import override
 
 from common.relation.domain import RelationState
 from constants import SECRETS_APP
-from managers.service import ServiceManager
+from managers.service import Endpoint, ServiceManager
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ class Status(Enum):
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
     MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
+    MISSING_AUTH_DB = BlockedStatus("Missing authentication database relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     INSUFFICIENT_CLUSTER_PERMISSIONS = BlockedStatus(
@@ -48,6 +49,7 @@ class Status(Enum):
         "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
     )
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
+    INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")
 
     ACTIVE = ActiveStatus("")
 
@@ -81,7 +83,7 @@ class StateBase:
         """Clean the content of the relation data."""
         if not self.relation:
             return
-        self.relation.data[self.component] = {}
+        self.relation.data[self.component] = {}  # type: ignore
 
 
 @dataclass
@@ -319,10 +321,10 @@ class KyuubiServer(RelationState):
         return f"{self.unit.name.split('/')[0]}-{self.unit_id}.{self.unit.name.split('/')[0]}-endpoints"
 
     @property
-    def external_address(self) -> str:
+    def external_address(self) -> Endpoint | None:
         """The external address for the unit, for external communication."""
         return self.k8s.get_service_endpoint(
-            expose_external=self.unit._backend.config_get().get("expose-external")
+            expose_external=str(self.unit._backend.config_get().get("expose-external"))
         )
 
     @property
@@ -335,18 +337,12 @@ class KyuubiServer(RelationState):
 
     @cached_property
     def node_ip(self) -> str:
-        """The IPV4/IPV6 IP address of the Node the unit is on.
-
-        K8s-only.
-        """
+        """The IPV4/IPV6 IP address of the Node the unit is on."""
         return self.k8s.get_node_ip(self.pod_name)
 
     @cached_property
-    def loadbalancer_ip(self) -> str:
-        """The IPV4/IPV6 IP address of the LoadBalancer exposing the unit.
-
-        K8s-only.
-        """
+    def loadbalancer_endpoint(self) -> Endpoint | None:
+        """The IPV4/IPV6 IP address or hostname of the LoadBalancer exposing the unit."""
         return self.k8s.get_service_endpoint("loadbalancer")
 
 

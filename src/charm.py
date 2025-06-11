@@ -62,7 +62,12 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.action_events = ActionEvents(self, self.context, self.workload)
-        self.upgrade_events = UpgradeEvents(self, self.context, self.workload, KyuubiDependencyModel(**DEPENDENCIES))  # type: ignore
+        self.upgrade_events = UpgradeEvents(
+            self,
+            self.context,
+            self.workload,
+            KyuubiDependencyModel(**DEPENDENCIES),  # type: ignore
+        )
         self.tls_events = TLSEvents(self, self.context, self.workload)
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 

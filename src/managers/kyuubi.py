@@ -48,7 +48,7 @@ class KyuubiManager(WithLogging):
         set_zookeeper_none: bool = False,
         set_tls_none: bool = False,
         force_restart: bool = False,
-    ):
+    ) -> None:
         """Update Kyuubi service and restart it."""
         metastore_db_info = None if set_metastore_db_none else self.context.metastore_db
         auth_db_info = None if set_auth_db_none else self.context.auth_db
@@ -57,12 +57,13 @@ class KyuubiManager(WithLogging):
         tls_info = None if set_tls_none else self.context.tls
 
         # Restart workload only if some configuration has changed.
-        if any(
+        should_restart = any(
             [
                 self._compare_and_update_file(
                     SparkConfig(
                         charm_config=self.context.config,
                         service_account_info=service_account_info,
+                        metastore_db_info=metastore_db_info,
                     ).contents,
                     self.workload.paths.spark_properties,
                 ),
@@ -81,9 +82,22 @@ class KyuubiManager(WithLogging):
                 ),
                 force_restart,
             ]
-        ):
-            self.workload.restart()
-        else:
+        )
+
+        # Stop Kyuubi workload if auth-db is missing
+        if not auth_db_info:
+            self.logger.info("Workload stopped because auth db is missing.")
+            try:
+                self.workload.stop()
+            except Exception:
+                self.logger.warning("Could not stop Kyuubi workload even when auth db is missing.")
+            return
+
+        if not should_restart:
             self.logger.info(
                 "Workload restart skipped because the configurations have not changed."
             )
+            return
+
+        self.logger.info("Restarting kyuubi workload...")
+        self.workload.restart()

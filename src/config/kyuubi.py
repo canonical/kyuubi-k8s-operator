@@ -26,8 +26,11 @@ class KyuubiConfig(WithLogging):
         self.keystore_path = keystore_path
 
     def _get_db_connection_url(self) -> str:
-        endpoint = self.db_info.endpoint
-        return f"jdbc:postgresql://{endpoint}/{self.db_info.dbname}"
+        match self.db_info:
+            case None:
+                return ""
+            case db:
+                return f"jdbc:postgresql://{db.endpoint}/{db.dbname}"
 
     def _get_authentication_query(self) -> str:
         return (

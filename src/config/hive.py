@@ -22,10 +22,11 @@ class HiveConfig(WithLogging):
         self.db_info = db_info
 
     def _get_db_connection_url(self) -> str:
-        endpoint = self.db_info.endpoint
-        return (
-            f"jdbc:postgresql://{endpoint}/{METASTORE_DATABASE_NAME}?createDatabaseIfNotExist=true"
-        )
+        match self.db_info:
+            case None:
+                return ""
+            case db:
+                return f"jdbc:postgresql://{db.endpoint}/{METASTORE_DATABASE_NAME}?createDatabaseIfNotExist=true"
 
     @property
     def _db_conf(self) -> dict[str, str]:

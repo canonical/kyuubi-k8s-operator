@@ -5,6 +5,7 @@
 """Manager for building necessary files for Java TLS auth."""
 
 import logging
+import os
 import socket
 import subprocess
 
@@ -12,7 +13,9 @@ import ops.pebble
 
 from core.context import Context
 from core.domain import SANs
-from core.workload.kyuubi import KyuubiWorkload
+from core.enums import ExposeExternal
+from core.workload import KyuubiWorkloadBase
+from managers.service import DNSEndpoint, IPEndpoint
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +23,24 @@ logger = logging.getLogger(__name__)
 class TLSManager:
     """Manager for building necessary files for Java TLS auth."""
 
-    def __init__(self, context: Context, workload: KyuubiWorkload):
+    def __init__(self, context: Context, workload: KyuubiWorkloadBase):
         self.context = context
         self.workload = workload
+
+    def get_subject(self) -> str:
+        """Get subject name for the unit."""
+        if (
+            self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value
+            and (lb := self.context.unit_server.loadbalancer_endpoint) is not None
+        ):
+            return lb.host
+        elif (
+            self.context.config.expose_external.value == ExposeExternal.NODEPORT.value
+            and (node_ip := self.context.unit_server.node_ip) != ""
+        ):
+            return node_ip
+
+        return os.uname()[1]
 
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""
@@ -30,26 +48,41 @@ class TLSManager:
         if node_ip := self.context.unit_server.node_ip:
             sans_ip.append(node_ip)
 
-        if self.context.unit_server.loadbalancer_ip:
-            sans_ip.append(self.context.unit_server.loadbalancer_ip.split(":")[0])
+        match self.context.unit_server.loadbalancer_endpoint:
+            case DNSEndpoint():
+                # Do nothing, will be added to sans_dns anyway by 'external_address'
+                # and was added to subject
+                pass
+
+            case IPEndpoint(host=host_ip):
+                sans_ip.append(host_ip)
+
+            case _:
+                pass
+
+        sans_dns = [
+            self.context.unit_server.internal_address.split(".")[0],
+            self.context.unit_server.internal_address,
+            socket.getfqdn(),
+        ]
+
+        if (ext_address := self.context.unit_server.external_address) is not None:
+            sans_dns.extend(
+                [
+                    f"{ext_address.host}:{ext_address.port}",
+                    ext_address.host,
+                ]
+            )
 
         return SANs(
             sans_ip=sorted(sans_ip),
-            sans_dns=sorted(
-                [
-                    self.context.unit_server.internal_address.split(".")[0],
-                    self.context.unit_server.internal_address,
-                    self.context.unit_server.external_address,
-                    self.context.unit_server.external_address.split(":")[0],
-                    socket.getfqdn(),
-                ]
-            ),
+            sans_dns=sorted(sans_dns),
         )
 
     def get_current_sans(self) -> SANs | None:
         """Gets the current SANs for the unit cert."""
         if not self.context.unit_server.certificate:
-            return
+            return None
 
         command = ["openssl", "x509", "-noout", "-ext", "subjectAltName", "-in", "server.pem"]
         try:
@@ -58,7 +91,7 @@ class TLSManager:
             ).splitlines()
         except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
             logger.error(e.stdout)
-            raise e
+            return None
         logger.info(f"sans line: {sans_lines}")
         for line in sans_lines:
             if "DNS" in line and "IP" in line:
@@ -105,24 +138,24 @@ class TLSManager:
         """Creates the unit Java Truststore and adds the unit CA."""
         try:
             self._import_ca_in_truststore()
-        except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
-            if "already exists" in str(e.stdout):
+        except (subprocess.CalledProcessError, ops.pebble.ExecError) as import_ca_err:
+            if "already exists" in str(import_ca_err.stdout):
                 # Replacement strategy:
                 # - We need to own the file, otherwise keytool throws a permission error upon removing an entry
                 # - We need to make sure that the keystore is not empty at any point, hence the three steps.
                 #  Otherwise, Kyuubi would pick up the file change when it's empty, and crash its internal watcher thread
                 try:
                     self._rename_ca_in_truststore()
-                    self._delete_ca_in_truststore()
                     self._import_ca_in_truststore()
+                    self._delete_ca_in_truststore()
                 except ops.pebble.ExecError as e:
                     logger.error(str(e.stdout))
                     raise e
 
                 return
 
-            logger.error(str(e.stdout))
-            raise e
+            logger.error(str(import_ca_err.stdout))
+            raise import_ca_err
 
     def _import_ca_in_truststore(self, alias: str = "ca") -> None:
         command = [

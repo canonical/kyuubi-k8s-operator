@@ -9,9 +9,9 @@ from typing import Optional
 
 from lightkube import Client
 
-from constants import KYUUBI_OCI_IMAGE
+from constants import KYUUBI_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
 from core.config import CharmConfig
-from core.domain import SparkServiceAccountInfo
+from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
 
 
@@ -22,9 +22,11 @@ class SparkConfig(WithLogging):
         self,
         charm_config: CharmConfig,
         service_account_info: Optional[SparkServiceAccountInfo],
+        metastore_db_info: Optional[DatabaseConnectionInfo],
     ):
         self.charm_config = charm_config
         self.service_account_info = service_account_info
+        self.metastore_db_info = metastore_db_info
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
@@ -58,6 +60,33 @@ class SparkConfig(WithLogging):
         conf.update(self.service_account_info.spark_properties)
         return conf
 
+    def _iceberg_conf(self):
+        """Apache iceberg related configurations."""
+        sa_conf = self._sa_conf()
+        if not sa_conf or not sa_conf.get("spark.sql.warehouse.dir"):
+            return {}
+        catalog_name = self.charm_config.iceberg_catalog_name
+        conf = {
+            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+            f"spark.sql.catalog.{catalog_name}.warehouse": sa_conf["spark.sql.warehouse.dir"],
+            f"spark.sql.catalog.{catalog_name}.type": "hive"
+            if self.metastore_db_info
+            else "hadoop",
+        }
+        if catalog_name == SPARK_DEFAULT_CATALOG_NAME:
+            conf.update(
+                {
+                    f"spark.sql.catalog.{catalog_name}": "org.apache.iceberg.spark.SparkSessionCatalog",
+                }
+            )
+        else:
+            conf.update(
+                {
+                    f"spark.sql.catalog.{catalog_name}": "org.apache.iceberg.spark.SparkCatalog",
+                }
+            )
+        return conf
+
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file.
 
@@ -65,7 +94,7 @@ class SparkConfig(WithLogging):
             1. Configurations associated with service account read from Spark8t
             2. Base configurations
         """
-        return self._base_conf() | self._sa_conf()
+        return self._base_conf() | self._sa_conf() | self._iceberg_conf()
 
     @property
     def contents(self) -> str:
