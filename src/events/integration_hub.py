@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from charms.data_platform_libs.v0.spark_service_account import (
+from charms.spark_integration_hub_k8s.v0.spark_service_account import (
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
     ServiceAccountPropertyChangedEvent,

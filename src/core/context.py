@@ -11,7 +11,9 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DataPeerData,
     DataPeerUnitData,
 )
-from charms.data_platform_libs.v0.spark_service_account import SparkServiceAccountRequirerData
+from charms.spark_integration_hub_k8s.v0.spark_service_account import (
+    SparkServiceAccountRequirerData,
+)
 from ops import Model, Relation
 
 from constants import (

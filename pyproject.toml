@@ -107,6 +107,7 @@ module = [
   "charms.loki_k8s.*",
   "charms.prometheus_k8s.*",
   "charms.tls_certificates_interface.*",
+  "charms.spark_integration_hub_k8s.*",
   "spark8t.services",
 ]
 ignore_missing_imports = true
