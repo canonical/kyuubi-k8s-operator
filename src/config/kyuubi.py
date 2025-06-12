@@ -47,6 +47,14 @@ class KyuubiConfig(WithLogging):
         return f"{username}:{password}"
 
     @property
+    def _base_conf(self) -> dict[str, str]:
+        """Return base Kyuubi configurations."""
+        conf = {
+            "kyuubi.session.engine.initialize.timeout": "PT10M",
+        }
+        return conf
+
+    @property
     def _auth_conf(self) -> dict[str, str]:
         if not self.db_info:
             return {}
@@ -87,7 +95,7 @@ class KyuubiConfig(WithLogging):
 
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file."""
-        return self._auth_conf | self._ha_conf | self._tls_conf
+        return self._base_conf | self._auth_conf | self._ha_conf | self._tls_conf
 
     @property
     def contents(self) -> str:
