@@ -118,7 +118,6 @@ def test_populate(
 
 def test_pre_refresh_check(juju: jubilant.Juju) -> None:
     """Test that the pre-refresh-check action runs successfully."""
-    assert False
     logger.info("Get leader unit")
     leader_unit = get_leader_unit(juju, APP_NAME)
 
