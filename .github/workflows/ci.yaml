@@ -100,6 +100,7 @@ jobs:
           juju-channel: 3.6/stable
           provider: microk8s
           channel: 1.32-strict/stable
+          bootstrap-options: "--agent-version 3.6.5"
           microk8s-group: snap_microk8s
           microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
       - name: Download packed charm(s)
