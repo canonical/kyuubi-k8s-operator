@@ -185,7 +185,7 @@ def test_run_inplace_upgrade(
     try:
         juju.run(leader_unit, "resume-refresh")
     except jubilant.TaskError:
-        # Juju bug
+        # By design
         # see https://github.com/canonical/charm-refresh/blob/4c82e341084b50443144511b1ca40218bcaa6165/charm_refresh/_main.py#L1872-L1874
         pass
 
