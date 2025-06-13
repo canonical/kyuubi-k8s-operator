@@ -17,7 +17,7 @@ from charms.spark_integration_hub_k8s.v0.spark_service_account import (
 
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
@@ -51,21 +51,18 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
             self.service_account_requirer.on.properties_changed, self._on_spark_properties_changed
         )
 
-    @compute_status
     @defer_when_not_ready
     def _on_account_granted(self, _: ServiceAccountGrantedEvent):
         """Handle the `ServiceAccountGrantedEvent` event from integration hub."""
         self.logger.info("Service account received")
         self.kyuubi.update()
 
-    @compute_status
     @defer_when_not_ready
     def _on_spark_properties_changed(self, _: ServiceAccountPropertyChangedEvent):
         """Handle the spark service account relation changed event."""
         self.logger.info("Service account properties changed")
         self.kyuubi.update()
 
-    @compute_status
     @defer_when_not_ready
     def _on_account_gone(self, _: ServiceAccountGoneEvent):
         """Handle the `ServiceAccountGoneEvent` event from integration hub."""

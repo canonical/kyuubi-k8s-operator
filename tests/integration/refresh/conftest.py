@@ -7,25 +7,25 @@ import pytest
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--inplace-upgrades-multi-units",
+        "--refresh-multi-units",
         action="store_true",
         default=False,
         help="Deploy multiple kyuubi units, with ZK",
     )
     parser.addoption(
-        "--inplace-upgrades-tls",
+        "--refresh-tls",
         action="store_true",
         default=False,
         help="Setup TLS",
     )
     parser.addoption(
-        "--inplace-upgrades-metastore",
+        "--refresh-metastore",
         action="store_true",
         default=False,
         help="Setup metastore",
     )
     parser.addoption(
-        "--inplace-upgrades-image",
+        "--refresh-image",
         action="store_true",
         default=False,
         help="Upgrade kyuubi OCI resource in addition to the charm",
@@ -34,25 +34,31 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope="module")
 def with_multi_units(request) -> bool:
-    return request.config.getoption("--inplace-upgrades-multi-units")
+    return request.config.getoption("--refresh-multi-units")
 
 
 @pytest.fixture(scope="module")
 def with_tls(request) -> bool:
-    return request.config.getoption("--inplace-upgrades-tls")
+    return request.config.getoption("--refresh-tls")
 
 
 @pytest.fixture(scope="module")
 def with_metastore(request) -> bool:
-    return request.config.getoption("--inplace-upgrades-metastore")
+    return request.config.getoption("--refresh-metastore")
 
 
 @pytest.fixture(scope="module")
 def with_image_upgrade(request) -> bool:
-    return request.config.getoption("--inplace-upgrades-image")
+    return request.config.getoption("--refresh-image")
 
 
 @pytest.fixture(scope="module")
 def skipif_no_metastore(with_metastore: bool) -> None:
     if not with_metastore:
         pytest.skip("No metastore available")
+
+
+@pytest.fixture(scope="module")
+def skipif_single_unit(with_multi_units: bool) -> None:
+    if not with_multi_units:
+        pytest.skip("Cannot test on single unit setup")

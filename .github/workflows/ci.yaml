@@ -49,7 +49,7 @@ jobs:
           - .
           - tests/integration/app-charm
     name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
     with:
       path-to-charm-directory: ${{ matrix.path }}
 
@@ -100,6 +100,7 @@ jobs:
           juju-channel: 3.6/stable
           provider: microk8s
           channel: 1.32-strict/stable
+          bootstrap-options: "--agent-version 3.6.5"
           microk8s-group: snap_microk8s
           microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
       - name: Download packed charm(s)
@@ -132,6 +133,10 @@ jobs:
         run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}' --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
       - name: Collect logs if job failed
         if: ${{ failure() }}   
         run: |
@@ -139,15 +144,16 @@ jobs:
           echo "Done"
 
 
-  test-inplace-upgrades:
+  test-refresh:
+    # if: false
     strategy:
       fail-fast: false
       matrix:
-        multi: ["--inplace-upgrades-multi-units", ""]
-        tls: ["--inplace-upgrades-tls", ""]
-        image: ["--inplace-upgrades-image", ""]
-        metastore: ["--inplace-upgrades-metastore", ""]
-    name: Inplace upgrade ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
+        multi: ["--refresh-multi-units", ""]
+        tls: ["--refresh-tls", ""]
+        image: ["--refresh-image", ""]
+        metastore: ["--refresh-metastore", ""]
+    name: Refresh ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
     needs:
       - lint
       - unit-test
@@ -192,7 +198,7 @@ jobs:
           docker rmi $IMAGE
           rm image.tar
       - name: Run inplace upgrade tests
-        run: tox run -e integration-inplace -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
+        run: tox run -e integration-refresh -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
       - name: Collect logs if job failed
