@@ -115,13 +115,11 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             and not self.refresh.next_unit_allowed_to_refresh
             and self.refresh.workload_allowed_to_start
         ):
-            self.refresh.next_unit_allowed_to_refresh = True
+            if self.workload.active():
+                self.refresh.next_unit_allowed_to_refresh = True
 
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.collect_app_status, self._on_collect_app_status)
-
-        # Reconcile app and unit status
-        self.on.update_status.emit()
 
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent) -> None:
         """Set the status of the unit.
@@ -146,7 +144,12 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         if (
             self.refresh is not None
-            and (refresh_status := self.refresh.unit_status_lower_priority()) is not None
+            and (
+                refresh_status := self.refresh.unit_status_lower_priority(
+                    workload_is_running=self.workload.active()
+                )
+            )
+            is not None
         ):
             event.add_status(refresh_status)
 
