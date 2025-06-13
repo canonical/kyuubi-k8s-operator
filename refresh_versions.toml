@@ -1,2 +1,4 @@
 charm_major = 1
 workload = "1.10"
+
+charm = "1/1.4.0"
