@@ -421,7 +421,7 @@ def deploy_minimal_kyuubi_setup(
         "base": "ubuntu@22.04",
         "trust": trust,
         # TODO(ga): Use stable revision
-        "revision": 52,
+        "revision": 75,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
