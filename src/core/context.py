@@ -11,9 +11,11 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DataPeerData,
     DataPeerUnitData,
 )
+from charms.spark_integration_hub_k8s.v0.spark_service_account import (
+    SparkServiceAccountRequirerData,
+)
 from ops import Model, Relation
 
-from common.relation.spark_sa import SparkServiceAccountRequirerData
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
     HA_ZNODE_NAME,

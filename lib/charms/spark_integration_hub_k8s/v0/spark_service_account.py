@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2025 Canonical Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,168 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""A library for creating service accounts that are configured to run Spark jobs."""
+r"""Library for creating service accounts that are configured to run Spark jobs.
 
+This library contains the SparkServiceAccountProvider and SparkServiceAccountRequirer
+classes for handling the relation between charms that require Spark Service Account
+to be created in order to function, and charms that create and provide them.
+
+### SparkServiceAccountRequirer
+
+Following is an example of using the SparkServiceAccountRequirer class in the context
+of the application charm code:
+
+```python
 import json
-import logging
-from collections import namedtuple
-from typing import List, Optional, Union
 
-from charms.data_platform_libs.v0.data_interfaces import (
-    SECRET_GROUPS,
-    EventHandlers,
-    ProviderData,
-    RelationEventWithSecret,
-    RequirerData,
-    RequirerEventHandlers,
+from charms.spark_integration_hub_k8s.v0.spark_service_account import (
+    SparkServiceAccountRequirer,
+    ServiceAccountGrantedEvent,
+    ServiceAccountPropertyChangedEvent,
+    ServiceAccountGoneEvent
 )
+from ops.model import ActiveStatus, BlockedStatus
+
+
+class RequirerCharm(CharmBase):
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        namespace, username = "default", "test"
+        self.spark_service_account_requirer = SparkServiceAccountRequirer(self, relation_name="service-account", service_account=f"{namespace}:{username}", skip_creation=False)
+        self.framework.observe(
+            self.spark_service_account_requirer.on.account_granted, self._on_account_granted
+        )
+        self.framework.observe(
+            self.spark_service_account_requirer.on.account_gone, self._on_account_gone
+        )
+        self.framework.observe(
+            self.spark_service_account_requirer.on.properties_changed, self._on_spark_properties_changed
+        )
+
+    def _on_account_granted(self, event: ServiceAccountGrantedEvent):
+        # Handle the account_granted event
+
+        namespace, username = event.service_account.split(":")
+        props_string = self.service_account_requirer.relation_data.fetch_relation_field(event.relation.id, "spark-properties")
+        props = json.loads(props_string)
+
+        resource_manifest = self.service_account_requirer.relation_data.fetch_relation_field(event.relation.id, "resource-manifest")
+
+        # Create configuration file for app
+        config_file = self._render_app_config_file(
+            namespace=namespace,
+            username=username,
+            spark_properties=props,
+            resource_manifest=resource_manifest
+        )
+
+        # Start application with rendered configuration
+        self._start_application(config_file)
+
+        # Set appropriate status
+        self.unit.status = ActiveStatus("Received Spark service account")
+
+    def _on_spark_properties_changed(self, event: ServiceAccountPropertyChangedEvent):
+        # Handle the properties_changed event
+        namespace, username = event.service_account.split(":")
+
+        # Fetch the Spark properties from event data
+        props_string = self.service_account_requirer.relation_data.fetch_relation_field(event.relation.id, "spark-properties")
+        props = json.loads(props_string)
+
+        resource_manifest = self.service_account_requirer.relation_data.fetch_relation_field(event.relation.id, "resource-manifest")
+
+        # Create configuration file for app
+        config_file = self._render_app_config_file(
+            namespace=namespace,
+            username=username,
+            spark_properties=props,
+            resource_manifest=resource_manifest
+        )
+
+        # Start application with rendered configuration
+        self._start_application(config_file)
+
+        # Set appropriate status
+        self.unit.status = ActiveStatus("Spark service account properties changed")
+
+    def _on_account_gone(self, event: ServiceAccountGoneEvent):
+        # Handle the account_gone event
+
+        # Create configuration file for app
+        config_file = self._render_app_config_file(
+            namespace=None,
+            username=None,
+            spark_properties=None,
+            resource_manifest=None,
+        )
+
+        # Start application with rendered configuration
+        self._start_application(config_file)
+
+        # Set appropriate status
+        self.unit.status = BlockedStatus("Missing spark service account")
+```
+
+### SparkServiceAccountProvider
+Following is an example of using the SparkServiceAccountProvider class in the context
+of the application charm code:
+
+```python
+from charms.spark_integration_hub_k8s.v0.spark_service_account import (
+    SparkServiceAccountProvider,
+    ServiceAccountRequestedEvent,
+    ServiceAccountReleasedEvent,
+)
+
+
+class ProviderCharm(CharmBase):
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.spark_service_account_provider = SparkServiceAccountProvider(self, relation_name="service-account")
+        self.framework.observe(self.sa.on.account_requested, self._on_service_account_requested)
+        self.framework.observe(self.sa.on.account_released, self._on_service_account_released)
+
+
+    def _on_service_account_requested(self, event: ServiceAccountRequestedEvent):
+        # Handle the account_requested event
+
+        namespace, username = event.service_account.split(":")
+        skip_creation = event.skip_creation
+
+        if not skip_creation:
+            # Create the service account
+            self.create_service_account(namespace, username)
+
+        resource_manifest = self.generate_resource_manifest(namespace, username)
+        spark_properties = self.generate_spark_properties(namespace, username)
+
+        # Write the service account, Spark properties and resource manifest to relation data
+        self.spark_service_account_provider.set_service_account(event.relation.id, f"{namespace}:{username}")
+        self.spark_service_account_provider.set_spark_properties(event.relation.id, spark_properties)
+        self.spark_service_account_provider.set_resource_manifest(event.relation.id, resource_manifest)
+
+
+    def _on_service_account_released(self, event: ServiceAccountReleasedEvent):
+        # Handle account_released event
+
+        namespace, username = event.service_account.split(":")
+        skip_creation = event.skip_creation
+
+        if not skip_creation:
+            # Delete the service account
+            self.delete_service_account(namespace, username)
+```
+
+"""
+
+import logging
+from typing import List, Optional
+
 from ops import Model, RelationCreatedEvent, SecretChangedEvent
 from ops.charm import (
     CharmBase,
@@ -36,66 +183,32 @@ from ops.charm import (
     RelationEvent,
 )
 from ops.framework import EventSource, ObjectEvents
-from ops.model import Application, Unit
+
+from charms.data_platform_libs.v0.data_interfaces import (
+    SECRET_GROUPS,
+    EventHandlers,
+    ProviderData,
+    RelationEventWithSecret,
+    RequirerData,
+    RequirerEventHandlers,
+)
 
 # The unique Charmhub library identifier, never change it
-LIBID = ""
+LIBID = "55536ebf65b34d6a89e39a67472f85da"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
+
+PYDEPS = ["ops>=2.0.0"]
 
 SPARK_PROPERTIES_RELATION_FIELD = "spark-properties"
+RESOURCE_MANIFEST_RELATION_FIELD = "resource-manifest"
 
 logger = logging.getLogger(__name__)
-
-Diff = namedtuple("Diff", "added changed deleted")
-Diff.__doc__ = """
-A tuple for storing the diff between two data mappings.
-
-added - keys that were added
-changed - keys that still exist but have new values
-deleted - key that were deleted"""
-
-
-def diff(event: RelationChangedEvent, bucket: Union[Unit, Application]) -> Diff:
-    """Retrieves the diff of the data in the relation changed databag.
-
-    Args:
-        event: relation changed event.
-        bucket: bucket of the databag (app or unit)
-
-    Returns:
-        a Diff instance containing the added, deleted and changed
-            keys from the event relation databag.
-    """
-    # Retrieve the old data from the data key in the application relation databag.
-    old_data = json.loads(event.relation.data[bucket].get("data", "{}"))
-    # Retrieve the new data from the event relation databag.
-    new_data = (
-        {key: value for key, value in event.relation.data[event.app].items() if key != "data"}
-        if event.app
-        else {}
-    )
-
-    # These are the keys that were added to the databag and triggered this event.
-    added = new_data.keys() - old_data.keys()
-    # These are the keys that were removed from the databag and triggered this event.
-    deleted = old_data.keys() - new_data.keys()
-    # These are the keys that already existed in the databag,
-    # but had their values changed.
-    changed = {key for key in old_data.keys() & new_data.keys() if old_data[key] != new_data[key]}
-
-    # TODO: evaluate the possibility of losing the diff if some error
-    # happens in the charm before the diff is completely checked (DPE-412).
-    # Convert the new_data to a serializable format and save it for a next diff check.
-    event.relation.data[bucket].update({"data": json.dumps(new_data)})
-
-    # Return the diff with all possible changes.
-    return Diff(added, changed, deleted)
 
 
 class ServiceAccountEvent(RelationEventWithSecret):
@@ -121,6 +234,28 @@ class ServiceAccountEvent(RelationEventWithSecret):
                 return secret.get("spark-properties", "{}")
 
         return self.relation.data[self.relation.app].get("spark-properties", "{}")
+
+    @property
+    def resource_manifest(self) -> Optional[str]:
+        """Returns the resource manifest associated with service account."""
+        if not self.relation.app:
+            return None
+
+        if self.secrets_enabled:
+            secret = self._get_secret("extra")
+            if secret:
+                return secret.get("resource-manifest", "{}")
+
+        return self.relation.data[self.relation.app].get("resource-manifest", "{}")
+
+    @property
+    def skip_creation(self) -> bool:
+        """Returns the skip-creation flag associated with service account."""
+        if not self.relation.app:
+            return False
+
+        skip = self.relation.data[self.relation.app].get("skip-creation", "false")
+        return skip.lower() == "true"
 
 
 class ServiceAccountRequestedEvent(ServiceAccountEvent):
@@ -159,7 +294,7 @@ class SparkServiceAccountRequirerEvents(ObjectEvents):
 
 
 class SparkServiceAccountProviderData(ProviderData):
-    """Provider-side of the Spark Service Account relation."""
+    """Implementation of ProviderData for the Spark Service Account relation."""
 
     RESOURCE_FIELD = "service-account"
 
@@ -183,6 +318,15 @@ class SparkServiceAccountProviderData(ProviderData):
             spark_properties: the dictionary that contains key-value for Spark properties.
         """
         self.update_relation_data(relation_id, {SPARK_PROPERTIES_RELATION_FIELD: spark_properties})
+
+    def set_resource_manifest(self, relation_id: int, resource_manifest: str) -> None:
+        """Set the resource manifest in the application relation databag.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+            resource_manifest: the dictionary that contains key-value for resource manifest.
+        """
+        self.update_relation_data(relation_id, {"resource-manifest": resource_manifest})
 
 
 class SparkServiceAccountProviderEventHandlers(EventHandlers):
@@ -220,6 +364,10 @@ class SparkServiceAccountProviderEventHandlers(EventHandlers):
 
         getattr(self.on, "account_released").emit(event.relation, app=event.app, unit=event.unit)
 
+    def _on_secret_changed_event(self, event: SecretChangedEvent):
+        """Event notifying about a new value of a secret."""
+        pass
+
 
 class SparkServiceAccountProvider(
     SparkServiceAccountProviderData, SparkServiceAccountProviderEventHandlers
@@ -232,13 +380,14 @@ class SparkServiceAccountProvider(
 
 
 class SparkServiceAccountRequirerData(RequirerData):
-    """Requirer-side of the Spark Service Account relation."""
+    """Implementation of RequirerData for the Spark Service Account relation."""
 
     def __init__(
         self,
         model: Model,
         relation_name: str,
         service_account: str,
+        skip_creation: bool = False,
         additional_secret_fields: Optional[List[str]] = [],
     ):
         """Manager of Spark Service Account relations."""
@@ -246,8 +395,11 @@ class SparkServiceAccountRequirerData(RequirerData):
             additional_secret_fields = []
         if SPARK_PROPERTIES_RELATION_FIELD not in additional_secret_fields:
             additional_secret_fields.append(SPARK_PROPERTIES_RELATION_FIELD)
+        if RESOURCE_MANIFEST_RELATION_FIELD not in additional_secret_fields:
+            additional_secret_fields.append(RESOURCE_MANIFEST_RELATION_FIELD)
         super().__init__(model, relation_name, additional_secret_fields=additional_secret_fields)
         self.service_account = service_account
+        self.skip_creation = "true" if skip_creation else "false"
 
     @property
     def service_account(self):
@@ -260,7 +412,7 @@ class SparkServiceAccountRequirerData(RequirerData):
 
 
 class SparkServiceAccountRequirerEventHandlers(RequirerEventHandlers):
-    """Requirer-side of the Spark Service Account relation."""
+    """Requirer-side event handlers of the Spark Service Account relation."""
 
     on = SparkServiceAccountRequirerEvents()  # pyright: ignore [reportAssignmentType]
 
@@ -282,7 +434,8 @@ class SparkServiceAccountRequirerEventHandlers(RequirerEventHandlers):
 
         # Sets service_account in the relation
         relation_data = {
-            f: getattr(self.relation_data, f.replace("-", "_"), "") for f in ["service-account"]
+            f: getattr(self.relation_data, f.replace("-", "_"), "")
+            for f in ["service-account", "skip-creation"]
         }
 
         self.relation_data.update_relation_data(event.relation.id, relation_data)
@@ -342,6 +495,7 @@ class SparkServiceAccountRequirer(
         charm: CharmBase,
         relation_name: str,
         service_account: str,
+        skip_creation: bool = False,
         additional_secret_fields: Optional[List[str]] = [],
     ) -> None:
         SparkServiceAccountRequirerData.__init__(
@@ -349,6 +503,7 @@ class SparkServiceAccountRequirer(
             charm.model,
             relation_name,
             service_account,
-            additional_secret_fields,
+            skip_creation=skip_creation,
+            additional_secret_fields=additional_secret_fields,
         )
         SparkServiceAccountRequirerEventHandlers.__init__(self, charm, self)
