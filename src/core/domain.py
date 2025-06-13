@@ -41,9 +41,6 @@ class Status(Enum):
     MISSING_AUTH_DB = BlockedStatus("Missing authentication database relation")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
-    INSUFFICIENT_CLUSTER_PERMISSIONS = BlockedStatus(
-        "Insufficient cluster permissions. Try: juju trust --scope=cluster <app-name>"
-    )
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
     MISSING_ZOOKEEPER = BlockedStatus(
         "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
@@ -111,7 +108,7 @@ class SparkServiceAccountInfo(RelationState):
 
     def __bool__(self):
         """Return flag of whether the class is ready to be used."""
-        return super().__bool__() and "service-account" in self.relation_data.keys()
+        return super().__bool__() and bool(self.relation_data.get("service-account", ""))
 
     @property
     def service_account(self):
