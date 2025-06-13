@@ -276,10 +276,18 @@ def test_fail_and_rollback(
     juju.refresh(APP_NAME, path=kyuubi_charm, resources={"kyuubi-image": image})
 
     logger.info("Wait for application to recover")
-    status = juju.wait(jubilant.all_active, delay=10)
+    status = juju.wait(jubilant.all_agents_idle, delay=10)
+    try:
+        juju.run(leader_unit, "resume-refresh")
+    except jubilant.TaskError:
+        # By design
+        # see https://github.com/canonical/charm-refresh/blob/4c82e341084b50443144511b1ca40218bcaa6165/charm_refresh/_main.py#L1872-L1874
+        pass
+
+    logger.info("Waiting for refresh to complete")
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
     logger.info("Checking that deployment is working once again")
-    username = "admin"
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
