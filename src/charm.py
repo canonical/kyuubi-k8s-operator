@@ -126,6 +126,8 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent) -> None:
         """Set the status of the unit.
 
+        This must be the only place in the codebase where we set the unit status.
+
         The priority order is as follows:
         - refresh v3 high priority status
         - domain logic
@@ -152,6 +154,8 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
     def _on_collect_app_status(self, event: ops.CollectStatusEvent) -> None:
         """Set the status of the app.
+
+        This must be the only place in the codebase where we set the app status.
 
         If we have a refresh v3 app status, then we must display it before anything else.
         """
