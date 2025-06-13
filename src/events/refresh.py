@@ -67,7 +67,7 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
         """
         # FIXME(refresh): Remove once this check is upstreamed
         if not old_charm_version.track == new_charm_version.track:
-            logger.error(
+            logger.info(
                 "Refreshing to a different track is not supported. "
                 f"Got {old_charm_version.track} to {new_charm_version.track}"
             )
@@ -100,21 +100,21 @@ def is_workload_compatible(old_workload_version: str, new_workload_version: str)
         )
     except ValueError:
         # Not enough values to unpack or cannot convert
-        logger.error(
+        logger.info(
             "Unable to parse workload versions."
             f"Got {old_workload_version} to {new_workload_version}"
         )
         return False
 
     if old_major != new_major:
-        logger.error(
+        logger.info(
             "Refreshing to a different major workload is not supported. "
             f"Got {old_major} to {new_major}"
         )
         return False
 
     if not new_minor >= old_minor:
-        logger.error(
+        logger.info(
             "Downgrading to a previous minor workload is not supported. "
             f"Got {old_major}.{old_minor} to {new_major}.{new_minor}"
         )
