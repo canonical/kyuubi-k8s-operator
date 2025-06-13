@@ -6,7 +6,6 @@ import dataclasses
 import json
 import logging
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import yaml
@@ -14,7 +13,6 @@ from ops.testing import ActionFailed, Container, Context, Relation, State
 
 from charm import KyuubiCharm
 from constants import KYUUBI_CONTAINER_NAME
-from core.domain import Status
 
 logger = logging.getLogger(__name__)
 

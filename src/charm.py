@@ -13,11 +13,11 @@ import logging
 
 import charm_refresh
 import ops
-from ops.log import JujuLogHandler
 from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from ops.log import JujuLogHandler
 
 from constants import (
     COS_LOG_RELATION_NAME_SERVER,
@@ -46,10 +46,6 @@ from managers.service import ServiceManager
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
-root_logger = logging.getLogger()
-for handler in root_logger.handlers:
-    if isinstance(handler, JujuLogHandler):
-        handler.setFormatter(logging.Formatter("{name}:{message}", style="{"))
 
 
 class KyuubiCharm(TypedCharmBase[CharmConfig]):
@@ -59,6 +55,10 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
     def __init__(self, *args) -> None:
         super().__init__(*args)
+        root_logger = logging.getLogger()
+        for handler in root_logger.handlers:
+            if isinstance(handler, JujuLogHandler):
+                handler.setFormatter(logging.Formatter("{name}:{message}", style="{"))
 
         # Workload
         self.workload = KyuubiWorkload(

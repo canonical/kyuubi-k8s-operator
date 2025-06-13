@@ -25,8 +25,7 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
     _charm: KyuubiCharm
 
     def run_pre_refresh_checks_after_1_unit_refreshed(self) -> None:
-        """Checks to run before refresh and, while refreshing, before first
-        unit starts its workload."""
+        """Checks to run before refresh and, while refreshing, before first unit starts its workload."""
         if (planned_units := self._charm.model.app.planned_units()) != len(
             self._charm.context.app_units
         ):
