@@ -15,7 +15,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
@@ -47,7 +47,6 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             self.charm.on.auth_db_relation_broken, self._on_auth_db_relation_removed
         )
 
-    @compute_status
     @defer_when_not_ready
     def _on_auth_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle the event when authentication database is created."""
@@ -63,16 +62,14 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi.update()
 
-    @compute_status
     @defer_when_not_ready
-    def _on_auth_db_endpoints_changed(self, event) -> None:
+    def _on_auth_db_endpoints_changed(self, _) -> None:
         """Handle the event when authentication database endpoints are changed."""
         self.kyuubi.update()
         self.logger.info("Authentication database endpoints changed...")
 
-    @compute_status
     @defer_when_not_ready
-    def _on_auth_db_relation_removed(self, event) -> None:
+    def _on_auth_db_relation_removed(self, _) -> None:
         """Handle the event when authentication database relation is removed."""
         self.kyuubi.update(set_auth_db_none=True)
         self.logger.info("Authentication database relation removed")

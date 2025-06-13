@@ -12,7 +12,7 @@ from ops.charm import ActionEvent
 
 from constants import DEFAULT_ADMIN_USERNAME
 from core.context import Context
-from core.domain import DatabaseConnectionInfo, Status
+from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
@@ -60,10 +60,6 @@ class ActionEvents(BaseEventHandler, WithLogging):
                 lambda: not self.workload.ready(),
                 "The action failed because the workload is not ready yet.",
             ),
-            (
-                lambda: self.get_app_status() != Status.ACTIVE.value,
-                "The action failed because the charm is not in active state.",
-            ),
         ]
 
         for check, msg in failure_conditions:
@@ -92,10 +88,6 @@ class ActionEvents(BaseEventHandler, WithLogging):
             (
                 lambda: not self.workload.ready(),
                 "The action failed because the workload is not ready yet.",
-            ),
-            (
-                lambda: self.get_app_status() != Status.ACTIVE.value,
-                "The action failed because the charm is not in active state.",
             ),
         ]
 
