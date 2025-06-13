@@ -26,6 +26,7 @@ from constants import (
 )
 from core.config import CharmConfig
 from core.context import Context
+from core.domain import Status
 from core.workload.kyuubi import KyuubiWorkload
 from events.actions import ActionEvents
 from events.auth import AuthenticationEvents
@@ -36,6 +37,9 @@ from events.provider import KyuubiClientProviderEvents
 from events.refresh import KyuubiRefresh
 from events.tls import TLSEvents
 from events.zookeeper import ZookeeperEvents
+from managers.hive_metastore import HiveMetastoreManager
+from managers.k8s import K8sManager
+from managers.service import ServiceManager
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -106,8 +110,108 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         ):
             self.refresh.next_unit_allowed_to_refresh = True
 
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
+        self.framework.observe(self.on.collect_app_status, self._on_collect_app_status)
+
         # Reconcile app and unit status
         self.on.update_status.emit()
+
+    def _on_collect_unit_status(self, event: ops.CollectStatusEvent) -> None:
+        """Set the status of the unit.
+
+        The priority order is as follows:
+        - refresh v3 high priority status
+        - domain logic
+        - refresh v3 low priority status
+        - plain active status
+        """
+        if (
+            self.refresh is not None
+            and (refresh_status := self.refresh.unit_status_higher_priority) is not None
+        ):
+            event.add_status(refresh_status)
+            return
+
+        for status in self._collect_domain_statuses():
+            event.add_status(status)
+
+        if (
+            self.refresh is not None
+            and (refresh_status := self.refresh.unit_status_lower_priority()) is not None
+        ):
+            event.add_status(refresh_status)
+
+        event.add_status(Status.ACTIVE.value)
+
+    def _on_collect_app_status(self, event: ops.CollectStatusEvent) -> None:
+        """Set the status of the app.
+
+        If we have a refresh v3 app status, then we must display it before anything else.
+        """
+        if (
+            self.refresh is not None
+            and (refresh_app_status := self.refresh.app_status_higher_priority) is not None
+        ):
+            event.add_status(refresh_app_status)
+            return
+
+        for status in self._collect_domain_statuses():
+            event.add_status(status)
+
+        event.add_status(Status.ACTIVE.value)
+
+    def _collect_domain_statuses(self) -> list[ops.StatusBase]:  # noqa: C901 - ignore complexity threshold
+        """Status of the charm."""
+        statuses: list[ops.StatusBase] = []
+        if not self.workload.ready():
+            statuses.append(Status.WAITING_PEBBLE.value)
+            return statuses
+
+        if not self.context.service_account:
+            statuses.append(Status.MISSING_INTEGRATION_HUB.value)
+            # Early return, we need the service account for the next bits
+            return statuses
+
+        k8s_manager = K8sManager(
+            service_account_info=self.context.service_account,
+            workload=self.workload,
+        )
+
+        # Check whether any one of object storage backend has been configured
+        # Currently, we do this check on the basis of presence of Spark properties
+        # TODO: Rethink on this approach with a more sturdy solution
+        if not k8s_manager.is_s3_configured() and not k8s_manager.is_azure_storage_configured():
+            statuses.append(Status.MISSING_OBJECT_STORAGE_BACKEND.value)
+
+        if not k8s_manager.is_namespace_valid():
+            statuses.append(Status.INVALID_NAMESPACE.value)
+
+        if not k8s_manager.is_service_account_valid():
+            statuses.append(Status.INVALID_SERVICE_ACCOUNT.value)
+
+        if not self.context.auth_db:
+            statuses.append(Status.MISSING_AUTH_DB.value)
+
+        metastore_manager = HiveMetastoreManager(self.workload)
+        if self.context.metastore_db and not metastore_manager.is_metastore_valid():
+            statuses.append(Status.INVALID_METASTORE_SCHEMA.value)
+
+        if self.context._zookeeper_relation and not self.context.zookeeper:
+            statuses.append(Status.WAITING_ZOOKEEPER.value)
+
+        if self.app.planned_units() > 1 and not self.context.zookeeper:
+            statuses.append(Status.MISSING_ZOOKEEPER.value)
+
+        service_manager = ServiceManager(
+            namespace=self.model.name,
+            unit_name=self.unit.name,
+            app_name=self.app.name,
+        )
+
+        if not service_manager.get_service_endpoint(expose_external=self.config.expose_external):
+            statuses.append(Status.WAITING_FOR_SERVICE.value)
+
+        return statuses
 
 
 if __name__ == "__main__":  # pragma: nocover

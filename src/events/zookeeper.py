@@ -14,7 +14,7 @@ from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from constants import ZOOKEEPER_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
 
@@ -44,14 +44,12 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
             self.charm.on[ZOOKEEPER_REL].relation_broken, self._on_zookeeper_broken
         )
 
-    @compute_status
     @defer_when_not_ready
-    def _on_zookeeper_changed(self, event: RelationChangedEvent):
+    def _on_zookeeper_changed(self, _: RelationChangedEvent):
         self.logger.info("Zookeeper relation changed new...")
         self.kyuubi.update()
 
-    @compute_status
     @defer_when_not_ready
-    def _on_zookeeper_broken(self, event: RelationBrokenEvent):
+    def _on_zookeeper_broken(self, _: RelationBrokenEvent):
         self.logger.info("Zookeeper relation broken...")
         self.kyuubi.update(set_zookeeper_none=True)

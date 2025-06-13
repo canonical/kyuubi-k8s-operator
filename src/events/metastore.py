@@ -16,7 +16,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 from constants import HIVE_SCHEMA_VERSION
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready
 from managers.hive_metastore import HiveMetastoreManager
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
@@ -51,7 +51,6 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
             self.charm.on.metastore_db_relation_broken, self._on_metastore_db_relation_removed
         )
 
-    @compute_status
     @defer_when_not_ready
     def _on_metastore_db_created(self, event: DatabaseCreatedEvent) -> None:
         """Handle event when metastore database is created."""
@@ -65,9 +64,8 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         if self.charm.unit.is_leader():
             self.metastore_manager.initialize(schema_version=HIVE_SCHEMA_VERSION)
 
-    @compute_status
     @defer_when_not_ready
-    def _on_metastore_db_relation_removed(self, event) -> None:
+    def _on_metastore_db_relation_removed(self, _) -> None:
         """Handle event when metastore database relation is removed."""
         self.kyuubi.update(set_metastore_db_none=True)
         self.logger.info("Metastore database relation removed")
