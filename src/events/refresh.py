@@ -25,7 +25,8 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
     _charm: KyuubiCharm
 
     def run_pre_refresh_checks_after_1_unit_refreshed(self) -> None:
-        """Checks to run before and during refresh."""
+        """Checks to run before refresh and, while refreshing, before first
+        unit starts its workload."""
         if (planned_units := self._charm.model.app.planned_units()) != len(
             self._charm.context.app_units
         ):
@@ -47,7 +48,7 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
                 "Refreshing will lead to local data loss."
             )
         elif not self._charm.metastore_events.metastore_manager.is_metastore_valid():
-            raise charm_refresh.PrecheckFailed("Metastore is invalid")
+            raise charm_refresh.PrecheckFailed("Unable to validate metastore")
 
     @classmethod
     def is_compatible(
@@ -67,11 +68,12 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
         """
         if not old_charm_version.track == new_charm_version.track:
             logger.error(
-                "Upgrading to a different track is not supported. "
+                "Refreshing to a different track is not supported. "
                 f"Got {old_charm_version.track} to {new_charm_version.track}"
             )
             return False
 
+        # Check charm version compatibility
         if not super().is_compatible(
             old_charm_version=old_charm_version,
             new_charm_version=new_charm_version,
@@ -106,14 +108,14 @@ def is_workload_compatible(old_workload_version: str, new_workload_version: str)
 
     if old_major != new_major:
         logger.error(
-            "Upgrading to a different major workload is not supported. "
+            "Refreshing to a different major workload is not supported. "
             f"Got {old_major} to {new_major}"
         )
         return False
 
     if not new_minor >= old_minor:
         logger.error(
-            "Upgrading to a previous minor workload is not supported. "
+            "Downgrading to a previous minor workload is not supported. "
             f"Got {old_major}.{old_minor} to {new_major}.{new_minor}"
         )
         return False
