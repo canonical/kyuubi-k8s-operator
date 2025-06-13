@@ -160,25 +160,25 @@ def test_run_inplace_upgrade(
     )
 
     task_params = {"check-compatibility": False}
+    # Blocked status is expected due to:
+    # (on PR) compatibility checks (on PR charm revision is '3.4/1.25.0+dirty...')
+    # (non-PR) the first unit upgraded and paused (pause_after_unit_refresh=first)
+    status = juju.wait(lambda status: jubilant.any_blocked(status, APP_NAME), timeout=30)
 
-    if not with_image_upgrade:
-        assert (
-            "Refresh incompatible"
-            in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
-        ), "Application refresh not blocked due to incompatibility"
+    first_unit_status_msg = status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
+    task_params = {}
+    if "Refresh incompatible" in first_unit_status_msg:
+        task_params = {"check-compatibility": False}
 
-    else:
-        assert (
-            "missing/incorrect OCI resource"
-            in status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
-        ), "Application refresh not blocked due to image incompatibility"
-        task_params["check-workload-container"] = False
+    if "missing/incorrect OCI resource" in first_unit_status_msg:
+        task_params = {"check-compatibility": False, "check-workload-container": False}
 
-    task = juju.run(refresh_order[0], "force-refresh-start", task_params)
-    assert task.return_code == 0
+    if task_params:
+        task = juju.run(refresh_order[0], "force-refresh-start", task_params)
+        assert task.return_code == 0
 
-    logger.info("Waiting for first unit to upgrade")
-    status = juju.wait(lambda status: jubilant.all_agents_idle(status, APP_NAME), delay=10)
+        logger.info("Waiting for first unit to upgrade")
+        status = juju.wait(lambda status: jubilant.all_agents_idle(status, APP_NAME), delay=10)
 
     logger.info("Running resume-refresh action")
     leader_unit = get_leader_unit(juju, APP_NAME)
