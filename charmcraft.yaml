@@ -92,7 +92,7 @@ parts:
       python3 -m venv ../refresh-version-venv
       source ../refresh-version-venv/bin/activate
       poetry install --only build-refresh-version
-      write-charm-version
+      # write-charm-version
 
       craftctl default
     prime:
