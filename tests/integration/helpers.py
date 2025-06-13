@@ -433,7 +433,7 @@ def deploy_minimal_kyuubi_setup(
     logger.info("Deploying kyuubi-k8s charm...")
     juju.deploy(kyuubi_charm, **deploy_args)
 
-    logger.info("Waiting for kyuubi-k8s app to be settle...")
+    logger.info("Waiting for kyuubi-k8s app to settle...")
     status = juju.wait(jubilant.all_blocked)
     logger.info(f"State of kyuubi-k8s app: {status.apps[APP_NAME]}")
 
