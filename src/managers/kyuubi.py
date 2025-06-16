@@ -4,6 +4,8 @@
 
 """Kyuubi manager."""
 
+from charm_refresh import Kubernetes
+
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
@@ -15,9 +17,10 @@ from utils.logging import WithLogging
 class KyuubiManager(WithLogging):
     """Kyuubi manager class."""
 
-    def __init__(self, workload: KyuubiWorkloadBase, context: Context):
+    def __init__(self, workload: KyuubiWorkloadBase, context: Context, refresh: Kubernetes | None):
         self.workload = workload
         self.context = context
+        self.refresh = refresh
 
     def _compare_and_update_file(self, content: str, file_path: str) -> bool:
         """Update the file at given file_path with given content.
@@ -80,11 +83,11 @@ class KyuubiManager(WithLogging):
                     ).contents,
                     self.workload.paths.kyuubi_properties,
                 ),
+                not self.workload.active(),
                 force_restart,
             ]
         )
 
-        # Stop Kyuubi workload if auth-db is missing
         if not auth_db_info:
             self.logger.info("Workload stopped because auth db is missing.")
             try:
@@ -97,6 +100,10 @@ class KyuubiManager(WithLogging):
             self.logger.info(
                 "Workload restart skipped because the configurations have not changed."
             )
+            return
+
+        if not self.refresh or not self.refresh.workload_allowed_to_start:
+            self.logger.info("Workload (re)start skipped; workload not allowed")
             return
 
         self.logger.info("Restarting kyuubi workload...")

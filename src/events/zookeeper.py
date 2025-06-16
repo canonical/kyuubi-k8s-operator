@@ -32,7 +32,7 @@ class ZookeeperEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
         self.zookeeper_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.zookeeper_requirer_data
         )

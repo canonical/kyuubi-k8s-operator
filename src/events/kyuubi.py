@@ -35,7 +35,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
         self.service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -171,7 +171,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
 
     @defer_when_not_ready
-    def _on_peer_relation_changed(self, _: ops.RelationDepartedEvent):
+    def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")
         # check if certificate need to be reloaded

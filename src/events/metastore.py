@@ -35,7 +35,7 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
         self.metastore_manager = HiveMetastoreManager(self.workload)
         self.metastore_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.metastore_db_requirer

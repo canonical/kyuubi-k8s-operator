@@ -35,7 +35,7 @@ class SparkIntegrationHubEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
 
         self.service_account_requirer = SparkServiceAccountRequirerEventHandlers(
             self.charm, self.context.spark_service_account_interface

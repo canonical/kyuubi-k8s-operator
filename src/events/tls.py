@@ -38,7 +38,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.charm = charm
         self.context = context
         self.workload = workload
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
         self.tls_manager = TLSManager(context, workload)
         self.certificates = TLSCertificatesRequiresV3(self.charm, "certificates")
 
