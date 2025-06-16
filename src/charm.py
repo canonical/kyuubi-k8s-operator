@@ -114,9 +114,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             and not self.refresh.next_unit_allowed_to_refresh
             and self.refresh.workload_allowed_to_start
         ):
-            if not self.workload.active():
-                self.kyuubi_events.kyuubi.update()
-            else:
+            if self.workload.active():
                 self.refresh.next_unit_allowed_to_refresh = True
             elif self.workload.ready():
                 self.kyuubi_events.kyuubi.update()
