@@ -169,7 +169,7 @@ def test_run_inplace_upgrade(
     if "Refresh incompatible" in first_unit_status_msg:
         task_params = {"check-compatibility": False}
 
-    if "missing/incorrect OCI resource" in first_unit_status_msg:
+    if "missing/incorrect OCI resource" in first_unit_status_msg and with_image_upgrade:
         task_params = {"check-compatibility": False, "check-workload-container": False}
 
     if task_params:
