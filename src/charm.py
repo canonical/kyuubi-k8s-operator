@@ -108,6 +108,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             )
         except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
             self.refresh = None
+
         if (
             self.refresh is not None
             and not self.refresh.next_unit_allowed_to_refresh
@@ -115,6 +116,8 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         ):
             if self.workload.active():
                 self.refresh.next_unit_allowed_to_refresh = True
+            elif self.workload.ready():
+                self.kyuubi_events.kyuubi.update()
 
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.collect_app_status, self._on_collect_app_status)

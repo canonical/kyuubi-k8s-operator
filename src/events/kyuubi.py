@@ -132,7 +132,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
     def _update_event(self, _):
         """Handle the update event hook."""
-        pass
+        self.kyuubi.update()
 
     @defer_when_not_ready
     def _on_kyuubi_pebble_ready(self, _: ops.PebbleReadyEvent):
