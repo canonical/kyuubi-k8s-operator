@@ -60,7 +60,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             if isinstance(handler, JujuLogHandler):
                 handler.setFormatter(logging.Formatter("{name}:{message}", style="{"))
 
-        self.refresh: charm_refresh.Kubernetes | None = None
         # Workload
         self.workload = KyuubiWorkload(
             container=self.unit.get_container(KYUUBI_CONTAINER_NAME),
@@ -80,14 +79,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             )
         except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
             self.refresh = None
-
-        if (
-            self.refresh is not None
-            and not self.refresh.next_unit_allowed_to_refresh
-            and self.refresh.workload_allowed_to_start
-        ):
-            if self.workload.active():
-                self.refresh.next_unit_allowed_to_refresh = True
 
         # Event handlers
         self.kyuubi_events = KyuubiEvents(self, self.context, self.workload)
@@ -117,6 +108,14 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         # Loki
         # Server logs from Pebble
         self._log_forwarder = LogForwarder(self, relation_name=COS_LOG_RELATION_NAME_SERVER)
+
+        if (
+            self.refresh is not None
+            and not self.refresh.next_unit_allowed_to_refresh
+            and self.refresh.workload_allowed_to_start
+        ):
+            if self.workload.active():
+                self.refresh.next_unit_allowed_to_refresh = True
 
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.collect_app_status, self._on_collect_app_status)
