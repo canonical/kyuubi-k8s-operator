@@ -72,7 +72,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             self.refresh = charm_refresh.Kubernetes(
                 KyuubiRefresh(
                     workload_name="Kyuubi",
-                    charm_name="kyuubi-k8",
+                    charm_name="kyuubi-k8s",
                     oci_resource_name="kyuubi-image",
                     _charm=self,
                 )
