@@ -163,12 +163,12 @@ def s3_bucket_and_creds():
         "path": TEST_PATH_NAME,
     }
 
-    logger.info("Tearing down test bucket...")
-    for obj in test_bucket.objects.all():
-        # We need to iterate over keys because delete_objects (plural) has mandatory checksum
-        obj.delete()
+    # logger.info("Tearing down test bucket...")
+    # for obj in test_bucket.objects.all():
+    #     # We need to iterate over keys because delete_objects (plural) has mandatory checksum
+    #     obj.delete()
 
-    test_bucket.delete()
+    # test_bucket.delete()
 
 
 @pytest.fixture(scope="module")

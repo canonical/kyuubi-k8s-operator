@@ -95,6 +95,7 @@ def test_deploy(
         logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
         juju.integrate(charm_versions.metastore_db.app, f"{APP_NAME}:metastore-db")
 
+    juju.config(APP_NAME, {"expose-external": "loadbalancer"})
     logger.info("Waiting for final deployment to be ok")
     juju.wait(jubilant.all_active, delay=15, timeout=1000)
 
@@ -196,7 +197,7 @@ def test_run_inplace_upgrade(
         pass
 
     logger.info("Waiting for refresh to complete")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=20)
 
 
 def test_create_new_data(
