@@ -68,18 +68,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         # Context
         self.context = Context(model=self.model, config=self.config)
 
-        try:
-            self.refresh = charm_refresh.Kubernetes(
-                KyuubiRefresh(
-                    workload_name="Kyuubi",
-                    charm_name="kyuubi-k8s",
-                    oci_resource_name="kyuubi-image",
-                    _charm=self,
-                )
-            )
-        except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
-            self.refresh = None
-
         # Event handlers
         self.kyuubi_events = KyuubiEvents(self, self.context, self.workload)
         self.hub_events = SparkIntegrationHubEvents(self, self.context, self.workload)
@@ -109,6 +97,17 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         # Server logs from Pebble
         self._log_forwarder = LogForwarder(self, relation_name=COS_LOG_RELATION_NAME_SERVER)
 
+        try:
+            self.refresh = charm_refresh.Kubernetes(
+                KyuubiRefresh(
+                    workload_name="Kyuubi",
+                    charm_name="kyuubi-k8s",
+                    oci_resource_name="kyuubi-image",
+                    _charm=self,
+                )
+            )
+        except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
+            self.refresh = None
         if (
             self.refresh is not None
             and not self.refresh.next_unit_allowed_to_refresh

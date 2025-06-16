@@ -34,7 +34,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
+        self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.auth_db_handler = DatabaseRequirerEventHandlers(
             self.charm, self.context.auth_db_requirer
         )

@@ -34,7 +34,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context, self.charm.refresh)
+        self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
