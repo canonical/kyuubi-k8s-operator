@@ -91,6 +91,8 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             )
             if self.context.cluster.tls:
                 self.database_provides.set_tls_ca(client.id, self.context.unit_server.ca_cert)
+            else:
+                self.database_provides.set_tls_ca(client.id, "")
 
     def _on_database_requested(self, event: DatabaseRequestedEvent) -> None:
         """Handle the database-requested event.
@@ -120,7 +122,10 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
 
         username = f"relation_id_{event.relation.id}"
         password = auth.generate_password()
-        auth.create_user(username=username, password=password)
+        if not auth.create_user(username=username, password=password):
+            logging.warning("User could not be created; deferring")
+            event.defer()
+            return
 
         jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
 
