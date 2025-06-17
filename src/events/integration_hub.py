@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from common.relation.spark_sa import (
+from charms.spark_integration_hub_k8s.v0.spark_service_account import (
     ServiceAccountGoneEvent,
     ServiceAccountGrantedEvent,
     ServiceAccountPropertyChangedEvent,
     SparkServiceAccountRequirerEventHandlers,
 )
+
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, compute_status, defer_when_not_ready

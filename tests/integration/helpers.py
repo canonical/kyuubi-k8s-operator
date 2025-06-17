@@ -124,7 +124,7 @@ def get_active_kyuubi_servers_list(
         "--namespace",
         HA_ZNODE_NAME,
         "--version",
-        "1.9.0",
+        "1.10.2",
     ]
     kubectl_command = [
         "kubectl",
@@ -142,7 +142,7 @@ def get_active_kyuubi_servers_list(
     assert process.returncode == 0
 
     output_lines = process.stdout.decode().splitlines()
-    pattern = r"\?\s+/kyuubi\s+\?\s+(?P<node>[\w\-.]+)\s+\?\s+(?P<port>\d+)\s+\?\s+(?P<version>[\d.]+)\s+\?"
+    pattern = r"\?\s+/kyuubi\s+\?\s+(?P<node>[\w\-.]+)\s+\?\s+(?P<port>\d+)\s+\?\s+(?P<version>[\d.]+-ubuntu[\d]+)\s+\?"
     servers = []
 
     for line in output_lines:

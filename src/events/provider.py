@@ -91,6 +91,8 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             )
             if self.context.cluster.tls:
                 self.database_provides.set_tls_ca(client.id, self.context.unit_server.ca_cert)
+            else:
+                self.database_provides.set_tls_ca(client.id, "")
 
     def _on_database_requested(self, event: DatabaseRequestedEvent) -> None:
         """Handle the database-requested event.
@@ -99,66 +101,57 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         """
         logger.info("KyuubiClientProvider: Database requested...")
 
-        if not self.charm.unit.is_leader():
+        if not self.context.is_authentication_enabled() or event.database is None:
+            event.defer()
             return
-        try:
-            if not self.context.is_authentication_enabled():
-                raise NotImplementedError(
-                    "Authentication has not been enabled yet! "
-                    "Please integrate kyuubi-k8s with postgresql-k8s "
-                    "over auth-db relation endpoint."
-                )
 
-            auth = AuthenticationManager(self.context)
-            service_manager = ServiceManager(
-                namespace=self.charm.model.name,
-                unit_name=self.charm.unit.name,
-                app_name=self.charm.app.name,
-            )
+        auth = AuthenticationManager(self.context)
+        service_manager = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
 
-            username = f"relation_id_{event.relation.id}"
-            password = auth.generate_password()
-            auth.create_user(username=username, password=password)
+        kyuubi_endpoint = service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external
+        )
 
-            kyuubi_endpoint = service_manager.get_service_endpoint(
-                expose_external=self.charm.config.expose_external
-            )
+        if kyuubi_endpoint is None:
+            event.defer()
+            return
 
-            if kyuubi_endpoint is None:
-                event.defer()
-                return
+        username = f"relation_id_{event.relation.id}"
+        password = auth.generate_password()
+        if not auth.create_user(username=username, password=password):
+            logging.warning("User could not be created; deferring")
+            event.defer()
+            return
 
-            jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
+        jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
 
-            # Set the JDBC endpoint.
-            self.database_provides.set_endpoints(
-                event.relation.id,
-                f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}",
-            )
+        # Set the JDBC endpoint.
+        self.database_provides.set_endpoints(
+            event.relation.id,
+            f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}",
+        )
 
-            # Set the JDBC URI
-            self.database_provides.set_uris(event.relation.id, jdbc_uri)
+        # Set the JDBC URI
+        self.database_provides.set_uris(event.relation.id, jdbc_uri)
 
-            # Set the database version.
-            self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
+        # Set the database version.
+        self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
 
-            # Set username and password
-            self.database_provides.set_credentials(
-                relation_id=event.relation.id, username=username, password=password
-            )
+        # Set username and password
+        self.database_provides.set_credentials(
+            relation_id=event.relation.id, username=username, password=password
+        )
 
-            self.database_provides.set_database(event.relation.id, event.database)
-            self.database_provides.set_tls(
-                event.relation.id, "True" if self.context.cluster.tls else "False"
-            )
-            if self.context.cluster.tls:
-                self.database_provides.set_tls_ca(
-                    event.relation.id, self.context.unit_server.ca_cert
-                )
-
-        except Exception as e:
-            logger.exception(e)
-            self.charm.unit.status = BlockedStatus(str(e))
+        self.database_provides.set_database(event.relation.id, event.database)
+        self.database_provides.set_tls(
+            event.relation.id, "True" if self.context.cluster.tls else "False"
+        )
+        if self.context.cluster.tls:
+            self.database_provides.set_tls_ca(event.relation.id, self.context.unit_server.ca_cert)
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Remove the user created for this relation."""
