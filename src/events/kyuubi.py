@@ -138,6 +138,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     def _on_kyuubi_pebble_ready(self, _: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")
+        self.check_if_certificate_needs_reload()
+        self.charm.provider_events.update_clients_endpoints()
         self.kyuubi.update()
 
     def _on_peer_relation_joined(self, _: ops.RelationJoinedEvent):
