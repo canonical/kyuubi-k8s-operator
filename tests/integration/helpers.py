@@ -690,6 +690,7 @@ def validate_sql_queries_with_kyuubi(
     """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
     if not kyuubi_host:
         kyuubi_host = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
+        logger.info(f"Reaching out to kyuubi on {kyuubi_host}")
     if not db_name:
         db_name = str(uuid.uuid4()).replace("-", "_")
     if not table_name:
