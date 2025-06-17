@@ -691,6 +691,13 @@ def validate_sql_queries_with_kyuubi(
     if not kyuubi_host:
         kyuubi_host = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
         logger.info(f"Reaching out to kyuubi on {kyuubi_host}")
+        response = subprocess.check_output(
+            f"openssl s_client -showcerts -connect {kyuubi_host}:10009 < /dev/null || true",
+            stderr=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+        logger.info(response)
     if not db_name:
         db_name = str(uuid.uuid4()).replace("-", "_")
     if not table_name:

@@ -211,6 +211,15 @@ def test_create_new_data(
         wait=wait_fixed(10),
     ):
         with attempt:
+            services = juju.ssh(f"{APP_NAME}/0", container="kyuubi", command="pebble services")
+            logger.info("Running services:")
+            logger.info(services)
+            logs = juju.ssh(
+                f"{APP_NAME}/0", container="kyuubi", command="pebble logs kyuubi -n 500"
+            )
+            logger.info("logs")
+            logger.info(logs)
+
             assert validate_sql_queries_with_kyuubi(
                 juju=juju, username=username, password=password, use_tls=with_tls
             )
