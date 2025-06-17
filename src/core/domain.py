@@ -405,6 +405,11 @@ class KyuubiCluster(RelationState):
         """The cluster-wide private-key contents for the unit to use for TLS."""
         return self.relation_data.get("private-key", "")
 
+    @property
+    def admin_password(self) -> str:
+        """The admin password for the cluster."""
+        return self.relation_data.get("admin-password", "")
+
 
 class Secret(WithLogging):
     """The class representing a user-level Juju secret."""

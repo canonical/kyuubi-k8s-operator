@@ -168,7 +168,9 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             return
 
         # FIXME: There is not guarantee here
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(
+            cast(DatabaseConnectionInfo, self.context.auth_db), self.context
+        )
         username = f"relation_id_{event.relation.id}"
 
         try:

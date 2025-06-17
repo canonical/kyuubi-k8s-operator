@@ -58,7 +58,7 @@ class AuthenticationManager(WithLogging):
         return True
 
     @property
-    def system_user_password(self) -> str | None:
+    def system_user_password(self) -> str:
         """Return user configured system user password."""
         if (
             not self.system_user_secret_configured()
@@ -66,18 +66,27 @@ class AuthenticationManager(WithLogging):
             or not self.system_user_secret_granted()
             or not self.system_user_secret_valid()
         ):
-            return None
+            return ""
 
-        return self.system_users_secret.content.get(DEFAULT_ADMIN_USERNAME)
+        return self.system_users_secret.content.get(DEFAULT_ADMIN_USERNAME, "")
+
+    def enable_pgcrypto_extension(self) -> bool:
+        """Enable pgcrypto extension in the authentication database."""
+        self.logger.info("Enabling pgcrypto extension...")
+        query = "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+        status, _ = self.database.execute(query)
+        if not status:
+            raise RuntimeError("Could not enable pgcrypto extension.")
+        return status
 
     def create_authentication_table(self) -> bool:
         """Create authentication table in the authentication database."""
         self.logger.info("Creating authentication table...")
         query = f"""
-            CREATE TABLE {self.AUTHENTICATION_TABLE_NAME} (
+            CREATE TABLE IF NOT EXISTS {self.AUTHENTICATION_TABLE_NAME} (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
-                passwd VARCHAR(255) NOT NULL
+                passwd TEXT NOT NULL
             );
         """
         status, _ = self.database.execute(query)
@@ -88,6 +97,22 @@ class AuthenticationManager(WithLogging):
         choices = string.ascii_letters + string.digits
         password = "".join([secrets.choice(choices) for i in range(16)])
         return password
+
+    def create_user(self, username: str, password: str) -> bool:
+        """Create a user with given parameters.
+
+        Args:
+            username (str): Username of the user to be created.
+            password (str): Password of the user to be created
+
+        Returns:
+            bool: signifies whether the user has been created successfully
+        """
+        self.logger.info(f"Creating user {username}...")
+        query = f"INSERT INTO {self.AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, crypt(%s, gen_salt('bf')) );"
+        vars = (username, password)
+        success, _ = self.database.execute(query=query, vars=vars)
+        return success
 
     def user_exists(self, username: str) -> bool:
         """Check whether the user with given username already exists.
@@ -106,22 +131,6 @@ class AuthenticationManager(WithLogging):
             return False
         return len(result) != 0
 
-    def create_user(self, username: str, password: str) -> bool:
-        """Create a user with given parameters.
-
-        Args:
-            username (str): Username of the user to be created.
-            password (str): Password of the user to be created
-
-        Returns:
-            bool: signifies whether the user has been created successfully
-        """
-        self.logger.info(f"Creating user {username}...")
-        query = f"INSERT INTO {self.AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, %s);"
-        vars = (username, password)
-        status, _ = self.database.execute(query=query, vars=vars)
-        return status
-
     def delete_user(self, username: str) -> bool:
         """Delete a user with given username.
 
@@ -137,47 +146,48 @@ class AuthenticationManager(WithLogging):
         status, _ = self.database.execute(query=query, vars=vars)
         return status
 
-    def get_password(self, username: str) -> str:
-        """Returns the password for the given username."""
-        query = f"SELECT passwd FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s"
-        vars = (username,)
-        status, results = self.database.execute(query=query, vars=vars)
-        if not status or len(results) == 0:
-            raise Exception("Could not fetch password from authentication database.")
-        password = results[0][0]
-        return password
-
     def set_password(self, username: str, password: str | None = None) -> bool:
         """Set a new password for the given username."""
         if password is None:
             password = self.generate_password()
-        query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = %s WHERE username = %s"
+        query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = crypt(%s, gen_salt('bf')) WHERE username = %s ;"
         vars = (
             password,
             username,
         )
-        status, _ = self.database.execute(query=query, vars=vars)
-        if not status:
-            raise Exception(f"Could not update password of {username}.")
-        return status
+        success, _ = self.database.execute(query=query, vars=vars)
+        return success
 
     def create_admin_user(self) -> bool:
         """Create a default admin user in the authentication database."""
         password = self.system_user_password
-        if password is None:
+        self.context.cluster.update({"admin-password": password})
+        if not password:
             password = self.generate_password()
         return self.create_user(self.DEFAULT_ADMIN_USERNAME, password=password)
 
     def update_admin_user(self) -> bool:
         """Update the default admin user password in the authentication database."""
         password = self.system_user_password
-        if password is None:
+        should_update = True
+        if password == self.context.cluster.admin_password:
+            should_update = False
+        self.context.cluster.update({"admin-password": password})
+        if not should_update:
+            return True
+        if not password:
             password = self.generate_password()
         return self.set_password(self.DEFAULT_ADMIN_USERNAME, password=password)
 
     def prepare_auth_db(self) -> None:
         """Prepare the authentication database in PostgreSQL."""
         self.logger.info("Preparing auth db...")
+
+        # TODO: this is to be done via configuration option from postgresql-k8s
+        # in the future. We enable this here manually because postgresql-k8s
+        # does not have config option to enable this extension yet.
+        self.enable_pgcrypto_extension()
+
         self.create_authentication_table()
         self.create_admin_user()
 

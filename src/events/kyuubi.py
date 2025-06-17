@@ -59,7 +59,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(
             self.charm.on[PEER_REL].relation_changed, self._on_peer_relation_changed
         )
-
         self.framework.observe(
             self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
         )
@@ -78,6 +77,22 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
             ):
                 self.charm.provider_events.update_clients_endpoints()
+
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
+            auth_manager.update_admin_user()
+
+            tls_manager = TLSManager(self.context, self.workload)
+            key_updated = tls_manager.update_tls_private_key()
+            if key_updated:
+                self.charm.tls_events._on_certificate_expiring(event)
 
         self.kyuubi.update()
 
@@ -170,11 +185,15 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        if event.secret.label and event.secret.label == self.context.cluster.data_interface._generate_secret_label(
-            PEER_REL,
-            self.context.cluster.relation.id,
-            "extra",  # type: ignore
-            # Changes with the https://github.com/canonical/data-platform-libs/issues/124
+        if (
+            event.secret.label
+            and event.secret.label
+            == self.context.cluster.data_interface._generate_secret_label(
+                PEER_REL,
+                self.context.cluster.relation.id,
+                "extra",  # type: ignore
+                # Changes with the https://github.com/canonical/data-platform-libs/issues/124
+            )
         ):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
             return
@@ -231,7 +250,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             key_updated = tls_manager.update_tls_private_key()
             if key_updated:
                 self.charm.tls_events._on_certificate_expiring(event)
-
 
     @compute_status
     @defer_when_not_ready

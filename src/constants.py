@@ -49,4 +49,5 @@ DEPENDENCIES = {
     },
 }
 
-SECRETS_APP: list[str] = []
+SECRETS_APP: list[str] = ["admin-password"]
+# PASSWORD_SECRET_SUFFIX = "-password"

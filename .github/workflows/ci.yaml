@@ -66,6 +66,7 @@ jobs:
           - integration-ha
           - integration-external-access
           - integration-dynamic-allocation
+          # - integration-upgrade
           - integration-iceberg
           - integration-provider
           - integration-trust

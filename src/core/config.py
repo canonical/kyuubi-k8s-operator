@@ -7,10 +7,10 @@
 
 import logging
 import re
+from typing import Optional
 
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
 from pydantic import Field
-from typing import Optional
 
 from .enums import ExposeExternal
 
