@@ -109,7 +109,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                     "over auth-db relation endpoint."
                 )
 
-            auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+            auth = AuthenticationManager(self.context)
             service_manager = ServiceManager(
                 namespace=self.charm.model.name,
                 unit_name=self.charm.unit.name,

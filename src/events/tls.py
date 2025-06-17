@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import base64
-import re
 from typing import TYPE_CHECKING
 
 from charms.tls_certificates_interface.v3.tls_certificates import (
@@ -16,7 +14,7 @@ from charms.tls_certificates_interface.v3.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
-from ops.charm import ActionEvent, RelationBrokenEvent, RelationCreatedEvent, RelationJoinedEvent
+from ops.charm import RelationBrokenEvent, RelationCreatedEvent, RelationJoinedEvent
 from ops.framework import EventBase
 
 from core.context import Context
@@ -58,10 +56,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
             getattr(self.charm.on, "certificates_relation_broken"), self._on_certificates_broken
         )
 
-        self.framework.observe(
-            getattr(self.charm.on, "set_tls_private_key_action"), self._set_tls_private_key
-        )
-
     def _on_certificates_created(self, event: RelationCreatedEvent) -> None:
         """Handler for `certificates_relation_created` event."""
         if not self.charm.unit.is_leader():
@@ -78,11 +72,15 @@ class TLSEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        # generate unit private key if not already created by action
-        if not self.context.unit_server.private_key:
+        if not self.context.cluster.private_key and not self.context.unit_server.private_key:
             self.context.unit_server.update(
                 {"private-key": generate_private_key().decode("utf-8")}
             )
+        elif (
+            self.context.cluster.private_key
+            and self.context.cluster.private_key != self.context.unit_server.private_key
+        ):
+            self.context.unit_server.update({"private-key": self.context.cluster.private_key})
 
         # generate unit key/truststore password if not already created by action
         self.context.unit_server.update(
@@ -178,18 +176,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.context.cluster.update({"tls": ""})
         self.kyuubi.update(set_tls_none=True)
-
-    def _set_tls_private_key(self, event: ActionEvent) -> None:
-        """Handler for `set-tls-private-key` event when user manually specifies private-keys for a unit."""
-        key = event.params.get("internal-key") or generate_private_key().decode("utf-8")
-        private_key = (
-            key
-            if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key)
-            else base64.b64decode(key).decode("utf-8")
-        )
-
-        self.context.unit_server.update({"private-key": private_key})
-        self._on_certificate_expiring(event)
 
     def _cleanup_old_ca_field(self) -> None:
         """In order to ensure backwards compatibility, we keep old secrets until the first time they are updated.

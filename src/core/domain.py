@@ -12,6 +12,7 @@ from enum import Enum
 from functools import cached_property
 from typing import MutableMapping
 
+import ops
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
@@ -20,6 +21,7 @@ from typing_extensions import override
 from common.relation.domain import RelationState
 from constants import SECRETS_APP
 from managers.service import Endpoint, ServiceManager
+from utils.logging import WithLogging
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,24 @@ class Status(Enum):
     )
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
     INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")
-
+    TLS_SECRET_DOES_NOT_EXIST = BlockedStatus(
+        "Secret provided as tls-client-private-key does not exist"
+    )
+    TLS_SECRET_INSUFFICIENT_PERMISSION = BlockedStatus(
+        "Secret provided as tls-client-private-key has not been granted to the charm"
+    )
+    TLS_SECRET_INVALID = BlockedStatus(
+        "Secret provided as tls-client-private-key has invalid content"
+    )
+    SYSTEM_USERS_SECRET_DOES_NOT_EXIST = BlockedStatus(
+        "Secret provided as system-users does not exist"
+    )
+    SYSTEM_USERS_SECRET_INSUFFICIENT_PERMISSION = BlockedStatus(
+        "Secret provided as system-users has not been granted to the charm"
+    )
+    SYSTEM_USERS_SECRET_INVALID = BlockedStatus(
+        "Secret provided as system-users has invalid content"
+    )
     ACTIVE = ActiveStatus("")
 
 
@@ -380,3 +399,45 @@ class KyuubiCluster(RelationState):
     def tls(self) -> bool:
         """Flag to check if TLS is enabled for the cluster."""
         return self.relation_data.get("tls", "") == "enabled"
+
+    @property
+    def private_key(self) -> str:
+        """The cluster-wide private-key contents for the unit to use for TLS."""
+        return self.relation_data.get("private-key", "")
+
+
+class Secret(WithLogging):
+    """The class representing a user-level Juju secret."""
+
+    def __init__(self, model: ops.Model, secret_id: str) -> None:
+        self.model = model
+        self.secret_id = secret_id
+
+    def exists(self) -> bool:
+        """Return whether the secret exists."""
+        try:
+            self.model.get_secret(id=self.secret_id)
+        except ops.model.SecretNotFoundError:
+            return False
+        except Exception:
+            return True
+        else:
+            return True
+
+    def has_permission(self) -> bool:
+        """Return whether charm has permission to secret."""
+        try:
+            self.model.get_secret(id=self.secret_id)
+        except ops.model.ModelError:
+            return False
+        else:
+            return True
+
+    @property
+    def content(self) -> dict:
+        """The contents of the secret."""
+        if not self.exists():
+            return {}
+        if not self.has_permission():
+            return {}
+        return self.model.get_secret(id=self.secret_id).get_content(refresh=True)

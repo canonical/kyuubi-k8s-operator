@@ -4,15 +4,22 @@
 
 """Manager for building necessary files for Java TLS auth."""
 
+import base64
 import logging
 import os
+import re
 import socket
 import subprocess
 
 import ops.pebble
+from charms.tls_certificates_interface.v3.tls_certificates import (
+    generate_private_key,
+)
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from core.context import Context
-from core.domain import SANs
+from core.domain import SANs, Secret
 from core.enums import ExposeExternal
 from core.workload import KyuubiWorkloadBase
 from managers.service import DNSEndpoint, IPEndpoint
@@ -26,6 +33,75 @@ class TLSManager:
     def __init__(self, context: Context, workload: KyuubiWorkloadBase):
         self.context = context
         self.workload = workload
+        self.tls_private_key_secret = Secret(
+            context.model, secret_id=context.config.tls_client_private_key
+        )
+
+    def tls_private_key_secret_configured(self) -> bool:
+        """Return whether the user configured has configured TLS private key secret."""
+        return self.context.config.tls_client_private_key is not None
+
+    def tls_private_key_secret_exists(self) -> bool:
+        """Return whether the user configured TLS private key secret exists."""
+        return self.tls_private_key_secret.exists()
+
+    def tls_private_key_secret_granted(self) -> bool:
+        """Return whether the user configured TLS private key secret has been granted to charm."""
+        return self.tls_private_key_secret.has_permission()
+
+    def tls_private_key_secret_valid(self) -> bool:
+        """Return whether the user configured TLS private key secret is valid."""
+        secret_content = self.tls_private_key_secret.content
+        if not secret_content:
+            return False
+        if len(secret_content.keys()) != 1 or "private-key" not in secret_content:
+            return False
+        pkey: str = secret_content["private-key"]
+        private_key = (
+            pkey
+            if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", pkey)
+            else base64.b64decode(pkey).decode("utf-8").strip()
+        )
+
+        try:
+            key = serialization.load_pem_private_key(
+                private_key.encode(),
+                password=None,
+            )
+
+            if not isinstance(key, rsa.RSAPrivateKey):
+                logger.warning("Private key is not an RSA key")
+                return False
+
+            if key.key_size < 2048:
+                logger.warning("RSA key size is less than 2048 bits")
+                return False
+
+            return True
+        except ValueError:
+            logger.warning("Invalid private key format")
+            return False
+
+    def update_tls_private_key(self) -> bool:
+        """Update TLS private key in the Kyuubi cluster."""
+        if (
+            not self.tls_private_key_secret_configured()
+            or not self.tls_private_key_secret_exists()
+            or not self.tls_private_key_secret_granted()
+            or not self.tls_private_key_secret_valid()
+        ):
+            private_key = generate_private_key().decode()
+        else:
+            key = self.tls_private_key_secret.content["private-key"]
+            private_key = (
+                key
+                if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key)
+                else base64.b64decode(key).decode("utf-8")
+            )
+            if self.context.cluster.private_key == private_key:
+                return False
+        self.context.cluster.update({"private-key": private_key})
+        return True
 
     def get_subject(self) -> str:
         """Get subject name for the unit."""

@@ -9,9 +9,12 @@ import secrets
 import string
 
 from constants import (
+    AUTHENTICATION_TABLE_NAME,
+    DEFAULT_ADMIN_USERNAME,
     POSTGRESQL_DEFAULT_DATABASE,
 )
-from core.domain import DatabaseConnectionInfo
+from core.context import Context
+from core.domain import Secret
 from managers.database import DatabaseManager
 from utils.logging import WithLogging
 
@@ -19,12 +22,53 @@ from utils.logging import WithLogging
 class AuthenticationManager(WithLogging):
     """Manager encapsulating various authentication related methods."""
 
-    DEFAULT_ADMIN_USERNAME = "admin"
-    AUTHENTICATION_TABLE_NAME = "kyuubi_users"
+    DEFAULT_ADMIN_USERNAME = DEFAULT_ADMIN_USERNAME
+    AUTHENTICATION_TABLE_NAME = AUTHENTICATION_TABLE_NAME
 
-    def __init__(self, db_info: DatabaseConnectionInfo) -> None:
+    def __init__(self, context: Context) -> None:
         super().__init__()
+        self.context = context
+        db_info = context.auth_db
         self.database = DatabaseManager(db_info=db_info)
+        self.system_users_secret = Secret(
+            model=context.model, secret_id=context.config.system_users
+        )
+
+    def system_user_secret_configured(self) -> bool:
+        """Return whether user has configured the system-users secret."""
+        self.logger.error(self.context.config.system_users)
+        return bool(self.context.config.system_users)
+
+    def system_user_secret_exists(self) -> bool:
+        """Return whether user-configured system users secret exists."""
+        return self.system_users_secret.exists()
+
+    def system_user_secret_granted(self) -> bool:
+        """Return whether user-configured system users secret has been granted to the charm."""
+        return self.system_users_secret.has_permission()
+
+    def system_user_secret_valid(self) -> bool:
+        """Return whether user-configured system users secret is valid."""
+        secret_content = self.system_users_secret.content
+        if not secret_content:
+            return False
+        admin_password = secret_content.get(DEFAULT_ADMIN_USERNAME)
+        if admin_password in (None, ""):
+            return False
+        return True
+
+    @property
+    def system_user_password(self) -> str | None:
+        """Return user configured system user password."""
+        if (
+            not self.system_user_secret_configured()
+            or not self.system_user_secret_exists()
+            or not self.system_user_secret_granted()
+            or not self.system_user_secret_valid()
+        ):
+            return None
+
+        return self.system_users_secret.content.get(DEFAULT_ADMIN_USERNAME)
 
     def create_authentication_table(self) -> bool:
         """Create authentication table in the authentication database."""
@@ -44,6 +88,23 @@ class AuthenticationManager(WithLogging):
         choices = string.ascii_letters + string.digits
         password = "".join([secrets.choice(choices) for i in range(16)])
         return password
+
+    def user_exists(self, username: str) -> bool:
+        """Check whether the user with given username already exists.
+
+        Args:
+            username (str): Username of the user.
+
+        Returns:
+            bool: signifies whether the user already exists
+        """
+        query = f"SELECT 1 FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        vars = (username,)
+        success, result = self.database.execute(query=query, vars=vars)
+        if not success:
+            self.logger.error(f"Could not check if user {username} exists.")
+            return False
+        return len(result) != 0
 
     def create_user(self, username: str, password: str) -> bool:
         """Create a user with given parameters.
@@ -86,8 +147,10 @@ class AuthenticationManager(WithLogging):
         password = results[0][0]
         return password
 
-    def set_password(self, username: str, password: str) -> None:
+    def set_password(self, username: str, password: str | None = None) -> bool:
         """Set a new password for the given username."""
+        if password is None:
+            password = self.generate_password()
         query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = %s WHERE username = %s"
         vars = (
             password,
@@ -96,11 +159,21 @@ class AuthenticationManager(WithLogging):
         status, _ = self.database.execute(query=query, vars=vars)
         if not status:
             raise Exception(f"Could not update password of {username}.")
+        return status
 
     def create_admin_user(self) -> bool:
         """Create a default admin user in the authentication database."""
-        password = self.generate_password()
-        return self.create_user(self.DEFAULT_ADMIN_USERNAME, password)
+        password = self.system_user_password
+        if password is None:
+            password = self.generate_password()
+        return self.create_user(self.DEFAULT_ADMIN_USERNAME, password=password)
+
+    def update_admin_user(self) -> bool:
+        """Update the default admin user password in the authentication database."""
+        password = self.system_user_password
+        if password is None:
+            password = self.generate_password()
+        return self.set_password(self.DEFAULT_ADMIN_USERNAME, password=password)
 
     def prepare_auth_db(self) -> None:
         """Prepare the authentication database in PostgreSQL."""

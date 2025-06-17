@@ -15,7 +15,8 @@ from ops import SecretChangedEvent
 from constants import PEER_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from events.base import BaseEventHandler, compute_status, defer_when_not_ready, leader_only
+from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
@@ -49,6 +50,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
         self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
+        self.framework.observe(self.charm.on.secret_remove, self._on_secret_removed)
 
         # Peer relation events
         self.framework.observe(
@@ -79,7 +81,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi.update()
 
-        # Check the newly created service is connectable
+        # Check the newly created service endpoint is available
         if not self.service_manager.get_service_endpoint(
             expose_external=self.charm.config.expose_external
         ):
@@ -161,21 +163,75 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.logger.info("Kyuubi peer relation departed...")
 
     @compute_status
+    @leader_only
     def _on_secret_changed(self, event: SecretChangedEvent) -> None:
         """Reconfigure services on a secret changed event."""
-        if not event.secret.label:
-            return
-
         if not self.context.cluster.relation:
+            event.defer()
             return
 
-        if event.secret.label == self.context.cluster.data_interface._generate_secret_label(
+        if event.secret.label and event.secret.label == self.context.cluster.data_interface._generate_secret_label(
             PEER_REL,
             self.context.cluster.relation.id,
             "extra",  # type: ignore
             # Changes with the https://github.com/canonical/data-platform-libs/issues/124
         ):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
+            return
+
+        if self.charm.config.system_users and self.charm.config.system_users == event.secret.id:
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
+            auth_manager.update_admin_user()
+
+        if (
+            self.charm.config.tls_client_private_key
+            and self.charm.config.tls_client_private_key == event.secret.id
+        ):
+            tls_manager = TLSManager(self.context, self.workload)
+            key_updated = tls_manager.update_tls_private_key()
+            if key_updated:
+                self.charm.tls_events._on_certificate_expiring(event)
+
+    @compute_status
+    @leader_only
+    def _on_secret_removed(self, event) -> None:
+        """Reconfigure services on a secret changed event."""
+        if not self.context.cluster.relation:
+            event.defer()
+            return
+
+        self.logger.error(self.charm.config.system_users)
+        self.logger.error(event.secret.id)
+        if self.charm.config.system_users and self.charm.config.system_users == event.secret.id:
+            self.logger.error("SYSTEM USERS CHANGED")
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
+            auth_manager.update_admin_user()
+
+        if (
+            self.charm.config.tls_client_private_key
+            and self.charm.config.tls_client_private_key == event.secret.id
+        ):
+            tls_manager = TLSManager(self.context, self.workload)
+            key_updated = tls_manager.update_tls_private_key()
+            if key_updated:
+                self.charm.tls_events._on_certificate_expiring(event)
+
 
     @compute_status
     @defer_when_not_ready
