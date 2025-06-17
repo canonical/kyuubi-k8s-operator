@@ -117,6 +117,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             if self.workload.active():
                 self.refresh.next_unit_allowed_to_refresh = True
             elif self.workload.ready():
+                self.kyuubi_events.check_if_certificate_needs_reload()
                 self.kyuubi_events.kyuubi.update()
 
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
