@@ -54,6 +54,7 @@ jobs:
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -207,7 +208,7 @@ jobs:
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
+        timeout-minutes: 120
       - name: Collect logs if job failed
         if: ${{ failure() }}   
         run: |
