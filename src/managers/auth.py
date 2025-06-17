@@ -11,7 +11,6 @@ import string
 from constants import (
     AUTHENTICATION_TABLE_NAME,
     DEFAULT_ADMIN_USERNAME,
-    POSTGRESQL_DEFAULT_DATABASE,
 )
 from core.context import Context
 from core.domain import Secret
@@ -28,8 +27,7 @@ class AuthenticationManager(WithLogging):
     def __init__(self, context: Context) -> None:
         super().__init__()
         self.context = context
-        db_info = context.auth_db
-        self.database = DatabaseManager(db_info=db_info)
+        self.database = DatabaseManager(db_info=context.auth_db)
         self.system_users_secret = Secret(
             model=context.model, secret_id=context.config.system_users
         )
@@ -67,7 +65,6 @@ class AuthenticationManager(WithLogging):
             or not self.system_user_secret_valid()
         ):
             return ""
-
         return self.system_users_secret.content.get(DEFAULT_ADMIN_USERNAME, "")
 
     def enable_pgcrypto_extension(self) -> bool:
@@ -166,20 +163,20 @@ class AuthenticationManager(WithLogging):
             password = self.generate_password()
         return self.create_user(self.DEFAULT_ADMIN_USERNAME, password=password)
 
-    def update_admin_user(self) -> bool:
+    def update_admin_user(self, force_update: bool = False) -> bool:
         """Update the default admin user password in the authentication database."""
         password = self.system_user_password
         should_update = True
         if password == self.context.cluster.admin_password:
             should_update = False
         self.context.cluster.update({"admin-password": password})
-        if not should_update:
+        if not force_update and not should_update:
             return True
         if not password:
             password = self.generate_password()
         return self.set_password(self.DEFAULT_ADMIN_USERNAME, password=password)
 
-    def prepare_auth_db(self) -> None:
+    def prepare_auth_db(self) -> bool:
         """Prepare the authentication database in PostgreSQL."""
         self.logger.info("Preparing auth db...")
 
@@ -189,13 +186,6 @@ class AuthenticationManager(WithLogging):
         self.enable_pgcrypto_extension()
 
         self.create_authentication_table()
-        self.create_admin_user()
-
-    def remove_auth_db(self) -> None:
-        """Remove authentication database from PostgreSQL."""
-        self.logger.info("Removing auth_db...")
-        query = f"DROP DATABASE {self.database.db_info.dbname} WITH (FORCE);"
-
-        # Using POSTGRESQL_DEFAULT_DATABASE because a database can't be dropped
-        # while being connected to itself.
-        self.database.execute(dbname=POSTGRESQL_DEFAULT_DATABASE, query=query)
+        if self.user_exists(self.DEFAULT_ADMIN_USERNAME):
+            return self.update_admin_user(force_update=True)
+        return self.create_admin_user()

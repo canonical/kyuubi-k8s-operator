@@ -12,9 +12,6 @@ import socket
 import subprocess
 
 import ops.pebble
-from charms.tls_certificates_interface.v3.tls_certificates import (
-    generate_private_key,
-)
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -90,7 +87,7 @@ class TLSManager:
             or not self.tls_private_key_secret_granted()
             or not self.tls_private_key_secret_valid()
         ):
-            private_key = generate_private_key().decode()
+            private_key = ""
         else:
             key = self.tls_private_key_secret.content["private-key"]
             private_key = (
@@ -98,8 +95,9 @@ class TLSManager:
                 if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key)
                 else base64.b64decode(key).decode("utf-8")
             )
-            if self.context.cluster.private_key == private_key:
-                return False
+
+        if self.context.cluster.private_key == private_key:
+            return False
         self.context.cluster.update({"private-key": private_key})
         return True
 

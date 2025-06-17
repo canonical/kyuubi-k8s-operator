@@ -61,12 +61,13 @@ def test_build_and_deploy(
             charm_versions.data_integrator.app,
             charm_versions.integration_hub.app,
             charm_versions.s3.app,
+            charm_versions.data_integrator.app,
         ),
         delay=5,
     )
 
 
-def test_jdbc_endpoint_with_default_metastore(
+def test_jdbc_endpoint_without_tls(
     juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the JDBC endpoint exposed by the charm."""
@@ -195,7 +196,7 @@ def test_kill_pod(
     assert task.return_code == 0
     items = ast.literal_eval(task.results.get("certificates", "[]"))
     certificates = json.loads(items[0])
-    cert = certificates["certificate"]
+    ca_cert = certificates["ca"]
 
     logger.info(f"Copy the certificate to the testpod in this location: {CERTIFICATE_LOCATION}")
     with umask_named_temporary_file(
@@ -205,7 +206,7 @@ def test_kill_pod(
         dir=os.path.expanduser("~"),
     ) as temp_file:
         with open(temp_file.name, "w+") as f:
-            f.writelines(cert)
+            f.writelines(ca_cert)
         kubectl_command = [
             "kubectl",
             "cp",
@@ -279,6 +280,24 @@ def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms)
 
     assert "TLSv1.3" in response
     assert re.search(r"CN\s?=\s?new-name", response)
+
+
+# try custom tls private key, secret does not exist
+# try custom tls private key, permission not granted
+# try custom tls private key, invalid content
+#               - invalid format
+#               - invalid content
+#               - invalid byte length
+#               - invalid algorithm
+# try custom tls private key, valid key
+#               - validate the custom private key is used in csr
+#               - validate the custom private key is used for server certificate generation
+#               - validate can run queries using that key
+# update custom tls private key, valid case
+#               - test everything from earlier point again
+# delete custom tls privatre key
+#               - in this case, the unit should generate its own random private key and use it
+#               - validate can run queries using that key
 
 
 @pytest.mark.parametrize(

@@ -106,14 +106,6 @@ def test_deploy_integration_hub(
         )
     )
 
-    # Add configuration key
-    task = juju.run(
-        f"{charm_versions.integration_hub.app}/0",
-        "add-config",
-        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
-    )
-    assert task.return_code == 0
-
     logger.info("Integrating s3-integrator charm with integration-hub charm...")
     juju.integrate(charm_versions.integration_hub.application_name, charm_versions.s3.app)
 
@@ -203,37 +195,27 @@ def test_integration_hub_realtime_updates(
     juju.wait(jubilant.all_active, delay=5)
 
     # Add a property via integration hub
-    task = juju.run(
-        f"{charm_versions.integration_hub.app}/0",
-        "add-config",
-        {"conf": "foo=bar"},
-    )
-    assert task.return_code == 0
-
+    logger.info("Enabling dynamic allocation on Integration Hub...")
+    juju.config(charm_versions.integration_hub.app, {"enable-dynamic-allocation": "true"})
     logger.info(
         "Waiting for kyuubi, integration_hub and s3-integrator charms to be idle and active..."
     )
     juju.wait(jubilant.all_active, delay=5)
 
     props = fetch_spark_properties(juju, unit_name=f"{APP_NAME}/0")
-    assert "foo" in props
-    assert props["foo"] == "bar"
+    assert "spark.dynamicAllocation.enabled" in props
+    assert props["spark.dynamicAllocation.enabled"] == "true"
 
     # Remove the property via integration hub
-    task = juju.run(
-        f"{charm_versions.integration_hub.app}/0",
-        "remove-config",
-        {"key": "foo"},
-    )
-    assert task.return_code == 0
-
+    logger.info("Disabling dynamic allocation on Integration Hub...")
+    juju.config(charm_versions.integration_hub.app, {"enable-dynamic-allocation": "false"})
     logger.info(
         "Waiting for kyuubi, integration_hub and s3-integrator charms to be idle and active..."
     )
     juju.wait(jubilant.all_active, delay=5)
 
     props = fetch_spark_properties(juju, unit_name=f"{APP_NAME}/0")
-    assert "foo" not in props
+    assert "spark.dynamicAllocation.enabled" not in props
 
 
 def test_relate_data_integrator(

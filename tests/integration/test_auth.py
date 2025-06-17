@@ -14,7 +14,6 @@ from thrift.transport.TTransport import TTransportException
 from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
-    get_leader_unit,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms
@@ -61,30 +60,24 @@ def test_kyuubi_with_invalid_credentials(juju: jubilant.Juju) -> None:
 def test_kyuubi_valid_credentials(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
-    """Test the JDBC connection when invalid credentials are provided."""
+    """Test the JDBC connection when valid credentials are provided."""
     logger.info("Running action 'get-password' on kyuubi unit")
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
-def test_set_password_action(juju: jubilant.Juju) -> None:
-    """Test set-password action."""
-    logger.info("Running action 'set-password' on kyuubi-k8s unit...")
-    new_password = str(uuid.uuid4())
-    leader = get_leader_unit(juju, APP_NAME)
-    task = juju.run(leader, "set-password", {"password": new_password})
-    assert task.return_code == 0
-
-    logger.info("Running action 'get-password' on kyuubi unit")
-    task = juju.run(leader, "get-password")
-    assert task.return_code == 0
-    assert new_password == task.results["password"]
-
-    username = "admin"
-    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=new_password)
+# test set admin password secret does not exist
+# test set admin password secret not granted
+# test set admin password invalid secret
+# test set admin password valid secret, assert admin password can be used to connect to kyuubi
+# update admin password, now the old password should not work, new password should work
+# make the secret invalid, charm should revert back to blocked state
+# make the secret valid again, the charm should revert back to active state
+# remove the admin password secret, the password should no longer work (however charm does not know of this.. so IDK how that will fare?)
+# Even when admin password secret is removed, one can still connect with data-intregrator user
 
 
-def test_remove_authentication(
+def test_remove_authentication_database(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the workload is stopped when authentication is disabled."""

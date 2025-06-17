@@ -72,11 +72,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
         if self.charm.unit.is_leader():
-            # Create / update the managed service to reflect the service type in config
-            if self.service_manager.reconcile_services(
-                self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
-            ):
-                self.charm.provider_events.update_clients_endpoints()
+            if not self.context.cluster.relation:
+                event.defer()
+                return
 
             if not self.context.is_authentication_enabled():
                 event.defer()
@@ -87,11 +85,17 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
+            # Create / update the managed service to reflect the service type in config
+            if self.service_manager.reconcile_services(
+                self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
+            ):
+                self.charm.provider_events.update_clients_endpoints()
+
             auth_manager.update_admin_user()
 
             tls_manager = TLSManager(self.context, self.workload)
             key_updated = tls_manager.update_tls_private_key()
-            if key_updated:
+            if key_updated and self.context.cluster.tls:
                 self.charm.tls_events._on_certificate_expiring(event)
 
         self.kyuubi.update()
@@ -109,8 +113,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.logger.info(
             "Managed K8s service is available; completed handling config-changed event."
         )
-
-        self.check_if_certificate_needs_reload()
+        if self.context.cluster.tls:
+            self.check_if_certificate_needs_reload()
 
     def check_if_certificate_needs_reload(self):
         """Handle if the certificate needs to be generated again due to change in the sans."""
@@ -223,14 +227,12 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @leader_only
     def _on_secret_removed(self, event) -> None:
         """Reconfigure services on a secret changed event."""
+        self.logger.error("Secret has bene removed")
         if not self.context.cluster.relation:
             event.defer()
             return
 
-        self.logger.error(self.charm.config.system_users)
-        self.logger.error(event.secret.id)
         if self.charm.config.system_users and self.charm.config.system_users == event.secret.id:
-            self.logger.error("SYSTEM USERS CHANGED")
             if not self.context.is_authentication_enabled():
                 event.defer()
                 return
@@ -248,7 +250,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         ):
             tls_manager = TLSManager(self.context, self.workload)
             key_updated = tls_manager.update_tls_private_key()
-            if key_updated:
+            if key_updated and self.context.cluster.tls:
                 self.charm.tls_events._on_certificate_expiring(event)
 
     @compute_status
