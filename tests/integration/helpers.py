@@ -485,6 +485,14 @@ def deploy_minimal_kyuubi_setup(
         )
     )
 
+    # Add configuration key to prevent resource starvation during tests
+    task = juju.run(
+        f"{charm_versions.integration_hub.app}/0",
+        "add-config",
+        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
+    )
+    assert task.return_code == 0
+
     logger.info("Integrating integration-hub charm with s3-integrator charm...")
     juju.integrate(charm_versions.s3.app, charm_versions.integration_hub.app)
 

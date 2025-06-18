@@ -81,7 +81,7 @@ def charm_versions() -> IntegrationTestsCharms:
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",
             channel="latest/edge",
-            revision=56,
+            revision=43,
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
