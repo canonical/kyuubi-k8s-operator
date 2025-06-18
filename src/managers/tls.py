@@ -30,9 +30,14 @@ class TLSManager:
     def __init__(self, context: Context, workload: KyuubiWorkloadBase):
         self.context = context
         self.workload = workload
-        self.tls_private_key_secret = Secret(
-            context.model, secret_id=context.config.tls_client_private_key
-        )
+
+    @property
+    def tls_private_key_secret(self) -> Secret:
+        """Lazily initialize the system users Secret object."""
+        secret_id = self.context.config.tls_client_private_key
+        if secret_id is None:
+            raise RuntimeError("TLS private key secret is not configured.")
+        return Secret(model=self.context.model, secret_id=secret_id)
 
     def tls_private_key_secret_configured(self) -> bool:
         """Return whether the user configured has configured TLS private key secret."""

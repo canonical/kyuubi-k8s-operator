@@ -27,10 +27,23 @@ class AuthenticationManager(WithLogging):
     def __init__(self, context: Context) -> None:
         super().__init__()
         self.context = context
-        self.database = DatabaseManager(db_info=context.auth_db)
-        self.system_users_secret = Secret(
-            model=context.model, secret_id=context.config.system_users
-        )
+
+    @property
+    def database(
+        self,
+    ) -> DatabaseManager:
+        """Lazily initialize and return a DatabaseManager instance."""
+        if not self.context.auth_db:
+            raise RuntimeError("Authentication database connection info is not set.")
+        return DatabaseManager(db_info=self.context.auth_db)
+
+    @property
+    def system_users_secret(self) -> Secret:
+        """Lazily initialize the system users Secret object."""
+        secret_id = self.context.config.system_users
+        if secret_id is None:
+            raise RuntimeError("System users secret ID is not configured.")
+        return Secret(model=self.context.model, secret_id=secret_id)
 
     def system_user_secret_configured(self) -> bool:
         """Return whether user has configured the system-users secret."""
