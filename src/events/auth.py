@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseCreatedEvent,
@@ -60,6 +61,9 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             auth = AuthenticationManager(auth_db)
             auth.prepare_auth_db()
             self.logger.info("Authentication database created...")
+
+            # Trigger status update of units via peer relation data
+            self.context.cluster.update({"refresh-token": str(uuid4())})
 
         self.kyuubi.update()
 
