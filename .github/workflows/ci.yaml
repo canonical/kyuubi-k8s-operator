@@ -133,14 +133,12 @@ jobs:
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
       - name: Collect logs if job failed
-        if: ${{ failure() }}   
+        if: ${{ failure() }}
         run: |
           juju-crashdump
           echo "Done"
 
-
   test-refresh:
-    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -197,7 +195,7 @@ jobs:
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
       - name: Collect logs if job failed
-        if: ${{ failure() }}   
+        if: ${{ failure() }}
         run: |
           juju-crashdump
           echo "Done"

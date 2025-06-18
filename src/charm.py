@@ -226,6 +226,9 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if not service_manager.get_service_endpoint(expose_external=self.config.expose_external):
             statuses.append(Status.WAITING_FOR_SERVICE.value)
 
+        if not self.workload.serving_requests():
+            statuses.append(Status.NOT_SERVING_REQUESTS.value)
+
         return statuses
 
 

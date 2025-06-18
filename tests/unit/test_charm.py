@@ -5,7 +5,7 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from ops.testing import Container, Context, Relation, State
 
@@ -417,3 +417,40 @@ def test_spark_property_priorities(
     # override the property of same name set by Kyuubi charm.
     assert spark_properties["spark.kubernetes.container.image"] != JOB_OCI_IMAGE
     assert spark_properties["spark.kubernetes.container.image"] == "image_from_service_account"
+
+
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("config.spark.SparkConfig._sa_conf", return_value={})
+@patch("managers.service.ServiceManager.get_service_endpoint", return_value=True)
+def test_kyuubi_not_serving_requests(
+    mock_k8s_service,
+    mock_sa_conf,
+    mock_get_master,
+    mock_s3_configured,
+    mock_valid_sa,
+    mock_valid_ns,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
+    mock_socket_connect: Mock,
+) -> None:
+    """This test simulates a running pebble service not actively serving requests.
+
+    This can happen if the keystore file is missing, the service would loop restart.
+    """
+    # Given
+    mock_socket_connect.return_value = False
+    state = State(
+        relations=[spark_service_account_relation, auth_db_relation],
+        containers=[kyuubi_container],
+    )
+
+    # When
+    out = kyuubi_context.run(kyuubi_context.on.update_status(), state)
+
+    # Then
+    assert out.unit_status == Status.NOT_SERVING_REQUESTS.value
