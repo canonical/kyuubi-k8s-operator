@@ -90,6 +90,7 @@ def test_set_admin_password_in_kyuubi_secret_not_valid(juju: jubilant.Juju) -> N
     password = "password"
     secret_name = "admin-password-invalid"
     secret_uri = juju.add_secret(secret_name, {username: password})
+    juju.cli("grant-secret", secret_name, APP_NAME)
     juju.config(APP_NAME, {"system-users": secret_uri})
     juju.wait(jubilant.all_agents_idle)
     juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
@@ -107,6 +108,7 @@ def test_set_admin_password_in_kyuubi_secret_valid(juju: jubilant.Juju) -> None:
     password = "password"
     secret_name = "kyuubi-users"
     secret_uri = juju.add_secret(secret_name, {username: password})
+    juju.cli("grant-secret", secret_name, APP_NAME)
     juju.config(APP_NAME, {"system-users": secret_uri})
     juju.wait(jubilant.all_agents_idle)
     juju.wait(jubilant.all_active)
@@ -145,7 +147,7 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
 
     new_username = "admin"
     new_password = "valid-admin-password"
-    juju.cli("update-secret", secret_name, f"{username}={password}")
+    juju.cli("update-secret", secret_name, f"{new_username}={new_password}")
     juju.wait(jubilant.all_agents_idle)
     juju.wait(jubilant.all_active)
     with pytest.raises(TTransportException):
