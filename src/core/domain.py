@@ -47,6 +47,7 @@ class Status(Enum):
     )
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
     INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")
+    NOT_SERVING_REQUESTS = MaintenanceStatus("Kyuubi is not serving requests")
 
     ACTIVE = ActiveStatus("")
 
