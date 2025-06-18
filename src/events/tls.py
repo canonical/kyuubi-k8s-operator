@@ -21,7 +21,7 @@ from ops.framework import EventBase
 
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from managers.tls import TLSManager
 from utils.logging import WithLogging
@@ -38,7 +38,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.charm = charm
         self.context = context
         self.workload = workload
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.tls_manager = TLSManager(context, workload)
         self.certificates = TLSCertificatesRequiresV3(self.charm, "certificates")
 
@@ -62,7 +62,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
             getattr(self.charm.on, "set_tls_private_key_action"), self._set_tls_private_key
         )
 
-    def _on_certificates_created(self, event: RelationCreatedEvent) -> None:
+    def _on_certificates_created(self, _: RelationCreatedEvent) -> None:
         """Handler for `certificates_relation_created` event."""
         if not self.charm.unit.is_leader():
             return
@@ -110,7 +110,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.certificates.request_certificate_creation(certificate_signing_request=csr)
 
-    @compute_status
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
         # avoid setting tls files and restarting
@@ -135,7 +134,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi.update(force_restart=True)
 
-    @compute_status
     def _on_certificate_expiring(self, _: EventBase) -> None:
         """Handler for `certificates_expiring` event when certs need renewing."""
         if not (self.context.unit_server.private_key or self.context.unit_server.csr):
@@ -159,7 +157,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.context.unit_server.update({"csr": new_csr.decode("utf-8").strip()})
 
-    @compute_status
     @defer_when_not_ready
     def _on_certificates_broken(self, event: RelationBrokenEvent) -> None:
         """Handler for `certificates_relation_broken` event."""

@@ -40,8 +40,8 @@ resources:
 peers:
   kyuubi-peers:
     interface: kyuubi-peers
-  upgrade:
-    interface: upgrade
+  refresh-v-three:
+    interface: refresh
 
 requires:
   auth-db:

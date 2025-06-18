@@ -12,7 +12,7 @@ from ops.charm import ActionEvent
 
 from constants import DEFAULT_ADMIN_USERNAME
 from core.context import Context
-from core.domain import DatabaseConnectionInfo, Status
+from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
@@ -34,7 +34,7 @@ class ActionEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -59,10 +59,6 @@ class ActionEvents(BaseEventHandler, WithLogging):
             (
                 lambda: not self.workload.ready(),
                 "The action failed because the workload is not ready yet.",
-            ),
-            (
-                lambda: self.get_app_status() != Status.ACTIVE.value,
-                "The action failed because the charm is not in active state.",
             ),
         ]
 
@@ -92,14 +88,6 @@ class ActionEvents(BaseEventHandler, WithLogging):
             (
                 lambda: not self.workload.ready(),
                 "The action failed because the workload is not ready yet.",
-            ),
-            (
-                lambda: self.get_app_status() != Status.ACTIVE.value,
-                "The action failed because the charm is not in active state.",
-            ),
-            (
-                lambda: not self.charm.upgrade_events.idle,
-                f"Cannot set password while upgrading (upgrade_stack: {self.charm.upgrade_events.upgrade_stack})",
             ),
         ]
 

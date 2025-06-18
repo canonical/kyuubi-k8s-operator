@@ -11,10 +11,11 @@ package-mode = false
 python = ">=3.10,<4.0"
 ops = "^2.17.0"
 boto3 = ">=1.36.0"
-lightkube = "^0.15.2"
+lightkube = ">=0.15.6"
 psycopg2 = "^2.9.9"
 tenacity = ">=8.0.1"
 spark8t = ">=0.0.11"
+charm-refresh = "^3.0.0.1"
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^2.13.0"
@@ -53,7 +54,6 @@ optional = true
 
 [tool.poetry.group.unit.dependencies]
 pytest = ">=7.2"
-pytest-asyncio = ">0.20.0"
 coverage = { extras = ["toml"], version = ">7.0" }
 ops = { version = "^2.17.0", extras = ["testing"] }
 
@@ -66,6 +66,14 @@ boto3 = ">=1.36.0"
 tenacity = "^8.2.2"
 spark-k8s-test = "^0.0.4"
 jubilant = "^1.0.0"
+tomli = "^2.2.1"
+tomli-w = "^1.2.0"
+
+[tool.poetry.group.build-refresh-version]
+optional = true
+
+[tool.poetry.group.build-refresh-version.dependencies]
+charm-refresh-build-version = "^0.2.0"
 
 [tool.ruff]
 line-length = 99
@@ -109,6 +117,7 @@ module = [
   "charms.tls_certificates_interface.*",
   "charms.spark_integration_hub_k8s.*",
   "spark8t.services",
+  "charm_refresh",
 ]
 ignore_missing_imports = true
 

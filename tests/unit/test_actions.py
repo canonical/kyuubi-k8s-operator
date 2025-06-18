@@ -6,7 +6,6 @@ import dataclasses
 import json
 import logging
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import yaml
@@ -14,7 +13,6 @@ from ops.testing import ActionFailed, Container, Context, Relation, State
 
 from charm import KyuubiCharm
 from constants import KYUUBI_CONTAINER_NAME
-from core.domain import Status
 
 logger = logging.getLogger(__name__)
 
@@ -97,32 +95,3 @@ def test_action_workload_not_ready(ctx: Context, action: str) -> None:
         _ = ctx.run(ctx.on.action(action), state_in)
 
     assert exc_info.value.message == "The action failed because the workload is not ready yet."
-
-
-@pytest.mark.parametrize(["action"], [("get-password",), ("set-password",)])
-def test_action_workload_not_active(ctx: Context, base_state: State, action: str) -> None:
-    # Given
-    relation_db = Relation(
-        "auth-db",
-        "postgresql_client",
-        remote_app_data={
-            "endpoints": "127.0.0.1:5432",
-            "username": "speakfriend",
-            "password": "mellon",
-            "database": "lotr",
-        },
-    )
-    state_in = dataclasses.replace(base_state, relations=[relation_db])
-
-    # When
-    # Then
-    with (
-        patch(
-            "events.base.BaseEventHandler.get_app_status",
-            return_value=Status.MISSING_OBJECT_STORAGE_BACKEND,
-        ),
-        pytest.raises(ActionFailed) as exc_info,
-    ):
-        _ = ctx.run(ctx.on.action(action), state_in)
-
-    assert exc_info.value.message == "The action failed because the charm is not in active state."
