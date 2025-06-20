@@ -72,7 +72,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        if not self.context.cluster.private_key and not self.context.unit_server.private_key:
+        if not self.context.cluster.private_key:
             self.context.unit_server.update(
                 {"private-key": generate_private_key().decode("utf-8")}
             )
@@ -131,6 +131,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.tls_manager.set_truststore()
         self.tls_manager.set_p12_keystore()
 
+        self.charm.provider_events.update_clients_endpoints()
         self.kyuubi.update(force_restart=True)
 
     @compute_status
@@ -139,6 +140,16 @@ class TLSEvents(BaseEventHandler, WithLogging):
         if not (self.context.unit_server.private_key or self.context.unit_server.csr):
             self.logger.error("Missing unit private key and/or old csr")
             return
+
+        if not self.context.cluster.private_key:
+            self.context.unit_server.update(
+                {"private-key": generate_private_key().decode("utf-8")}
+            )
+        elif (
+            self.context.cluster.private_key
+            and self.context.cluster.private_key != self.context.unit_server.private_key
+        ):
+            self.context.unit_server.update({"private-key": self.context.cluster.private_key})
 
         subject = self.tls_manager.get_subject()
         sans = self.tls_manager.build_sans()

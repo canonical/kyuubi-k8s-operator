@@ -19,7 +19,6 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
 
 from common.relation.domain import RelationState
-from constants import SECRETS_APP
 from managers.service import Endpoint, ServiceManager
 from utils.logging import WithLogging
 
@@ -385,7 +384,7 @@ class KyuubiCluster(RelationState):
             return
 
         for key, value in items.items():
-            if key in SECRETS_APP or key.startswith("relation-"):
+            if key.startswith("relation-"):
                 if value:
                     self.data_interface.set_secret(self.relation.id, key, value)
                 else:

@@ -233,3 +233,10 @@ def test_charm() -> Path:
         raise FileNotFoundError("Could not find packed test charm.")
 
     return path
+
+
+@pytest.fixture(scope="module")
+def context():
+    """A common data store read+writeable by all tests."""
+    context = {}
+    return context

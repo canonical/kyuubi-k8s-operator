@@ -47,7 +47,6 @@ class AuthenticationManager(WithLogging):
 
     def system_user_secret_configured(self) -> bool:
         """Return whether user has configured the system-users secret."""
-        self.logger.error(self.context.config.system_users)
         return bool(self.context.config.system_users)
 
     def system_user_secret_exists(self) -> bool:

@@ -7,16 +7,22 @@ import json
 import logging
 import os
 import re
+import socket
 import subprocess
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, cast
+from unittest.mock import patch
 
 import jubilant
 import lightkube
 import requests
 import yaml
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import load_pem_x509_certificate
 from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
 from spark_test.core.kyuubi import KyuubiClient
@@ -670,8 +676,31 @@ def fetch_spark_properties(juju: jubilant.Juju, unit_name: str) -> dict[str, str
         return props
 
 
+def kyuubi_host_port_from_jdbc_uri(jdbc_uri: str) -> tuple[str, int]:
+    pattern = r"jdbc:hive2://([\w\.-]+):(\d+)"
+    match = re.match(pattern, jdbc_uri)
+    if not match:
+        raise ValueError(f"Invalid JDBC URI: {jdbc_uri}")
+    host, port = match.groups()
+    return host, int(port)
+
+
+@contextmanager
+def mock_hostname_resolution(hostname: str, ip: str):
+    original_getaddrinfo = socket.getaddrinfo
+
+    def patched_getaddrinfo(host, *args, **kwargs):
+        if host == hostname:
+            return original_getaddrinfo(ip, *args, **kwargs)
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    with patch("socket.getaddrinfo", side_effect=patched_getaddrinfo):
+        yield
+
+
 def validate_sql_queries_with_kyuubi(
     juju: jubilant.Juju,
+    jdbc_uri: str | None = None,
     kyuubi_host: str | None = None,
     kyuubi_port: str | int = 10009,
     username: str | None = None,
@@ -680,8 +709,11 @@ def validate_sql_queries_with_kyuubi(
     db_name: str | None = None,
     table_name: str | None = None,
     use_tls: bool = False,
+    ca_cert: str | Path | None = None,
 ):
     """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
+    if jdbc_uri:
+        kyuubi_host, kyuubi_port = kyuubi_host_port_from_jdbc_uri(jdbc_uri=jdbc_uri)
     if not kyuubi_host:
         kyuubi_host = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
     if not db_name:
@@ -701,10 +733,30 @@ def validate_sql_queries_with_kyuubi(
         args.update({"username": username})
     if password:
         args.update({"password": password})
-    kyuubi_client = KyuubiClient(**args, use_ssl=use_tls)
+    kyuubi_client = KyuubiClient(**args, use_ssl=use_tls, ca_cert=ca_cert)
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         for line in query_lines:
             cursor.execute(line)
         results = cursor.fetchall()
         return len(results) == 1
+
+
+def verify_certificate_matches_public_key(certificate: bytes, public_key: bytes) -> bool:
+    # Load certificate
+    cert_pubkey = load_pem_x509_certificate(certificate, backend=default_backend()).public_key()
+
+    # Load public key
+    given_pubkey = serialization.load_pem_public_key(public_key, backend=default_backend())
+
+    # Compare public keys as raw bytes
+    cert_pubkey_bytes = cert_pubkey.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    given_pubkey_bytes = given_pubkey.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    return cert_pubkey_bytes == given_pubkey_bytes
