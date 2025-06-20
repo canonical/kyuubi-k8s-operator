@@ -11,10 +11,11 @@ import pytest
 import yaml
 from thrift.transport.TTransport import TTransportException
 
+from core.domain import Status
+
 from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
-    get_leader_unit,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms
@@ -61,30 +62,139 @@ def test_kyuubi_with_invalid_credentials(juju: jubilant.Juju) -> None:
 def test_kyuubi_valid_credentials(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
-    """Test the JDBC connection when invalid credentials are provided."""
+    """Test the JDBC connection when valid credentials are provided."""
     logger.info("Running action 'get-password' on kyuubi unit")
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
-def test_set_password_action(juju: jubilant.Juju) -> None:
-    """Test set-password action."""
-    logger.info("Running action 'set-password' on kyuubi-k8s unit...")
-    new_password = str(uuid.uuid4())
-    leader = get_leader_unit(juju, APP_NAME)
-    task = juju.run(leader, "set-password", {"password": new_password})
-    assert task.return_code == 0
-
-    logger.info("Running action 'get-password' on kyuubi unit")
-    task = juju.run(leader, "get-password")
-    assert task.return_code == 0
-    assert new_password == task.results["password"]
-
+def test_set_admin_password_in_kyuubi_secret_not_granted(juju: jubilant.Juju) -> None:
     username = "admin"
+    password = "password"
+    secret_name = "admin-password-no-grant"
+    secret_uri = juju.add_secret(secret_name, {username: password})
+    juju.config(APP_NAME, {"system-users": secret_uri})
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
+    status = juju.status()
+    assert (
+        status.apps[APP_NAME].app_status.message
+        == Status.SYSTEM_USERS_SECRET_INSUFFICIENT_PERMISSION.value.message
+    )
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_set_admin_password_in_kyuubi_secret_not_valid(juju: jubilant.Juju) -> None:
+    username = "randomuser"
+    password = "password"
+    secret_name = "admin-password-invalid"
+    secret_uri = juju.add_secret(secret_name, {username: password})
+    juju.cli("grant-secret", secret_name, APP_NAME)
+    juju.config(APP_NAME, {"system-users": secret_uri})
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
+    assert (
+        status.apps[APP_NAME].app_status.message
+        == Status.SYSTEM_USERS_SECRET_INVALID.value.message
+    )
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_set_admin_password_in_kyuubi_secret_valid(juju: jubilant.Juju) -> None:
+    username = "admin"
+    password = "password"
+    secret_name = "kyuubi-users"
+    secret_uri = juju.add_secret(secret_name, {username: password})
+    juju.cli("grant-secret", secret_name, APP_NAME)
+    juju.config(APP_NAME, {"system-users": secret_uri})
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
+
+    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_update_admin_password(juju: jubilant.Juju) -> None:
+    username = "admin"
+    old_password = "password"
+    new_password = "new-password"
+    secret_name = "kyuubi-users"
+    juju.cli("update-secret", secret_name, f"{username}={new_password}")
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=old_password)
+
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=new_password)
 
 
-def test_remove_authentication(
+def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.Juju) -> None:
+    username = "random-user"
+    password = "new-password"
+    secret_name = "kyuubi-users"
+    juju.cli("update-secret", secret_name, f"{username}={password}")
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
+    assert (
+        status.apps[APP_NAME].app_status.message
+        == Status.SYSTEM_USERS_SECRET_INVALID.value.message
+    )
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+    new_username = "admin"
+    new_password = "valid-admin-password"
+    juju.cli("update-secret", secret_name, f"{new_username}={new_password}")
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju, username=new_username, password=new_password
+    )
+
+
+# TODO
+# Test that when auth-db relation is removed, the charm goes to blocked state. however
+# the same auth-db should be able to be connected again, and the existing user `admin`
+# should not interfere with the ability of the relation to be created. In fact. the
+# password of the `admin` user should be updated to reflect to that of current config
+# option.
+
+
+def test_remove_admin_password_config(juju: jubilant.Juju, charm_versions) -> None:
+    juju.config(APP_NAME, {"system-users": ""})
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
+
+    old_username = "admin"
+    old_password = "valid-admin-password"
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=old_username, password=old_password)
+
+    _, new_username, new_password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    assert validate_sql_queries_with_kyuubi(
+        juju=juju, username=new_username, password=new_password
+    )
+
+
+def test_remove_authentication_database(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the workload is stopped when authentication is disabled."""
@@ -96,7 +206,7 @@ def test_remove_authentication(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
         lambda status: jubilant.all_blocked(status, APP_NAME),
-        delay=3,
+        delay=5,
     )
 
     with pytest.raises(TTransportException):

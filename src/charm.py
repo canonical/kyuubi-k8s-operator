@@ -29,7 +29,6 @@ from core.config import CharmConfig
 from core.context import Context
 from core.domain import Status
 from core.workload.kyuubi import KyuubiWorkload
-from events.actions import ActionEvents
 from events.auth import AuthenticationEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
@@ -74,7 +73,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
-        self.action_events = ActionEvents(self, self.context, self.workload)
         self.tls_events = TLSEvents(self, self.context, self.workload)
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 

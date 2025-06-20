@@ -56,7 +56,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
             return
 
         if self.charm.unit.is_leader():
-            auth = AuthenticationManager(auth_db)
+            auth = AuthenticationManager(self.context)
             auth.prepare_auth_db()
             self.logger.info("Authentication database created...")
 

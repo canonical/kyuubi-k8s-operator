@@ -4,16 +4,19 @@
 
 """Manager for building necessary files for Java TLS auth."""
 
+import base64
 import logging
 import os
+import re
 import socket
 import subprocess
 
 import ops.pebble
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from core.context import Context
-from core.domain import SANs
-from core.enums import ExposeExternal
+from core.domain import SANs, Secret
 from core.workload import KyuubiWorkloadBase
 from managers.service import DNSEndpoint, IPEndpoint
 
@@ -23,24 +26,100 @@ logger = logging.getLogger(__name__)
 class TLSManager:
     """Manager for building necessary files for Java TLS auth."""
 
+    SUBJECT_NAME_MAX_LENGTH = 64
+
     def __init__(self, context: Context, workload: KyuubiWorkloadBase):
         self.context = context
         self.workload = workload
 
+    @property
+    def tls_private_key_secret(self) -> Secret:
+        """Lazily initialize the system users Secret object."""
+        secret_id = self.context.config.tls_client_private_key
+        if secret_id is None:
+            raise RuntimeError("TLS private key secret is not configured.")
+        return Secret(model=self.context.model, secret_id=secret_id)
+
+    def tls_private_key_secret_configured(self) -> bool:
+        """Return whether the user configured has configured TLS private key secret."""
+        return bool(self.context.config.tls_client_private_key)
+
+    def tls_private_key_secret_exists(self) -> bool:
+        """Return whether the user configured TLS private key secret exists."""
+        return self.tls_private_key_secret.exists()
+
+    def tls_private_key_secret_granted(self) -> bool:
+        """Return whether the user configured TLS private key secret has been granted to charm."""
+        return self.tls_private_key_secret.has_permission()
+
+    def tls_private_key_secret_valid(self) -> bool:
+        """Return whether the user configured TLS private key secret is valid."""
+        secret_content = self.tls_private_key_secret.content
+        if not secret_content:
+            return False
+        if "private-key" not in secret_content:
+            return False
+        pkey: str = secret_content["private-key"]
+        try:
+            private_key = (
+                pkey
+                if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", pkey)
+                else base64.b64decode(pkey).decode("utf-8").strip()
+            )
+            key = serialization.load_pem_private_key(
+                private_key.encode(),
+                password=None,
+            )
+
+            if not isinstance(key, rsa.RSAPrivateKey):
+                logger.warning("Private key is not an RSA key")
+                return False
+
+            if key.key_size < 2048:
+                logger.warning("RSA key size is less than 2048 bits")
+                return False
+
+            return True
+        except ValueError:
+            logger.warning("Invalid private key format")
+            return False
+
+    def update_tls_private_key(self) -> bool:
+        """Update TLS private key in the Kyuubi cluster."""
+        if (
+            not self.tls_private_key_secret_configured()
+            or not self.tls_private_key_secret_exists()
+            or not self.tls_private_key_secret_granted()
+            or not self.tls_private_key_secret_valid()
+        ):
+            private_key = ""
+        else:
+            key = self.tls_private_key_secret.content["private-key"]
+            private_key = (
+                key
+                if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key)
+                else base64.b64decode(key).decode("utf-8")
+            )
+
+        if self.context.cluster.private_key == private_key:
+            return False
+
+        self.context.cluster.update({"private-key": private_key})
+        return True
+
     def get_subject(self) -> str:
         """Get subject name for the unit."""
-        if (
-            self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value
-            and (lb := self.context.unit_server.loadbalancer_endpoint) is not None
-        ):
-            return lb.host
-        elif (
-            self.context.config.expose_external.value == ExposeExternal.NODEPORT.value
-            and (node_ip := self.context.unit_server.node_ip) != ""
-        ):
-            return node_ip
-
-        return os.uname()[1]
+        if external_address := self.context.unit_server.external_address:
+            subject_name = external_address.host
+        else:
+            subject_name = os.uname()[1]
+        if len(subject_name) > self.SUBJECT_NAME_MAX_LENGTH:
+            logger.warning(
+                f"The subject name {subject_name} is {len(subject_name)} characters long. "
+                f"Using only first {self.SUBJECT_NAME_MAX_LENGTH} characters."
+            )
+            subject_name = subject_name[: self.SUBJECT_NAME_MAX_LENGTH]
+        return subject_name
 
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""

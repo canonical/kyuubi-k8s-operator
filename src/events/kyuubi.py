@@ -15,7 +15,8 @@ from ops import SecretChangedEvent
 from constants import PEER_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready, leader_only
+from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
@@ -57,7 +58,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(
             self.charm.on[PEER_REL].relation_changed, self._on_peer_relation_changed
         )
-
         self.framework.observe(
             self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
         )
@@ -68,16 +68,35 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
+        force_reload_certificates = False
         if self.charm.unit.is_leader():
+            if not self.context.cluster.relation:
+                event.defer()
+                return
+
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
             # Create / update the managed service to reflect the service type in config
             if self.service_manager.reconcile_services(
                 self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
             ):
                 self.charm.provider_events.update_clients_endpoints()
 
+            auth_manager.update_admin_user()
+
+            tls_manager = TLSManager(self.context, self.workload)
+            force_reload_certificates = tls_manager.update_tls_private_key()
+
         self.kyuubi.update()
 
-        # Check the newly created service is connectable
+        # Check the newly created service endpoint is available
         if not self.service_manager.get_service_endpoint(
             expose_external=self.charm.config.expose_external
         ):
@@ -90,45 +109,83 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.logger.info(
             "Managed K8s service is available; completed handling config-changed event."
         )
+        # self.check_if_certificate_needs_reload()
+        if force_reload_certificates or self.is_certificate_reload_necessary():
+            self.reload_tls_certificates()
 
-        self.check_if_certificate_needs_reload()
+    def is_certificate_reload_necessary(self) -> bool:
+        """Return whether reloading TLS certificates is necessary."""
+        if not self.context.cluster.tls:
+            return False
 
-    def check_if_certificate_needs_reload(self):
-        """Handle if the certificate needs to be generated again due to change in the sans."""
-        # update sans of the certificate if needed
         current_sans = self.tls_manager.get_current_sans()
-
         current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
-        expected_sans_ip = (
-            set(self.tls_manager.build_sans().sans_ip) if self.context.cluster.tls else set()
-        )
+        expected_sans_ip = set(self.tls_manager.build_sans().sans_ip)
         sans_ip_changed = current_sans_ip ^ expected_sans_ip
 
         current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
-        expected_sans_dns = (
-            set(self.tls_manager.build_sans().sans_dns) if self.context.cluster.tls else set()
-        )
+        expected_sans_dns = set(self.tls_manager.build_sans().sans_dns)
         sans_dns_changed = current_sans_dns ^ expected_sans_dns
-        # TODO properly test this function when external access is merged.
+
         if sans_ip_changed or sans_dns_changed:
             self.logger.info(
                 (
-                    f"SERVER {self.charm.unit.name.split('/')[1]} updating certificate SANs - "
+                    f"SERVER {self.charm.unit.name.split('/')[1]} found change in certificate SANs - "
                     f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
                     f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
                     f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
                     f"NEW SANs DNS = {expected_sans_dns - current_sans_dns}"
                 )
             )
-            self.charm.tls_events.certificates.on.certificate_expiring.emit(  # type: ignore
-                certificate=self.context.unit_server.certificate,
-                expiry=datetime.now().isoformat(),
-            )  # new cert will eventually be dynamically loaded by the server
-            self.context.unit_server.update(
-                {"certificate": ""}
-            )  # ensures only single requested new certs, will be replaced on new certificate-available event
+            return True
+        return False
 
-            return  # early return here to ensure new node cert arrives before updating the clients
+    def reload_tls_certificates(self):
+        """Handle if the certificate needs to be generated again due to change in the sans."""
+        self.charm.tls_events.certificates.on.certificate_expiring.emit(  # type: ignore
+            certificate=self.context.unit_server.certificate,
+            expiry=datetime.now().isoformat(),
+        )  # new cert will eventually be dynamically loaded by the server
+        self.context.unit_server.update(
+            {"certificate": ""}
+        )  # ensures only single requested new certs, will be replaced on new certificate-available event
+
+    # def check_if_certificate_needs_reload(self):
+    #     """Handle if the certificate needs to be generated again due to change in the sans."""
+    #     # update sans of the certificate if needed
+    #     current_sans = self.tls_manager.get_current_sans()
+
+    #     current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
+    #     expected_sans_ip = (
+    #         set(self.tls_manager.build_sans().sans_ip) if self.context.cluster.tls else set()
+    #     )
+    #     sans_ip_changed = current_sans_ip ^ expected_sans_ip
+
+    #     current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
+    #     expected_sans_dns = (
+    #         set(self.tls_manager.build_sans().sans_dns) if self.context.cluster.tls else set()
+    #     )
+    #     sans_dns_changed = current_sans_dns ^ expected_sans_dns
+    #     # TODO properly test this function when external access is merged.
+    #     if sans_ip_changed or sans_dns_changed:
+    #         self.logger.info(
+    #             (
+    #                 f"SERVER {self.charm.unit.name.split('/')[1]} updating certificate SANs - "
+    #                 f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
+    #                 f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
+    #                 f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
+    #                 f"NEW SANs DNS = {expected_sans_dns - current_sans_dns}"
+    #             )
+    #         )
+    #         self.charm.tls_events.certificates.on.certificate_expiring.emit(  # type: ignore
+    #             certificate=self.context.unit_server.certificate,
+    #             expiry=datetime.now().isoformat(),
+    #         )  # new cert will eventually be dynamically loaded by the server
+    #         self.context.unit_server.update(
+    #             {"certificate": ""}
+    #         )  # ensures only single requested new certs, will be replaced on new certificate-available event
+
+    #         return  # early return here to ensure new node cert arrives before updating the clients
 
     def _update_event(self, _):
         """Handle the update event hook."""
@@ -154,26 +211,87 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """
         self.logger.info("Kyuubi peer relation departed...")
 
+    @leader_only
     def _on_secret_changed(self, event: SecretChangedEvent) -> None:
         """Reconfigure services on a secret changed event."""
-        if not event.secret.label:
-            return
-
+        force_reload_certificates = False
         if not self.context.cluster.relation:
+            event.defer()
             return
 
-        if event.secret.label == self.context.cluster.data_interface._generate_secret_label(
-            PEER_REL,
-            self.context.cluster.relation.id,
-            "extra",  # type: ignore
-            # Changes with the https://github.com/canonical/data-platform-libs/issues/124
+        if (
+            event.secret.label
+            and event.secret.label
+            == self.context.cluster.data_interface._generate_secret_label(
+                PEER_REL,
+                self.context.cluster.relation.id,
+                "extra",  # type: ignore
+                # Changes with the https://github.com/canonical/data-platform-libs/issues/124
+            )
         ):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
+            return
+
+        if self.charm.config.system_users and self.charm.config.system_users == event.secret.id:
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
+            auth_manager.update_admin_user()
+
+        if (
+            self.charm.config.tls_client_private_key
+            and self.charm.config.tls_client_private_key == event.secret.id
+        ):
+            tls_manager = TLSManager(self.context, self.workload)
+            force_reload_certificates = tls_manager.update_tls_private_key()
+            # if key_updated:
+            #     self.charm.tls_events._on_certificate_expiring(event)
+
+        if force_reload_certificates:
+            self.reload_tls_certificates()
+
+    # @compute_status
+    # @leader_only
+    # def _on_secret_removed(self, event) -> None:
+    #     """Reconfigure services on a secret changed event."""
+    #     self.logger.error("Secret has been removed")
+    #     if not self.context.cluster.relation:
+    #         event.defer()
+    #         return
+
+    #     if self.charm.config.system_users and self.charm.config.system_users == event.secret.id:
+    #         if not self.context.is_authentication_enabled():
+    #             event.defer()
+    #             return
+
+    #         auth_manager = AuthenticationManager(self.context)
+    #         if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+    #             event.defer()
+    #             return
+
+    #         auth_manager.update_admin_user()
+
+    #     if (
+    #         self.charm.config.tls_client_private_key
+    #         and self.charm.config.tls_client_private_key == event.secret.id
+    #     ):
+    #         tls_manager = TLSManager(self.context, self.workload)
+    #         key_updated = tls_manager.update_tls_private_key()
+    #         if key_updated and self.context.cluster.tls:
+    #             self.charm.tls_events._on_certificate_expiring(event)
 
     @defer_when_not_ready
     def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")
         # check if certificate need to be reloaded
-        self.check_if_certificate_needs_reload()
+        # self.check_if_certificate_needs_reload()
+        if self.is_certificate_reload_necessary():
+            self.reload_tls_certificates()
         self.charm.provider_events.update_clients_endpoints()

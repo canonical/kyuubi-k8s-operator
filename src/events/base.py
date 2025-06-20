@@ -42,3 +42,19 @@ def defer_when_not_ready(
         return hook(event_handler, event)
 
     return wrapper_hook
+
+
+def leader_only(
+    hook: Callable,
+) -> Callable[[BaseEventHandler, EventBase], None]:
+    """Run the hook only on leader unit."""
+
+    @wraps(hook)
+    def wrapper_hook(event_handler: BaseEventHandler, event: EventBase):
+        """Return none when not leader, proceed with normal hook otherwise."""
+        if not event_handler.charm.unit.is_leader():
+            return
+
+        return hook(event_handler, event)
+
+    return wrapper_hook

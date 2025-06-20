@@ -56,7 +56,7 @@ class DatabaseManager(WithLogging):
                 result = []
             return True, result
         except Exception as e:
-            self.logger.warning(f"PostgreSQL connection not successful. Reason: {e}")
+            self.logger.warning(f"PostgreSQL query not successful. Reason: {e}")
             return False, []
         finally:
             if cursor:

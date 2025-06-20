@@ -136,7 +136,7 @@ def test_relation_joined_request_tls_cert_loadbalancer(
     # When
     with (
         patch(
-            "core.domain.KyuubiServer.loadbalancer_endpoint",
+            "core.domain.KyuubiServer.external_address",
             new_callable=PropertyMock,
             return_value=DNSEndpoint(expected_endpoint, JDBC_PORT),
         ),
