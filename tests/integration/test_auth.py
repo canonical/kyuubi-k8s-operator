@@ -74,8 +74,10 @@ def test_set_admin_password_in_kyuubi_secret_not_granted(juju: jubilant.Juju) ->
     secret_name = "admin-password-no-grant"
     secret_uri = juju.add_secret(secret_name, {username: password})
     juju.config(APP_NAME, {"system-users": secret_uri})
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
     status = juju.status()
     assert (
         status.apps[APP_NAME].app_status.message
@@ -92,9 +94,10 @@ def test_set_admin_password_in_kyuubi_secret_not_valid(juju: jubilant.Juju) -> N
     secret_uri = juju.add_secret(secret_name, {username: password})
     juju.cli("grant-secret", secret_name, APP_NAME)
     juju.config(APP_NAME, {"system-users": secret_uri})
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
-    status = juju.status()
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
     assert (
         status.apps[APP_NAME].app_status.message
         == Status.SYSTEM_USERS_SECRET_INVALID.value.message
@@ -110,8 +113,10 @@ def test_set_admin_password_in_kyuubi_secret_valid(juju: jubilant.Juju) -> None:
     secret_uri = juju.add_secret(secret_name, {username: password})
     juju.cli("grant-secret", secret_name, APP_NAME)
     juju.config(APP_NAME, {"system-users": secret_uri})
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(jubilant.all_active)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
 
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
@@ -122,8 +127,10 @@ def test_update_admin_password(juju: jubilant.Juju) -> None:
     new_password = "new-password"
     secret_name = "kyuubi-users"
     juju.cli("update-secret", secret_name, f"{username}={new_password}")
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(jubilant.all_active)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
     with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=old_password)
 
@@ -135,9 +142,10 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
     password = "new-password"
     secret_name = "kyuubi-users"
     juju.cli("update-secret", secret_name, f"{username}={password}")
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
-    status = juju.status()
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
     assert (
         status.apps[APP_NAME].app_status.message
         == Status.SYSTEM_USERS_SECRET_INVALID.value.message
@@ -148,8 +156,10 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
     new_username = "admin"
     new_password = "valid-admin-password"
     juju.cli("update-secret", secret_name, f"{new_username}={new_password}")
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(jubilant.all_active)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
     with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
@@ -158,10 +168,20 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
     )
 
 
+# TODO
+# Test that when auth-db relation is removed, the charm goes to blocked state. however
+# the same auth-db should be able to be connected again, and the existing user `admin`
+# should not interfere with the ability of the relation to be created. In fact. the
+# password of the `admin` user should be updated to reflect to that of current config
+# option.
+
+
 def test_remove_admin_password_config(juju: jubilant.Juju, charm_versions) -> None:
     juju.config(APP_NAME, {"system-users": ""})
-    juju.wait(jubilant.all_agents_idle)
-    juju.wait(jubilant.all_active)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
 
     old_username = "admin"
     old_password = "valid-admin-password"
@@ -186,7 +206,7 @@ def test_remove_authentication_database(
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
     juju.wait(
         lambda status: jubilant.all_blocked(status, APP_NAME),
-        delay=3,
+        delay=5,
     )
 
     with pytest.raises(TTransportException):
