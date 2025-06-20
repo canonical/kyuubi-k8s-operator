@@ -15,6 +15,7 @@ from charms.spark_integration_hub_k8s.v0.spark_service_account import (
     SparkServiceAccountRequirerData,
 )
 from ops import Model, Relation
+from ops.model import Unit
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
@@ -199,3 +200,11 @@ class Context(WithLogging):
     def client_relations(self) -> set[Relation]:
         """The relations of all client applications."""
         return set(self.model.relations[KYUUBI_CLIENT_RELATION_NAME])
+
+    @property
+    def app_units(self) -> set[Unit]:
+        """The peer-related units in the application."""
+        if not self._peer_relation:
+            return set()
+
+        return {self.model.unit, *self._peer_relation.units}

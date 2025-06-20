@@ -103,7 +103,6 @@ class ServiceManager(WithLogging):
         return self.lightkube_agent.get(
             res=Node,
             name=node_name,
-            namespace=self.namespace,
         )
 
     def get_service(self) -> Service | None:

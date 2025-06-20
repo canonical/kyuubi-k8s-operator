@@ -15,7 +15,7 @@ from ops import SecretChangedEvent
 from constants import PEER_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, compute_status, defer_when_not_ready, leader_only
+from events.base import BaseEventHandler, defer_when_not_ready, leader_only
 from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
@@ -36,7 +36,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.kyuubi = KyuubiManager(self.workload, self.context)
+        self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -62,11 +62,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
         )
 
-    @compute_status
-    def _on_install(self, event: ops.InstallEvent) -> None:
+    def _on_install(self, _: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
 
-    @compute_status
     @defer_when_not_ready
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
@@ -189,35 +187,30 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
     #         return  # early return here to ensure new node cert arrives before updating the clients
 
-    @compute_status
-    def _update_event(self, event):
+    def _update_event(self, _):
         """Handle the update event hook."""
-        pass
+        self.kyuubi.update()
 
-    @compute_status
     @defer_when_not_ready
-    def _on_kyuubi_pebble_ready(self, event: ops.PebbleReadyEvent):
+    def _on_kyuubi_pebble_ready(self, _: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")
         self.kyuubi.update()
 
-    @compute_status
-    def _on_peer_relation_joined(self, event: ops.RelationJoinedEvent):
+    def _on_peer_relation_joined(self, _: ops.RelationJoinedEvent):
         """Handle the peer relation joined event.
 
         This is necessary for updating status of all units upon scaling up/down.
         """
         self.logger.info("Kyuubi peer relation joined...")
 
-    @compute_status
-    def _on_peer_relation_departed(self, event: ops.RelationDepartedEvent):
+    def _on_peer_relation_departed(self, _: ops.RelationDepartedEvent):
         """Handle the peer relation departed event.
 
         This is necessary for updating status of all units upon scaling up/down.
         """
         self.logger.info("Kyuubi peer relation departed...")
 
-    @compute_status
     @leader_only
     def _on_secret_changed(self, event: SecretChangedEvent) -> None:
         """Reconfigure services on a secret changed event."""
@@ -293,9 +286,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     #         if key_updated and self.context.cluster.tls:
     #             self.charm.tls_events._on_certificate_expiring(event)
 
-    @compute_status
     @defer_when_not_ready
-    def _on_peer_relation_changed(self, event: ops.RelationDepartedEvent):
+    def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")
         # check if certificate need to be reloaded

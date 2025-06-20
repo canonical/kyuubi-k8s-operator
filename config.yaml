@@ -38,3 +38,9 @@ options:
     description: |
       Configure the system user 'admin' and it's password. The charm will stay in blocked state if this option is not set.
       This needs to be a Juju secret URI pointing to a secret that contains the following content: `admin: <password>`.
+  pause_after_unit_refresh:
+    description: |
+      Wait for manual confirmation to resume refresh after these units refresh
+      Allowed values: "all", "first", "none"
+    type: string
+    default: first

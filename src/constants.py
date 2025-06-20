@@ -29,7 +29,8 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 JDBC_PORT = 10009
 SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
-KYUUBI_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-kyuubi:3.4-22.04_edge@sha256:9268d19a6eef91914e874734b320fab64908faf0f7adb8856be809bc60ecd1d0"
+# spark 3.4.4, release date 06/05/2025
+JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:7056db56cad6b23927706af3de9d47c47ca61eee1b0a03ec7ed7f43f29503a21"
 DEFAULT_ADMIN_USERNAME = "admin"
 
 # Zookeeper literals
@@ -37,16 +38,5 @@ HA_ZNODE_NAME = "/kyuubi"
 
 # Literals related to metastore
 HIVE_SCHEMA_VERSION = "2.3.0"
-
-# Upgrade policies
-
-DEPENDENCIES = {
-    "service": {
-        "dependencies": {},
-        "name": "kyuubi",
-        "upgrade_supported": "^1",
-        "version": "1.9",
-    },
-}
 
 SECRETS_APP: list[str] = ["admin-password"]

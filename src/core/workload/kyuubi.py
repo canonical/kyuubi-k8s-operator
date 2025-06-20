@@ -6,6 +6,7 @@
 
 import re
 import secrets
+import socket
 import string
 
 import ops.pebble
@@ -106,3 +107,12 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
             String of 32 randomized letter+digit characters
         """
         return "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(32)])
+
+    def serving_requests(self) -> bool:
+        """Is kyuubi serving requests."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if not s.connect_ex((socket.getfqdn(), 10009)):
+                # All good, the port is in use
+                return True
+
+        return False
