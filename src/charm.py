@@ -37,9 +37,11 @@ from events.provider import KyuubiClientProviderEvents
 from events.refresh import KyuubiRefresh
 from events.tls import TLSEvents
 from events.zookeeper import ZookeeperEvents
+from managers.auth import AuthenticationManager
 from managers.hive_metastore import HiveMetastoreManager
 from managers.k8s import K8sManager
 from managers.service import ServiceManager
+from managers.tls import TLSManager
 
 # Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
@@ -204,6 +206,26 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         if not self.context.auth_db:
             statuses.append(Status.MISSING_AUTH_DB.value)
+
+        auth_manager = AuthenticationManager(self.context)
+        if not auth_manager.system_user_secret_configured():
+            pass
+        elif not auth_manager.system_user_secret_exists():
+            statuses.append(Status.SYSTEM_USERS_SECRET_DOES_NOT_EXIST.value)
+        elif not auth_manager.system_user_secret_granted():
+            statuses.append(Status.SYSTEM_USERS_SECRET_INSUFFICIENT_PERMISSION.value)
+        elif not auth_manager.system_user_secret_valid():
+            statuses.append(Status.SYSTEM_USERS_SECRET_INVALID.value)
+
+        tls_manager = TLSManager(self.context, self.workload)
+        if not tls_manager.tls_private_key_secret_configured():
+            pass
+        elif not tls_manager.tls_private_key_secret_exists():
+            statuses.append(Status.TLS_SECRET_DOES_NOT_EXIST.value)
+        elif not tls_manager.tls_private_key_secret_granted():
+            statuses.append(Status.TLS_SECRET_INSUFFICIENT_PERMISSION.value)
+        elif not tls_manager.tls_private_key_secret_valid():
+            statuses.append(Status.TLS_SECRET_INVALID.value)
 
         metastore_manager = HiveMetastoreManager(self.workload)
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():

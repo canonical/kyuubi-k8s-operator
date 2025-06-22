@@ -419,6 +419,7 @@ def deploy_minimal_kyuubi_setup(
     num_units=1,
     integrate_zookeeper=False,
     deploy_from_charmhub=False,
+    integrate_data_integrator=True,
 ) -> None:
     deploy_args = {
         "app": APP_NAME,
@@ -580,11 +581,15 @@ def deploy_minimal_kyuubi_setup(
             delay=5,
         )
 
-    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
-    logger.info("Waiting for data-integrator charm to be idle...")
-    juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
-    logger.info("Integrating kyuubi charm with zookeeper charm...")
-    juju.integrate(charm_versions.data_integrator.app, APP_NAME)
+    if integrate_data_integrator:
+        juju.deploy(
+            **charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"}
+        )
+        logger.info("Waiting for data-integrator charm to be idle...")
+        juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
+        logger.info("Integrating kyuubi charm with data-integrator charm...")
+        juju.integrate(charm_versions.data_integrator.app, APP_NAME)
+        juju.wait(jubilant.all_active, delay=3)
 
     logger.info("Successfully deployed minimal working Kyuubi setup.")
 
