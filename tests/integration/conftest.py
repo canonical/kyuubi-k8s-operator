@@ -227,16 +227,6 @@ def kyuubi_charm() -> Path:
 
 
 @pytest.fixture(scope="module")
-def test_charm() -> Path:
-    if not (
-        path := next(iter((Path.cwd() / "tests/integration/app-charm").glob("*.charm")), None)
-    ):
-        raise FileNotFoundError("Could not find packed test charm.")
-
-    return path
-
-
-@pytest.fixture(scope="module")
 def context():
     """A common data store read+writeable by all tests."""
     context = {}

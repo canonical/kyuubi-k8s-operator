@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_NAME = "application"
 
 
 def test_deploy_minimal_kyuubi_setup(
@@ -94,11 +93,11 @@ def test_kyuubi_users_before_client_relation(
 
 
 def test_kyuubi_client_relation_joined(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_charm: Path, context
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, context
 ) -> None:
     """Test behavior of Kyuubi charm when a client application is related to it."""
     logger.info("Integrating data-integrator charm with kyuubi-k8s charm...")
-    juju.integrate(APP_NAME, TEST_CHARM_NAME)
+    juju.integrate(APP_NAME, charm_versions.data_integrator.app)
 
     logger.info("Waiting for all charms to be idle and active...")
     juju.wait(jubilant.all_active, delay=10)
