@@ -123,23 +123,22 @@ def test_kyuubi_client_relation_joined(
         # Fetch number of users excluding the default admin user
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
-        relation_username, hashed_relation_password = cursor.fetchone()  # type: ignore
+        relation_username, _ = cursor.fetchone()  # type: ignore
 
     # A new user has indeed been created for data-integrator
     assert num_users == 1
 
     logger.info(f"Relation user's username: {relation_username}.")
-    jdbc_uri, kyuubi_username, kyuubi_password = fetch_connection_info(
+    _, kyuubi_username, kyuubi_password = fetch_connection_info(
         juju, charm_versions.data_integrator.app
     )
 
     assert kyuubi_username == relation_username
     context["relation_username"] = relation_username
     context["relation_password"] = kyuubi_password
-    context["jdbc_uri"] = jdbc_uri
 
     assert validate_sql_queries_with_kyuubi(
-        juju=juju, jdbc_uri=jdbc_uri, username=kyuubi_username, password=kyuubi_password
+        juju=juju, username=kyuubi_username, password=kyuubi_password
     )
 
 
@@ -149,7 +148,6 @@ def test_kyuubi_client_relation_removed(
     """Test the behavior of Kyuubi when client application relation is removed from it."""
     old_relation_username = context.pop("relation_username")
     old_relation_password = context.pop("relation_password")
-    jdbc_uri = context.pop("jdbc_uri")
 
     logger.info("Removing relation between data-integrator and kyuubi-k8s...")
     juju.remove_relation(
@@ -191,7 +189,6 @@ def test_kyuubi_client_relation_removed(
     with pytest.raises(TTransportException) as exc:
         validate_sql_queries_with_kyuubi(
             juju=juju,
-            jdbc_uri=jdbc_uri,
             username=old_relation_password,
             password=old_relation_username,
         )
