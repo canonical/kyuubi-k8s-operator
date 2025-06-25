@@ -46,6 +46,12 @@ class SparkConfig(WithLogging):
                     "spark.dynamicAllocation.shuffleTracking.enabled": "true",
                 }
             )
+        if self.charm_config.profile == "testing":
+            conf.update(
+                {
+                    "spark.kubernetes.executor.request.cores": "0.1",
+                }
+            )
         return conf
 
     def _sa_conf(self):

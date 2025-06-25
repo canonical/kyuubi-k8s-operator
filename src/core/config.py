@@ -11,6 +11,7 @@ from typing import Optional
 
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
 from pydantic import Field
+from pydantic import validator
 
 from .enums import ExposeExternal
 
@@ -29,3 +30,12 @@ class CharmConfig(BaseConfigModel):
     enable_dynamic_allocation: bool
     iceberg_catalog_name: str
     system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
+    profile: str
+
+    @validator("profile")
+    @classmethod
+    def profile_values(cls, value: str) -> str | None:
+        """Check profile config option is one of `testing`, `staging` or `production`."""
+        if value not in ["testing", "staging", "production"]:
+            raise ValueError("Value not one of 'testing', 'staging' or 'production'")
+        return value
