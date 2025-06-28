@@ -168,29 +168,52 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
     )
 
 
-# TODO
-# Test that when auth-db relation is removed, the charm goes to blocked state. however
-# the same auth-db should be able to be connected again, and the existing user `admin`
-# should not interfere with the ability of the relation to be created. In fact. the
-# password of the `admin` user should be updated to reflect to that of current config
-# option.
+def test_unrelate_and_relate_authdb(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Test the behavior of the charm when auth db is removed and related again.
+
+    When auth-db relation is removed, the charm should go to blocked state and when
+    the same auth-db is related again, and the existing user `admin` should not interfere
+    with the ability of the relation to be created. In fact. the password of the `admin`
+    user should be updated to reflect to that of current config option.
+    """
+    juju.remove_relation(f"{APP_NAME}:auth-db", charm_versions.auth_db.app)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
+
+    juju.integrate(f"{APP_NAME}:auth-db", charm_versions.auth_db.app)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
+        delay=5,
+    )
+
+    username = "admin"
+    password = "valid-admin-password"
+    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
 def test_remove_admin_password_config(juju: jubilant.Juju, charm_versions) -> None:
+    """Ensure that the Kyuubi will still retain the same password once the config option is removed."""
     juju.config(APP_NAME, {"system-users": ""})
     juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
         delay=5,
     )
 
-    old_username = "admin"
-    old_password = "valid-admin-password"
-    with pytest.raises(TTransportException):
-        validate_sql_queries_with_kyuubi(juju=juju, username=old_username, password=old_password)
+    old_admin_username = "admin"
+    old_admin_password = "valid-admin-password"
+    validate_sql_queries_with_kyuubi(
+        juju=juju, username=old_admin_username, password=old_admin_password
+    )
 
-    _, new_username, new_password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    _, relation_user, relation_user_password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
     assert validate_sql_queries_with_kyuubi(
-        juju=juju, username=new_username, password=new_password
+        juju=juju, username=relation_user, password=relation_user_password
     )
 
 
