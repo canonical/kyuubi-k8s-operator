@@ -90,7 +90,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
             auth_manager.update_admin_user()
 
-
         self.kyuubi.update()
 
         # Check the newly created service endpoint is available

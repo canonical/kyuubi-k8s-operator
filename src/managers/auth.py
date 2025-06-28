@@ -8,11 +8,7 @@
 import secrets
 import string
 
-from constants import (
-    AUTHENTICATION_TABLE_NAME,
-    DEFAULT_ADMIN_USERNAME,
-    ADMIN_PASSWORD_KEY
-)
+from constants import ADMIN_PASSWORD_KEY, AUTHENTICATION_TABLE_NAME, DEFAULT_ADMIN_USERNAME
 from core.context import Context
 from core.domain import Secret
 from managers.database import DatabaseManager

@@ -18,8 +18,8 @@ from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
 
-from constants import ADMIN_PASSWORD_KEY
 from common.relation.domain import RelationState
+from constants import ADMIN_PASSWORD_KEY
 from managers.service import Endpoint, ServiceManager
 from utils.logging import WithLogging
 

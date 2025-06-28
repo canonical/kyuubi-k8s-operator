@@ -42,6 +42,4 @@ HA_ZNODE_NAME = "/kyuubi"
 # Literals related to metastore
 HIVE_SCHEMA_VERSION = "2.3.0"
 
-SECRETS_APP: list[str] = [
-    ADMIN_PASSWORD_KEY
-]
+SECRETS_APP: list[str] = [ADMIN_PASSWORD_KEY]
