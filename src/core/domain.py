@@ -12,14 +12,16 @@ from enum import Enum
 from functools import cached_property
 from typing import MutableMapping
 
+import ops
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
 
+from constants import ADMIN_PASSWORD_KEY
 from common.relation.domain import RelationState
-from constants import SECRETS_APP
 from managers.service import Endpoint, ServiceManager
+from utils.logging import WithLogging
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,16 @@ class Status(Enum):
     )
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
     INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")
+
+    SYSTEM_USERS_SECRET_DOES_NOT_EXIST = BlockedStatus(
+        "Secret provided as system-users does not exist"
+    )
+    SYSTEM_USERS_SECRET_INSUFFICIENT_PERMISSION = BlockedStatus(
+        "Secret provided as system-users has not been granted to the charm"
+    )
+    SYSTEM_USERS_SECRET_INVALID = BlockedStatus(
+        "Secret provided as system-users has invalid content"
+    )
     NOT_SERVING_REQUESTS = MaintenanceStatus("Kyuubi is not serving requests")
 
     ACTIVE = ActiveStatus("")
@@ -363,14 +375,7 @@ class KyuubiCluster(RelationState):
         if not self.relation:
             return
 
-        for key, value in items.items():
-            if key in SECRETS_APP or key.startswith("relation-"):
-                if value:
-                    self.data_interface.set_secret(self.relation.id, key, value)
-                else:
-                    self.data_interface.delete_secret(self.relation.id, key)
-            else:
-                self.data_interface.update_relation_data(self.relation.id, {key: value})
+        self.data_interface.update_relation_data(self.relation.id, items)
 
     # -- TLS --
 
@@ -378,3 +383,45 @@ class KyuubiCluster(RelationState):
     def tls(self) -> bool:
         """Flag to check if TLS is enabled for the cluster."""
         return self.relation_data.get("tls", "") == "enabled"
+
+    @property
+    def admin_password(self) -> str:
+        """The admin password for the cluster."""
+        return self.relation_data.get(ADMIN_PASSWORD_KEY, "")
+
+
+class Secret(WithLogging):
+    """The class representing a user-level Juju secret."""
+
+    def __init__(self, model: ops.Model, secret_id: str) -> None:
+        self.model = model
+        self.secret_id = secret_id
+
+    def exists(self) -> bool:
+        """Return whether the secret exists."""
+        try:
+            self.model.get_secret(id=self.secret_id)
+        except ops.model.SecretNotFoundError:
+            return False
+        except Exception:
+            return True
+        else:
+            return True
+
+    def has_permission(self) -> bool:
+        """Return whether charm has permission to secret."""
+        try:
+            self.model.get_secret(id=self.secret_id)
+        except ops.model.ModelError:
+            return False
+        else:
+            return True
+
+    @property
+    def content(self) -> dict:
+        """The contents of the secret."""
+        if not self.exists():
+            return {}
+        if not self.has_permission():
+            return {}
+        return self.model.get_secret(id=self.secret_id).get_content(refresh=True)

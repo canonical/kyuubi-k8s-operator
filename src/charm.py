@@ -29,7 +29,6 @@ from core.config import CharmConfig
 from core.context import Context
 from core.domain import Status
 from core.workload.kyuubi import KyuubiWorkload
-from events.actions import ActionEvents
 from events.auth import AuthenticationEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
@@ -38,6 +37,7 @@ from events.provider import KyuubiClientProviderEvents
 from events.refresh import KyuubiRefresh
 from events.tls import TLSEvents
 from events.zookeeper import ZookeeperEvents
+from managers.auth import AuthenticationManager
 from managers.hive_metastore import HiveMetastoreManager
 from managers.k8s import K8sManager
 from managers.service import ServiceManager
@@ -74,7 +74,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
-        self.action_events = ActionEvents(self, self.context, self.workload)
         self.tls_events = TLSEvents(self, self.context, self.workload)
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 
@@ -206,6 +205,16 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         if not self.context.auth_db:
             statuses.append(Status.MISSING_AUTH_DB.value)
+
+        auth_manager = AuthenticationManager(self.context)
+        if not auth_manager.system_user_secret_configured():
+            pass
+        elif not auth_manager.system_user_secret_exists():
+            statuses.append(Status.SYSTEM_USERS_SECRET_DOES_NOT_EXIST.value)
+        elif not auth_manager.system_user_secret_granted():
+            statuses.append(Status.SYSTEM_USERS_SECRET_INSUFFICIENT_PERMISSION.value)
+        elif not auth_manager.system_user_secret_valid():
+            statuses.append(Status.SYSTEM_USERS_SECRET_INVALID.value)
 
         metastore_manager = HiveMetastoreManager(self.workload)
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():

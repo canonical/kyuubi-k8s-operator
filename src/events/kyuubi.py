@@ -15,7 +15,8 @@ from ops import SecretChangedEvent
 from constants import PEER_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from events.base import BaseEventHandler, defer_when_not_ready
+from events.base import BaseEventHandler, defer_when_not_ready, leader_only
+from managers.auth import AuthenticationManager
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
@@ -57,7 +58,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(
             self.charm.on[PEER_REL].relation_changed, self._on_peer_relation_changed
         )
-
         self.framework.observe(
             self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
         )
@@ -69,15 +69,31 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
         if self.charm.unit.is_leader():
+            if not self.context.cluster.relation:
+                event.defer()
+                return
+
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
             # Create / update the managed service to reflect the service type in config
             if self.service_manager.reconcile_services(
                 self.charm.config.expose_external, self.charm.config.loadbalancer_extra_annotations
             ):
                 self.charm.provider_events.update_clients_endpoints()
 
+            auth_manager.update_admin_user()
+
+
         self.kyuubi.update()
 
-        # Check the newly created service is connectable
+        # Check the newly created service endpoint is available
         if not self.service_manager.get_service_endpoint(
             expose_external=self.charm.config.expose_external
         ):
@@ -154,21 +170,38 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """
         self.logger.info("Kyuubi peer relation departed...")
 
+    @leader_only
     def _on_secret_changed(self, event: SecretChangedEvent) -> None:
         """Reconfigure services on a secret changed event."""
-        if not event.secret.label:
-            return
-
+        self.logger.error("SECRET CHANGED...")
         if not self.context.cluster.relation:
+            event.defer()
             return
 
-        if event.secret.label == self.context.cluster.data_interface._generate_secret_label(
-            PEER_REL,
-            self.context.cluster.relation.id,
-            "extra",  # type: ignore
-            # Changes with the https://github.com/canonical/data-platform-libs/issues/124
+        if (
+            event.secret.label
+            and event.secret.label
+            == self.context.cluster.data_interface._generate_secret_label(
+                PEER_REL,
+                self.context.cluster.relation.id,
+                "extra",  # type: ignore
+                # Changes with the https://github.com/canonical/data-platform-libs/issues/124
+            )
         ):
             self.logger.info(f"Event secret label: {event.secret.label} updated!")
+            return
+
+        if self.charm.config.system_users and self.charm.config.system_users == event.secret.id:
+            if not self.context.is_authentication_enabled():
+                event.defer()
+                return
+
+            auth_manager = AuthenticationManager(self.context)
+            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+                event.defer()
+                return
+
+            auth_manager.update_admin_user()
 
     @defer_when_not_ready
     def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):

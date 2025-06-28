@@ -13,11 +13,13 @@ from thrift.transport.TTransport import TTransportException
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    DEFAULT_ADMIN_USERNAME,
     KYUUBI_CLIENT_RELATION_NAME,
 )
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
+    fetch_connection_info,
     get_leader_unit,
     validate_sql_queries_with_kyuubi,
 )
@@ -27,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
-TEST_CHARM_NAME = "application"
 
 
 def test_deploy_minimal_kyuubi_setup(
@@ -43,28 +44,29 @@ def test_deploy_minimal_kyuubi_setup(
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
+        integrate_data_integrator=False,
     )
 
     # Assert that all charms that were deployed as part of minimal setup are in correct states.
     juju.wait(jubilant.all_active, delay=15)
 
 
-def test_kyuubi_client_relation_joined(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_charm: Path
-) -> None:
-    """Test behavior of Kyuubi charm when a client application is related to it."""
-    # Deploy the test charm and wait for waiting status
-    logger.info("Deploying test charm...")
-    juju.deploy(test_charm, app=TEST_CHARM_NAME, num_units=1)
+def test_deploy_consumer_charm_data_integrator(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+):
+    """Deploy consumer charm (data-integrator)."""
+    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
+    logger.info("Waiting for data-integrator charm to be idle...")
+    juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
 
-    logger.info("Waiting for test charm to be idle...")
-    status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=5
-    )
 
+def test_kyuubi_users_before_client_relation(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+):
     # Check number of users before integration
     # Fetch password for operator user from postgresql-k8s
     postgres_leader = get_leader_unit(juju, charm_versions.auth_db.app)
+    status = juju.status()
     postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
 
     task = juju.run(postgres_leader, "get-password")
@@ -82,16 +84,32 @@ def test_kyuubi_client_relation_joined(
         connection.cursor() as cursor,
     ):
         # Fetch number of users excluding the default admin user
-        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
+        cursor.execute(
+            f""" SELECT username, passwd FROM kyuubi_users WHERE username <> '{DEFAULT_ADMIN_USERNAME}' """
+        )
         num_users = cursor.rowcount
 
-    assert num_users == 1  # data-integrator
+    assert num_users == 0
 
-    logger.info("Integrating test charm with kyuubi-k8s charm...")
-    juju.integrate(APP_NAME, TEST_CHARM_NAME)
 
-    logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=10)
+def test_kyuubi_client_relation_joined(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, context
+) -> None:
+    """Test behavior of Kyuubi charm when a client application is related to it."""
+    logger.info("Integrating data-integrator charm with kyuubi-k8s charm...")
+    juju.integrate(APP_NAME, charm_versions.data_integrator.app)
+
+    logger.info("Waiting for all charms to be idle and active...")
+    juju.wait(jubilant.all_active, delay=10)
+
+    # Fetch password for operator user from postgresql-k8s
+    postgres_leader = get_leader_unit(juju, charm_versions.auth_db.app)
+    status = juju.status()
+    postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
+
+    task = juju.run(postgres_leader, "get-password")
+    assert task.return_code == 0
+    password = task.results["password"]
 
     with (
         psycopg2.connect(
@@ -105,12 +123,19 @@ def test_kyuubi_client_relation_joined(
         # Fetch number of users excluding the default admin user
         cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
         num_users = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchall()[-1]  # type: ignore
+        relation_username, _ = cursor.fetchone()  # type: ignore
 
-    # A new user has indeed been created
-    assert num_users != 1
+    # A new user has indeed been created for data-integrator
+    assert num_users == 1
 
-    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
+    logger.info(f"Relation user's username: {relation_username}.")
+    _, kyuubi_username, kyuubi_password = fetch_connection_info(
+        juju, charm_versions.data_integrator.app
+    )
+
+    assert kyuubi_username == relation_username
+    context["relation_username"] = relation_username
+    context["relation_password"] = kyuubi_password
 
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=kyuubi_username, password=kyuubi_password
@@ -118,10 +143,25 @@ def test_kyuubi_client_relation_joined(
 
 
 def test_kyuubi_client_relation_removed(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, context
 ) -> None:
     """Test the behavior of Kyuubi when client application relation is removed from it."""
-    status = juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME))
+    old_relation_username = context.pop("relation_username")
+    old_relation_password = context.pop("relation_password")
+
+    logger.info("Removing relation between data-integrator and kyuubi-k8s...")
+    juju.remove_relation(
+        f"{APP_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
+        f"{charm_versions.data_integrator.app}",
+    )
+
+    logger.info("Waiting for data-integrator and kyuubi charm to be idle and active...")
+    status = juju.wait(
+        lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app)
+        and jubilant.all_active(status, APP_NAME),
+        delay=3,
+    )
+
     # Fetch password for operator user from postgresql-k8s
     postgres_leader = get_leader_unit(juju, charm_versions.auth_db.app)
     postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
@@ -129,37 +169,6 @@ def test_kyuubi_client_relation_removed(
     task = juju.run(postgres_leader, "get-password")
     assert task.return_code == 0
     password = task.results["password"]
-
-    # Connect to PostgreSQL metastore database
-    with (
-        psycopg2.connect(
-            host=postgres_host,
-            database=AUTHENTICATION_DATABASE_NAME,
-            user="operator",
-            password=password,
-        ) as connection,
-        connection.cursor() as cursor,
-    ):
-        # Fetch number of users excluding the default admin user
-        cursor.execute(""" SELECT username, passwd FROM kyuubi_users WHERE username <> 'admin' """)
-        num_users_before = cursor.rowcount
-        kyuubi_username, kyuubi_password = cursor.fetchall()[-1]  # type: ignore
-
-    logger.info(f"Relation user's username: {kyuubi_username} and password: {kyuubi_password}")
-    assert num_users_before != 1
-
-    assert validate_sql_queries_with_kyuubi(
-        juju=juju, username=kyuubi_username, password=kyuubi_password
-    )
-
-    logger.info("Removing relation between test charm and kyuubi-k8s...")
-    juju.remove_relation(
-        f"{APP_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
-        f"{TEST_CHARM_NAME}:{KYUUBI_CLIENT_RELATION_NAME}",
-    )
-
-    logger.info("Waiting for test-charm and kyuubi charm to be idle and active...")
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME, TEST_CHARM_NAME), delay=3)
 
     # Fetch number of users excluding the default admin user
     with (
@@ -175,10 +184,12 @@ def test_kyuubi_client_relation_removed(
         num_users_after = cursor.rowcount
 
     # Assert that relation user created previously has been deleted
-    assert num_users_after == 1  # data-integrator
+    assert num_users_after == 0
 
     with pytest.raises(TTransportException) as exc:
         validate_sql_queries_with_kyuubi(
-            juju=juju, username=kyuubi_username, password=kyuubi_password
+            juju=juju,
+            username=old_relation_password,
+            password=old_relation_username,
         )
         assert b"Error validating the login" in getattr(exc.value, "message", b"")

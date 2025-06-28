@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
@@ -17,7 +17,6 @@ from ops.model import BlockedStatus
 
 from constants import KYUUBI_CLIENT_RELATION_NAME
 from core.context import Context
-from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
 from managers.auth import AuthenticationManager
@@ -105,7 +104,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(self.context)
         service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -161,7 +160,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             return
 
         # FIXME: There is not guarantee here
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = AuthenticationManager(self.context)
         username = f"relation_id_{event.relation.id}"
 
         try:

@@ -104,7 +104,6 @@ mccabe.max-complexity = 10
 [tool.mypy]
 exclude = [
   "lib",
-  "tests/integration/app-charm/lib",
 ]
 follow_imports = "silent"
 
