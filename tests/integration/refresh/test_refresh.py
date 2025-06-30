@@ -191,6 +191,14 @@ def test_run_inplace_upgrade(
     logger.info("Waiting for refresh to complete")
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
+    # try to apply testing profile to use less resources
+    try:
+        juju.config(APP_NAME, {"profile": "testing"})
+    except Exception:
+        pass
+
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
+
 
 def test_create_new_data(
     juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
