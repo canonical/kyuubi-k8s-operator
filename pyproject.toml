@@ -15,7 +15,7 @@ lightkube = ">=0.15.6"
 psycopg2 = "^2.9.9"
 tenacity = ">=8.0.1"
 spark8t = ">=0.0.11"
-charm-refresh = "^3.0.0.1"
+charm-refresh = "^3.0.0.3"
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^2.13.0"
