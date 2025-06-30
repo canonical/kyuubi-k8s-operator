@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import ops
 from ops import SecretChangedEvent
 
 from constants import DEFAULT_ADMIN_USERNAME, PEER_REL
 from core.context import Context
+from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, defer_when_not_ready, leader_only
 from managers.auth import AuthenticationManager
@@ -77,8 +78,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            assert self.context.auth_db is not None
-            auth_manager = AuthenticationManager(self.context.auth_db)
+            auth_manager = AuthenticationManager(
+                cast(DatabaseConnectionInfo, self.context.auth_db)
+            )
             if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
@@ -200,13 +202,18 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            assert self.context.auth_db is not None
-            auth_manager = AuthenticationManager(self.context.auth_db)
+            auth_manager = AuthenticationManager(
+                cast(DatabaseConnectionInfo, self.context.auth_db)
+            )
             if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
 
-            # auth_manager.update_admin_user()
+            if (
+                admin_password := self.charm.validate_and_get_admin_password()
+            ) and admin_password != self.context.cluster.admin_password:
+                auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
+                self.context.cluster.update_admin_password(password=admin_password)
 
     @defer_when_not_ready
     def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
