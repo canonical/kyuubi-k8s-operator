@@ -96,7 +96,6 @@ def test_profile_config_option(
         KyuubiCharm, meta=METADATA, config=charm_configuration, actions=ACTIONS, unit_id=0
     )
 
-    logger.info("aaa")
     state_in = testing.State(
         config={"profile": "testing"},
         relations={spark_service_account_relation, auth_db_relation},
@@ -106,8 +105,7 @@ def test_profile_config_option(
     _ = kyuubi_context.run(ctx.on.config_changed(), state_in)
 
     spark_properties = parse_spark_properties(tmp_path)
-    logger.info("profile")
-    logger.info(spark_properties)
+    logger.info(f"profile: testing => spark_properties: {spark_properties}")
 
     assert "spark.kubernetes.executor.request.cores" in spark_properties
 
@@ -120,7 +118,6 @@ def test_profile_config_option(
     _ = kyuubi_context.run(ctx.on.config_changed(), state_in)
 
     spark_properties = parse_spark_properties(tmp_path)
-    logger.info("profile")
-    logger.info(spark_properties)
+    logger.info(f"profile: production => spark_properties: {spark_properties}")
 
     assert "spark.kubernetes.executor.request.cores" not in spark_properties

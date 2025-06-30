@@ -106,14 +106,6 @@ def test_deploy_integration_hub(
         )
     )
 
-    # Add configuration key
-    task = juju.run(
-        f"{charm_versions.integration_hub.app}/0",
-        "add-config",
-        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
-    )
-    assert task.return_code == 0
-
     logger.info("Integrating s3-integrator charm with integration-hub charm...")
     juju.integrate(charm_versions.integration_hub.application_name, charm_versions.s3.app)
 

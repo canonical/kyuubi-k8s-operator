@@ -444,7 +444,7 @@ def deploy_minimal_kyuubi_setup(
     logger.info("Configuring kyuubi-k8s charm...")
     namespace = juju.model
     username = "kyuubi-spark-engine"
-    charm_config = {"namespace": namespace, "service-account": username}
+    charm_config = {"namespace": namespace, "service-account": username, "profile": "testing"}
     juju.config(APP_NAME, charm_config)
 
     logger.info("Waiting for kyuubi-k8s app to settle...")
