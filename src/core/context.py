@@ -156,7 +156,7 @@ class Context(WithLogging):
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
-        return bool(self.auth_db)
+        return self.auth_db is not None
 
     @property
     def tls(self) -> TLSInfo | None:

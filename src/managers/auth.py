@@ -8,9 +8,8 @@
 import secrets
 import string
 
-from constants import ADMIN_PASSWORD_KEY, AUTHENTICATION_TABLE_NAME, DEFAULT_ADMIN_USERNAME
-from core.context import Context
-from core.domain import Secret
+from constants import AUTHENTICATION_TABLE_NAME, DEFAULT_ADMIN_USERNAME
+from core.domain import DatabaseConnectionInfo
 from managers.database import DatabaseManager
 from utils.logging import WithLogging
 
@@ -21,60 +20,9 @@ class AuthenticationManager(WithLogging):
     DEFAULT_ADMIN_USERNAME = DEFAULT_ADMIN_USERNAME
     AUTHENTICATION_TABLE_NAME = AUTHENTICATION_TABLE_NAME
 
-    def __init__(self, context: Context) -> None:
+    def __init__(self, db_info: DatabaseConnectionInfo) -> None:
         super().__init__()
-        self.context = context
-
-    @property
-    def database(
-        self,
-    ) -> DatabaseManager:
-        """Lazily initialize and return a DatabaseManager instance."""
-        if not self.context.auth_db:
-            raise RuntimeError("Authentication database connection info is not set.")
-        return DatabaseManager(db_info=self.context.auth_db)
-
-    @property
-    def system_users_secret(self) -> Secret:
-        """Lazily initialize the system users Secret object."""
-        secret_id = self.context.config.system_users
-        if secret_id is None:
-            raise RuntimeError("System users secret ID is not configured.")
-        return Secret(model=self.context.model, secret_id=secret_id)
-
-    def system_user_secret_configured(self) -> bool:
-        """Return whether user has configured the system-users secret."""
-        return bool(self.context.config.system_users)
-
-    def system_user_secret_exists(self) -> bool:
-        """Return whether user-configured system users secret exists."""
-        return self.system_users_secret.exists()
-
-    def system_user_secret_granted(self) -> bool:
-        """Return whether user-configured system users secret has been granted to the charm."""
-        return self.system_users_secret.has_permission()
-
-    def system_user_secret_valid(self) -> bool:
-        """Return whether user-configured system users secret is valid."""
-        secret_content = self.system_users_secret.content
-        if not secret_content:
-            return False
-        admin_password = secret_content.get(DEFAULT_ADMIN_USERNAME)
-        if admin_password in (None, ""):
-            return False
-        return True
-
-    @property
-    def system_user_password(self) -> str:
-        """Return user configured system user password."""
-        if (
-            not self.system_user_secret_configured()
-            or not self.system_user_secret_exists()
-            or not self.system_user_secret_granted()
-            or not self.system_user_secret_valid()
-        ):
-            return ""
-        return self.system_users_secret.content.get(DEFAULT_ADMIN_USERNAME, "")
+        self.database = DatabaseManager(db_info=db_info)
 
     def enable_pgcrypto_extension(self) -> bool:
         """Enable pgcrypto extension in the authentication database."""
@@ -164,28 +112,7 @@ class AuthenticationManager(WithLogging):
         success, _ = self.database.execute(query=query, vars=vars)
         return success
 
-    def create_admin_user(self) -> bool:
-        """Create a default admin user in the authentication database."""
-        password = self.system_user_password
-        if not password:
-            password = self.generate_password()
-        self.context.cluster.update({ADMIN_PASSWORD_KEY: password})
-        return self.create_user(self.DEFAULT_ADMIN_USERNAME, password=password)
-
-    def update_admin_user(self, force_update: bool = False) -> bool:
-        """Update the default admin user password in the authentication database."""
-        password = self.system_user_password
-        should_update = password and password != self.context.cluster.admin_password
-
-        if not (force_update or should_update):
-            return False
-        if not password:
-            password = self.generate_password()
-
-        self.context.cluster.update({ADMIN_PASSWORD_KEY: password})
-        return self.set_password(self.DEFAULT_ADMIN_USERNAME, password=password)
-
-    def prepare_auth_db(self) -> bool:
+    def prepare_auth_db(self, admin_password: str) -> bool:
         """Prepare the authentication database in PostgreSQL."""
         self.logger.info("Preparing auth db...")
 
@@ -196,5 +123,6 @@ class AuthenticationManager(WithLogging):
 
         self.create_authentication_table()
         if self.user_exists(self.DEFAULT_ADMIN_USERNAME):
-            return self.update_admin_user(force_update=True)
-        return self.create_admin_user()
+            return self.set_password(self.DEFAULT_ADMIN_USERNAME, password=admin_password)
+
+        return self.create_user(self.DEFAULT_ADMIN_USERNAME, password=admin_password)

@@ -389,6 +389,10 @@ class KyuubiCluster(RelationState):
         """The admin password for the cluster."""
         return self.relation_data.get(ADMIN_PASSWORD_KEY, "")
 
+    def update_admin_password(self, password: str) -> None:
+        """Update the admin password in peer app databag with given content."""
+        self.relation_data.update({ADMIN_PASSWORD_KEY: password})
+
 
 class Secret(WithLogging):
     """The class representing a user-level Juju secret."""

@@ -104,7 +104,8 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        auth = AuthenticationManager(self.context)
+        assert self.context.auth_db is not None
+        auth = AuthenticationManager(self.context.auth_db)
         service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -159,14 +160,14 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         if not self.charm.unit.is_leader():
             return
 
-        # FIXME: There is not guarantee here
-        auth = AuthenticationManager(self.context)
-        username = f"relation_id_{event.relation.id}"
+        if self.context.auth_db is not None:
+            auth = AuthenticationManager(self.context.auth_db)
+            username = f"relation_id_{event.relation.id}"
 
-        try:
-            auth.delete_user(username)
-        except Exception as e:
-            logger.exception(e)
-            self.charm.unit.status = BlockedStatus(
-                f"Failed to delete user during {KYUUBI_CLIENT_RELATION_NAME} relation broken event"
-            )
+            try:
+                auth.delete_user(username)
+            except Exception as e:
+                logger.exception(e)
+                self.charm.unit.status = BlockedStatus(
+                    f"Failed to delete user during {KYUUBI_CLIENT_RELATION_NAME} relation broken event"
+                )

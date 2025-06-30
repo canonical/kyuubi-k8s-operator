@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import ops
 from ops import SecretChangedEvent
 
-from constants import PEER_REL
+from constants import DEFAULT_ADMIN_USERNAME, PEER_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, defer_when_not_ready, leader_only
@@ -77,7 +77,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            auth_manager = AuthenticationManager(self.context)
+            assert self.context.auth_db is not None
+            auth_manager = AuthenticationManager(self.context.auth_db)
             if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
@@ -88,7 +89,11 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             ):
                 self.charm.provider_events.update_clients_endpoints()
 
-            auth_manager.update_admin_user()
+            if (
+                admin_password := self.charm.validate_and_get_admin_password()
+            ) and admin_password != self.context.cluster.admin_password:
+                auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
+                self.context.cluster.update_admin_password(password=admin_password)
 
         self.kyuubi.update()
 
@@ -195,12 +200,13 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            auth_manager = AuthenticationManager(self.context)
+            assert self.context.auth_db is not None
+            auth_manager = AuthenticationManager(self.context.auth_db)
             if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
 
-            auth_manager.update_admin_user()
+            # auth_manager.update_admin_user()
 
     @defer_when_not_ready
     def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
