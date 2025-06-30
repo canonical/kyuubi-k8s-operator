@@ -44,7 +44,9 @@ def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path) -> Non
     logger.info("Setting configuration for kyuubi-k8s charm...")
     namespace = cast(str, juju.model)
     username = "kyuubi-spark-engine"
-    juju.config(APP_NAME, {"namespace": namespace, "service-account": username})
+    juju.config(
+        APP_NAME, {"namespace": namespace, "service-account": username, "profile": "testing"}
+    )
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     status = juju.wait(jubilant.all_blocked, delay=5)

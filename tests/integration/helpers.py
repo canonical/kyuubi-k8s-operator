@@ -444,8 +444,14 @@ def deploy_minimal_kyuubi_setup(
     logger.info("Configuring kyuubi-k8s charm...")
     namespace = juju.model
     username = "kyuubi-spark-engine"
-    charm_config = {"namespace": namespace, "service-account": username, "profile": "testing"}
+    charm_config = {"namespace": namespace, "service-account": username}
     juju.config(APP_NAME, charm_config)
+
+    # try to apply profile = testing (cannot be available in charmhub)
+    try:
+        juju.config(APP_NAME, {"profile": "testing"})
+    except Exception:
+        pass
 
     logger.info("Waiting for kyuubi-k8s app to settle...")
     status = juju.wait(jubilant.all_blocked)
