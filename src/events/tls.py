@@ -6,19 +6,18 @@
 
 from __future__ import annotations
 
-import base64
-import re
 from typing import TYPE_CHECKING
 
-from charms.tls_certificates_interface.v3.tls_certificates import (
+from charms.tls_certificates_interface.v4.tls_certificates import (
     CertificateAvailableEvent,
-    TLSCertificatesRequiresV3,
-    generate_csr,
-    generate_private_key,
+    CertificateRequestAttributes,
+    TLSCertificatesRequiresV4,
 )
-from ops.charm import ActionEvent, RelationBrokenEvent, RelationCreatedEvent, RelationJoinedEvent
+from ops import EventSource
+from ops.charm import RelationBrokenEvent, RelationCreatedEvent
 from ops.framework import EventBase
 
+from constants import TLS_REL
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, defer_when_not_ready
@@ -30,8 +29,14 @@ if TYPE_CHECKING:
     from charm import KyuubiCharm
 
 
+class RefreshTLSCertificatesEvent(EventBase):
+    """Event for refreshing peer TLS certificates."""
+
+
 class TLSEvents(BaseEventHandler, WithLogging):
     """Event handlers for related applications on the `certificates` relation interface."""
+
+    refresh_tls_certificates_event = EventSource(RefreshTLSCertificatesEvent)
 
     def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload):
         super().__init__(charm, "tls")
@@ -40,26 +45,53 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.workload = workload
         self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.tls_manager = TLSManager(context, workload)
-        self.certificates = TLSCertificatesRequiresV3(self.charm, "certificates")
+
+        common_name = self.tls_manager.get_subject()
+        sans = self.tls_manager.build_sans()
+        sans_ip = frozenset(sans.sans_ip)
+        sans_dns = frozenset(sans.sans_dns)
+        private_key = self.charm.validate_and_get_private_key()
+        self.certificates = TLSCertificatesRequiresV4(
+            charm=self.charm,
+            relationship_name=TLS_REL,
+            certificate_requests=[
+                CertificateRequestAttributes(
+                    common_name=common_name,
+                    sans_ip=sans_ip,
+                    sans_dns=sans_dns,
+                )
+            ],
+            private_key=private_key,
+            refresh_events=[self.refresh_tls_certificates_event],
+        )
+
+        self._init_credentials()
 
         self.framework.observe(
             getattr(self.charm.on, "certificates_relation_created"), self._on_certificates_created
         )
         self.framework.observe(
-            getattr(self.charm.on, "certificates_relation_joined"), self._on_certificates_joined
-        )
-        self.framework.observe(
             getattr(self.certificates.on, "certificate_available"), self._on_certificate_available
-        )
-        self.framework.observe(
-            getattr(self.certificates.on, "certificate_expiring"), self._on_certificate_expiring
         )
         self.framework.observe(
             getattr(self.charm.on, "certificates_relation_broken"), self._on_certificates_broken
         )
 
-        self.framework.observe(
-            getattr(self.charm.on, "set_tls_private_key_action"), self._set_tls_private_key
+    def _init_credentials(self) -> None:
+        _, private_key = self.certificates.get_assigned_certificate(
+            self.certificates.certificate_requests[0]
+        )
+        if private_key and private_key.raw != self.context.unit_server.private_key:
+            self.context.unit_server.update({"private-key": private_key.raw})
+
+        # generate unit key/truststore password if not already created
+        self.context.unit_server.update(
+            {
+                "keystore-password": self.context.unit_server.keystore_password
+                or self.workload.generate_password(),  # type: ignore
+                "truststore-password": self.context.unit_server.truststore_password
+                or self.workload.generate_password(),  # type: ignore
+            }
         )
 
     def _on_certificates_created(self, _: RelationCreatedEvent) -> None:
@@ -69,62 +101,17 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.context.cluster.update({"tls": "enabled"})
 
-    def _on_certificates_joined(self, event: RelationJoinedEvent) -> None:
-        """Handler for `certificates_relation_joined` event."""
-        if not self.context.cluster.tls:
-            self.logger.debug(
-                "certificates relation joined - tls not enabled and not switching encryption - deferring"
-            )
-            event.defer()
-            return
-
-        # generate unit private key if not already created by action
-        if not self.context.unit_server.private_key:
-            self.context.unit_server.update(
-                {"private-key": generate_private_key().decode("utf-8")}
-            )
-
-        # generate unit key/truststore password if not already created by action
-        self.context.unit_server.update(
-            {
-                "keystore-password": self.context.unit_server.keystore_password
-                or self.workload.generate_password(),  # type: ignore
-                "truststore-password": self.context.unit_server.truststore_password
-                or self.workload.generate_password(),  # type: ignore
-            }
-        )
-        subject = self.tls_manager.get_subject()
-        sans = self.tls_manager.build_sans()
-
-        self.logger.info(f"ip: {sans.sans_ip} tls: {sans.sans_dns}")
-
-        self.logger.info(f"Subject: {subject}")
-        csr = generate_csr(
-            private_key=self.context.unit_server.private_key.encode("utf-8"),
-            subject=subject,
-            sans_ip=sans.sans_ip,
-            sans_dns=sans.sans_dns,
-        )
-
-        self.context.unit_server.update({"csr": csr.decode("utf-8").strip()})
-
-        self.certificates.request_certificate_creation(certificate_signing_request=csr)
-
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
+        self.logger.error("certfiicate available...")
         # avoid setting tls files and restarting
         if not self.workload.ready():
             event.defer()
             return
 
-        if event.certificate_signing_request != self.context.unit_server.csr:
-            self.logger.error("Can't use certificate, found unknown CSR")
-            return
-
         self.context.unit_server.update(
-            {"certificate": event.certificate, "ca-cert": event.ca, "ca": ""}
+            {"certificate": event.certificate.raw, "ca-cert": event.ca.raw}
         )
-        self._cleanup_old_ca_field()
 
         self.tls_manager.set_private_key()
         self.tls_manager.set_ca()
@@ -134,29 +121,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.kyuubi.update(force_restart=True)
 
-    def _on_certificate_expiring(self, _: EventBase) -> None:
-        """Handler for `certificates_expiring` event when certs need renewing."""
-        if not (self.context.unit_server.private_key or self.context.unit_server.csr):
-            self.logger.error("Missing unit private key and/or old csr")
-            return
-
-        subject = self.tls_manager.get_subject()
-        sans = self.tls_manager.build_sans()
-
-        new_csr = generate_csr(
-            private_key=self.context.unit_server.private_key.encode("utf-8"),
-            subject=subject,
-            sans_ip=sans.sans_ip,
-            sans_dns=sans.sans_dns,
-        )
-
-        self.certificates.request_certificate_renewal(
-            old_certificate_signing_request=self.context.unit_server.csr.encode("utf-8"),
-            new_certificate_signing_request=new_csr,
-        )
-
-        self.context.unit_server.update({"csr": new_csr.decode("utf-8").strip()})
-
     @defer_when_not_ready
     def _on_certificates_broken(self, event: RelationBrokenEvent) -> None:
         """Handler for `certificates_relation_broken` event."""
@@ -164,8 +128,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        self.context.unit_server.update({"csr": "", "certificate": "", "ca-cert": "", "ca": ""})
-        self._cleanup_old_ca_field()
+        self.context.unit_server.update({"certificate": "", "ca-cert": ""})
 
         # remove all existing keystores from the unit so we don't preserve certs
         self.tls_manager.remove_stores()
@@ -175,23 +138,3 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.context.cluster.update({"tls": ""})
         self.kyuubi.update(set_tls_none=True)
-
-    def _set_tls_private_key(self, event: ActionEvent) -> None:
-        """Handler for `set-tls-private-key` event when user manually specifies private-keys for a unit."""
-        key = event.params.get("internal-key") or generate_private_key().decode("utf-8")
-        private_key = (
-            key
-            if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key)
-            else base64.b64decode(key).decode("utf-8")
-        )
-
-        self.context.unit_server.update({"private-key": private_key})
-        self._on_certificate_expiring(event)
-
-    def _cleanup_old_ca_field(self) -> None:
-        """In order to ensure backwards compatibility, we keep old secrets until the first time they are updated.
-
-        This will allow to safely roll back soon after an upgrade.
-        """
-        if self.context.unit_server.relation_data.get("ca"):
-            self.context.unit_server.update({"ca": ""})

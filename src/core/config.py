@@ -29,3 +29,4 @@ class CharmConfig(BaseConfigModel):
     enable_dynamic_allocation: bool
     iceberg_catalog_name: str
     system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
+    tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)

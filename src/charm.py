@@ -9,7 +9,9 @@
 
 from __future__ import annotations
 
+import base64
 import logging
+import re
 
 import charm_refresh
 import ops
@@ -17,6 +19,7 @@ from charms.data_platform_libs.v0.data_models import TypedCharmBase
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.tls_certificates_interface.v4.tls_certificates import PrivateKey
 from ops.log import JujuLogHandler
 
 from constants import (
@@ -209,6 +212,9 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if status := self._collect_status_system_users():
             statuses.append(status.value)
 
+        if status := self._collect_status_tls_client_private_key():
+            statuses.append(status.value)
+
         metastore_manager = HiveMetastoreManager(self.workload)
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():
             statuses.append(Status.INVALID_METASTORE_SCHEMA.value)
@@ -252,6 +258,20 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         return None
 
+    def _collect_status_tls_client_private_key(self) -> Status | None:
+        if not self.config.system_users:
+            return None
+        admin_password_secret = Secret(self.model, self.config.system_users)
+        if not admin_password_secret.exists():
+            return Status.TLS_SECRET_DOES_NOT_EXIST
+        if not admin_password_secret.has_permission():
+            return Status.TLS_SECRET_INSUFFICIENT_PERMISSION
+
+        if not self.validate_and_get_private_key():
+            return Status.TLS_SECRET_INVALID
+
+        return None
+
     def validate_and_get_admin_password(
         self,
     ) -> str | None:
@@ -266,6 +286,30 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if admin_password in (None, ""):
             return None
         return admin_password
+
+    def validate_and_get_private_key(
+        self,
+    ) -> PrivateKey | None:
+        """Validates the secret provided as `tls-client-private-key` and returns private key if valid."""
+        if not self.config.tls_client_private_key:
+            return None
+        tls_private_key_secret = Secret(self.model, self.config.tls_client_private_key)
+        secret_content = tls_private_key_secret.content
+        if not secret_content:
+            return None
+        key_content: str = secret_content.get("private-key", "")
+        if not key_content:
+            return None
+        private_key_raw = (
+            key_content
+            if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key_content)
+            else base64.b64decode(key_content).decode("utf-8").strip()
+        )
+        private_key = PrivateKey(raw=private_key_raw)
+        if not private_key.is_valid():
+            return None
+
+        return private_key
 
 
 if __name__ == "__main__":  # pragma: nocover

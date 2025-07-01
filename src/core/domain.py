@@ -59,6 +59,16 @@ class Status(Enum):
     SYSTEM_USERS_SECRET_INVALID = BlockedStatus(
         "Secret provided as system-users has invalid content"
     )
+    TLS_SECRET_DOES_NOT_EXIST = BlockedStatus(
+        "Secret provided as tls-client-private-key does not exist"
+    )
+    TLS_SECRET_INSUFFICIENT_PERMISSION = BlockedStatus(
+        "Secret provided as tls-client-private-key has not been granted to the charm"
+    )
+    TLS_SECRET_INVALID = BlockedStatus(
+        "Secret provided as tls-client-private-key has invalid content"
+    )
+
     NOT_SERVING_REQUESTS = MaintenanceStatus("Kyuubi is not serving requests")
 
     ACTIVE = ActiveStatus("")
