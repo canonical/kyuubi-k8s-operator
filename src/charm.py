@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 import re
 
@@ -259,14 +260,13 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         return None
 
     def _collect_status_tls_client_private_key(self) -> Status | None:
-        if not self.config.system_users:
+        if not self.config.tls_client_private_key:
             return None
-        admin_password_secret = Secret(self.model, self.config.system_users)
-        if not admin_password_secret.exists():
+        tls_private_key_secret = Secret(self.model, self.config.tls_client_private_key)
+        if not tls_private_key_secret.exists():
             return Status.TLS_SECRET_DOES_NOT_EXIST
-        if not admin_password_secret.has_permission():
+        if not tls_private_key_secret.has_permission():
             return Status.TLS_SECRET_INSUFFICIENT_PERMISSION
-
         if not self.validate_and_get_private_key():
             return Status.TLS_SECRET_INVALID
 
@@ -300,12 +300,15 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         key_content: str = secret_content.get("private-key", "")
         if not key_content:
             return None
-        private_key_raw = (
-            key_content
-            if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key_content)
-            else base64.b64decode(key_content).decode("utf-8").strip()
-        )
-        private_key = PrivateKey(raw=private_key_raw)
+        try:
+            private_key_raw = (
+                key_content
+                if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", key_content)
+                else base64.b64decode(key_content).decode("utf-8").strip()
+            )
+            private_key = PrivateKey(raw=private_key_raw)
+        except (binascii.Error, UnicodeDecodeError):
+            return None
         if not private_key.is_valid():
             return None
 
