@@ -11,6 +11,7 @@ from ops.testing import Container, Context, PeerRelation, Relation, Secret, Stat
 
 from constants import JOB_OCI_IMAGE, KYUUBI_CONTAINER_NAME
 from core.domain import Status
+from managers.service import Endpoint
 
 logger = logging.getLogger(__name__)
 SPARK_PROPERTIES = "/etc/spark8t/conf/spark-defaults.conf"
@@ -65,7 +66,7 @@ def test_pebble_ready(
 
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
-@patch("managers.service.ServiceManager.get_service_endpoint", return_value="")
+@patch("managers.service.ServiceManager.get_service_endpoint", return_value=None)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
@@ -154,7 +155,7 @@ def test_system_users_config_secret_invalid(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
@@ -213,7 +214,7 @@ def test_system_users_config_secret_valid(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch(
@@ -258,7 +259,7 @@ def test_valid_on_service_account(
 @patch("managers.k8s.K8sManager.is_azure_storage_configured", return_value=False)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={"foo": "bar"})
@@ -290,7 +291,7 @@ def test_object_storage_backend_removed(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
@@ -337,7 +338,7 @@ def test_zookeeper_relation_joined(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
@@ -384,7 +385,7 @@ def test_zookeeper_relation_broken(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
@@ -494,7 +495,7 @@ def test_missing_zookeeper_for_multiple_units_of_kyuubi(
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch(
@@ -538,9 +539,15 @@ def test_spark_property_priorities(
     assert spark_properties["spark.kubernetes.container.image"] == "image_from_service_account"
 
 
+# @patch("managers.tls.TLSManager.build_sans", return_value=SANs(sans_dns=[], sans_ip=[]))
+# @patch("managers.tls.TLSManager.get_subject", return_value="my-subject-name")
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch(
+    "managers.service.ServiceManager.get_service_endpoint",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
+)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 @patch("managers.service.ServiceManager.get_service_endpoint", return_value=True)
@@ -548,6 +555,7 @@ def test_kyuubi_not_serving_requests(
     mock_k8s_service,
     mock_sa_conf,
     mock_get_master,
+    mock_service_endpoint,
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
