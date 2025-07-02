@@ -119,6 +119,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.tls_manager.set_truststore()
         self.tls_manager.set_p12_keystore()
 
+        self.charm.provider_events.update_clients_endpoints()
         self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready
