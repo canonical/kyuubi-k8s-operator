@@ -69,6 +69,7 @@ def test_kyuubi_valid_credentials(
 
 
 def test_set_admin_password_in_kyuubi_secret_not_granted(juju: jubilant.Juju) -> None:
+    """Set system-users config option in Kyuubi with a secret which is not granted to the charm."""
     username = "admin"
     password = "password"
     secret_name = "admin-password-no-grant"
@@ -88,6 +89,7 @@ def test_set_admin_password_in_kyuubi_secret_not_granted(juju: jubilant.Juju) ->
 
 
 def test_set_admin_password_in_kyuubi_secret_not_valid(juju: jubilant.Juju) -> None:
+    """Set system-users config option in Kyuubi with a secret with invalid content."""
     username = "randomuser"
     password = "password"
     secret_name = "admin-password-invalid"
@@ -107,6 +109,7 @@ def test_set_admin_password_in_kyuubi_secret_not_valid(juju: jubilant.Juju) -> N
 
 
 def test_set_admin_password_in_kyuubi_secret_valid(juju: jubilant.Juju) -> None:
+    """Set system-users config option in Kyuubi with a secret which has valid admin password content."""
     username = "admin"
     password = "password"
     secret_name = "kyuubi-users"
@@ -122,6 +125,7 @@ def test_set_admin_password_in_kyuubi_secret_valid(juju: jubilant.Juju) -> None:
 
 
 def test_update_admin_password(juju: jubilant.Juju) -> None:
+    """Update the admin password via system-users config option and ensure it can be used for Kyuubi connection."""
     username = "admin"
     old_password = "password"
     new_password = "new-password"
@@ -138,6 +142,7 @@ def test_update_admin_password(juju: jubilant.Juju) -> None:
 
 
 def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.Juju) -> None:
+    """Update the system-users config option to invalid value and then to valid value again."""
     username = "random-user"
     password = "new-password"
     secret_name = "kyuubi-users"

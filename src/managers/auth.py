@@ -100,10 +100,8 @@ class AuthenticationManager(WithLogging):
         status, _ = self.database.execute(query=query, vars=vars)
         return status
 
-    def set_password(self, username: str, password: str | None = None) -> bool:
+    def set_password(self, username: str, password: str) -> bool:
         """Set a new password for the given username."""
-        if password is None:
-            password = self.generate_password()
         query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = crypt(%s, gen_salt('bf')) WHERE username = %s ;"
         vars = (
             password,

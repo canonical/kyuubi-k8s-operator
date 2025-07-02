@@ -179,7 +179,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @leader_only
     def _on_secret_changed(self, event: SecretChangedEvent) -> None:
         """Reconfigure services on a secret changed event."""
-        self.logger.error("SECRET CHANGED...")
         if not self.context.cluster.relation:
             event.defer()
             return
