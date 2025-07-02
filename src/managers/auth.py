@@ -17,9 +17,6 @@ from utils.logging import WithLogging
 class AuthenticationManager(WithLogging):
     """Manager encapsulating various authentication related methods."""
 
-    DEFAULT_ADMIN_USERNAME = DEFAULT_ADMIN_USERNAME
-    AUTHENTICATION_TABLE_NAME = AUTHENTICATION_TABLE_NAME
-
     def __init__(self, db_info: DatabaseConnectionInfo) -> None:
         super().__init__()
         self.database = DatabaseManager(db_info=db_info)
@@ -37,7 +34,7 @@ class AuthenticationManager(WithLogging):
         """Create authentication table in the authentication database."""
         self.logger.info("Creating authentication table...")
         query = f"""
-            CREATE TABLE IF NOT EXISTS {self.AUTHENTICATION_TABLE_NAME} (
+            CREATE TABLE IF NOT EXISTS {AUTHENTICATION_TABLE_NAME} (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
                 passwd VARCHAR(255) NOT NULL
@@ -63,7 +60,7 @@ class AuthenticationManager(WithLogging):
             bool: signifies whether the user has been created successfully
         """
         self.logger.info(f"Creating user {username}...")
-        query = f"INSERT INTO {self.AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, crypt(%s, gen_salt('bf')) );"
+        query = f"INSERT INTO {AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, crypt(%s, gen_salt('bf')) );"
         vars = (username, password)
         success, _ = self.database.execute(query=query, vars=vars)
         return success
@@ -77,7 +74,7 @@ class AuthenticationManager(WithLogging):
         Returns:
             bool: signifies whether the user already exists
         """
-        query = f"SELECT 1 FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        query = f"SELECT 1 FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
         vars = (username,)
         success, result = self.database.execute(query=query, vars=vars)
         if not success:
@@ -95,14 +92,14 @@ class AuthenticationManager(WithLogging):
             bool: signifies whether the user has been deleted successfully
         """
         self.logger.info(f"Deleting user {username}...")
-        query = f"DELETE FROM {self.AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
+        query = f"DELETE FROM {AUTHENTICATION_TABLE_NAME} WHERE username = %s;"
         vars = (username,)
         status, _ = self.database.execute(query=query, vars=vars)
         return status
 
     def set_password(self, username: str, password: str) -> bool:
         """Set a new password for the given username."""
-        query = f"UPDATE {self.AUTHENTICATION_TABLE_NAME} SET passwd = crypt(%s, gen_salt('bf')) WHERE username = %s ;"
+        query = f"UPDATE {AUTHENTICATION_TABLE_NAME} SET passwd = crypt(%s, gen_salt('bf')) WHERE username = %s ;"
         vars = (
             password,
             username,
@@ -120,7 +117,7 @@ class AuthenticationManager(WithLogging):
         self.enable_pgcrypto_extension()
 
         self.create_authentication_table()
-        if self.user_exists(self.DEFAULT_ADMIN_USERNAME):
-            return self.set_password(self.DEFAULT_ADMIN_USERNAME, password=admin_password)
+        if self.user_exists(DEFAULT_ADMIN_USERNAME):
+            return self.set_password(DEFAULT_ADMIN_USERNAME, password=admin_password)
 
-        return self.create_user(self.DEFAULT_ADMIN_USERNAME, password=admin_password)
+        return self.create_user(DEFAULT_ADMIN_USERNAME, password=admin_password)
