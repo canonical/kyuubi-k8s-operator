@@ -84,7 +84,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             auth_manager = AuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
-            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+            if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
 
@@ -211,7 +211,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             auth_manager = AuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
-            if not auth_manager.user_exists(auth_manager.DEFAULT_ADMIN_USERNAME):
+            if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
 
