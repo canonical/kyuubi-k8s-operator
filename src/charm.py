@@ -23,13 +23,13 @@ from constants import (
     COS_LOG_RELATION_NAME_SERVER,
     COS_METRICS_PATH,
     COS_METRICS_PORT,
+    DEFAULT_ADMIN_USERNAME,
     KYUUBI_CONTAINER_NAME,
 )
 from core.config import CharmConfig
 from core.context import Context
-from core.domain import Status
+from core.domain import Secret, Status
 from core.workload.kyuubi import KyuubiWorkload
-from events.actions import ActionEvents
 from events.auth import AuthenticationEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
@@ -74,7 +74,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
         self.auth_events = AuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
-        self.action_events = ActionEvents(self, self.context, self.workload)
         self.tls_events = TLSEvents(self, self.context, self.workload)
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 
@@ -207,6 +206,9 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if not self.context.auth_db:
             statuses.append(Status.MISSING_AUTH_DB.value)
 
+        if status := self._collect_status_system_users():
+            statuses.append(status.value)
+
         metastore_manager = HiveMetastoreManager(self.workload)
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():
             statuses.append(Status.INVALID_METASTORE_SCHEMA.value)
@@ -230,6 +232,40 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             statuses.append(Status.NOT_SERVING_REQUESTS.value)
 
         return statuses
+
+    def _collect_status_system_users(self) -> Status | None:
+        if not self.config.system_users:
+            return None
+        admin_password_secret = Secret(self.model, self.config.system_users)
+        if not admin_password_secret.exists():
+            return Status.SYSTEM_USERS_SECRET_DOES_NOT_EXIST
+        if not admin_password_secret.has_permission():
+            return Status.SYSTEM_USERS_SECRET_INSUFFICIENT_PERMISSION
+
+        secret_content = admin_password_secret.content
+        if not secret_content:
+            return Status.SYSTEM_USERS_SECRET_INVALID
+
+        admin_password = secret_content.get(DEFAULT_ADMIN_USERNAME)
+        if admin_password in (None, ""):
+            return Status.SYSTEM_USERS_SECRET_INVALID
+
+        return None
+
+    def validate_and_get_admin_password(
+        self,
+    ) -> str | None:
+        """Validates the secret provided as `system-users` and returns admin password if valid."""
+        if not self.config.system_users:
+            return None
+        admin_password_secret = Secret(self.model, self.config.system_users)
+        secret_content = admin_password_secret.content
+        if not secret_content:
+            return None
+        admin_password = secret_content.get(DEFAULT_ADMIN_USERNAME)
+        if admin_password in (None, ""):
+            return None
+        return admin_password
 
 
 if __name__ == "__main__":  # pragma: nocover

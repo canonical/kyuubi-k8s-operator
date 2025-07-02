@@ -7,11 +7,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 from ops import pebble
-from ops.testing import Container, Context, Model, Mount, Relation
+from ops.testing import Container, Context, Model, Mount, PeerRelation, Relation
 
 from charm import KyuubiCharm
 from constants import (
     KYUUBI_CONTAINER_NAME,
+    PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
     SPARK_SERVICE_ACCOUNT_REL,
     ZOOKEEPER_REL,
@@ -73,7 +74,7 @@ def spark_service_account_relation():
         endpoint=SPARK_SERVICE_ACCOUNT_REL,
         interface="spark-service-account",
         remote_app_name="integration-hub",
-        local_app_data={"service-account": "spark:kyuubi", "spark-properties": "{'foo':'bar'}"},
+        local_app_data={"service-account": "spark:kyuubi", "spark-properties": '{"foo":"bar"}'},
         remote_app_data={"service-account": "spark:kyuubi", "spark-properties": '{"foo":"bar"}'},
     )
 
@@ -110,6 +111,15 @@ def zookeeper_relation():
             "password": "foopassbarword",
             "database": "/kyuubi",
         },
+    )
+
+
+@pytest.fixture
+def kyuubi_peers_relation():
+    """Provide fixture for the Zookeeper relation."""
+    return PeerRelation(
+        endpoint=PEER_REL,
+        interface="kyuubi-peers",
     )
 
 

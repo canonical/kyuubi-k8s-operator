@@ -9,12 +9,15 @@ import logging
 import os
 import re
 import shutil
+import socket
 import subprocess
 import uuid
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Generator, cast
+from unittest.mock import patch
 
 import jubilant
 import lightkube
@@ -413,6 +416,7 @@ def deploy_minimal_kyuubi_setup(
     num_units=1,
     integrate_zookeeper=False,
     deploy_from_charmhub=False,
+    integrate_data_integrator=True,
 ) -> None:
     deploy_args = {
         "app": APP_NAME,
@@ -491,6 +495,14 @@ def deploy_minimal_kyuubi_setup(
         )
     )
 
+    # Add configuration key to prevent resource starvation during tests
+    task = juju.run(
+        f"{charm_versions.integration_hub.app}/0",
+        "add-config",
+        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
+    )
+    assert task.return_code == 0
+
     logger.info("Integrating integration-hub charm with s3-integrator charm...")
     juju.integrate(charm_versions.s3.app, charm_versions.integration_hub.app)
 
@@ -503,14 +515,6 @@ def deploy_minimal_kyuubi_setup(
         ),
         delay=5,
     )
-
-    # Add configuration key to prevent resource starvation during tests
-    task = juju.run(
-        f"{charm_versions.integration_hub.app}/0",
-        "add-config",
-        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
-    )
-    assert task.return_code == 0
 
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     juju.integrate(charm_versions.integration_hub.app, APP_NAME)
@@ -574,11 +578,15 @@ def deploy_minimal_kyuubi_setup(
             delay=5,
         )
 
-    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
-    logger.info("Waiting for data-integrator charm to be idle...")
-    juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
-    logger.info("Integrating kyuubi charm with zookeeper charm...")
-    juju.integrate(charm_versions.data_integrator.app, APP_NAME)
+    if integrate_data_integrator:
+        juju.deploy(
+            **charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"}
+        )
+        logger.info("Waiting for data-integrator charm to be idle...")
+        juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
+        logger.info("Integrating kyuubi charm with data-integrator charm...")
+        juju.integrate(charm_versions.data_integrator.app, APP_NAME)
+        juju.wait(jubilant.all_active, delay=3)
 
     logger.info("Successfully deployed minimal working Kyuubi setup.")
 
@@ -676,8 +684,31 @@ def fetch_spark_properties(juju: jubilant.Juju, unit_name: str) -> dict[str, str
         return props
 
 
+def kyuubi_host_port_from_jdbc_uri(jdbc_uri: str) -> tuple[str, int]:
+    pattern = r"jdbc:hive2://([\w\.-]+):(\d+)"
+    match = re.match(pattern, jdbc_uri)
+    if not match:
+        raise ValueError(f"Invalid JDBC URI: {jdbc_uri}")
+    host, port = match.groups()
+    return host, int(port)
+
+
+@contextmanager
+def mock_hostname_resolution(hostname: str, ip: str):
+    original_getaddrinfo = socket.getaddrinfo
+
+    def patched_getaddrinfo(host, *args, **kwargs):
+        if host == hostname:
+            return original_getaddrinfo(ip, *args, **kwargs)
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    with patch("socket.getaddrinfo", side_effect=patched_getaddrinfo):
+        yield
+
+
 def validate_sql_queries_with_kyuubi(
     juju: jubilant.Juju,
+    jdbc_uri: str | None = None,
     kyuubi_host: str | None = None,
     kyuubi_port: str | int = 10009,
     username: str | None = None,
@@ -686,8 +717,11 @@ def validate_sql_queries_with_kyuubi(
     db_name: str | None = None,
     table_name: str | None = None,
     use_tls: bool = False,
+    ca_cert: str | Path | None = None,
 ):
     """Run simple SQL queries to validate Kyuubi and return whether this validation is successful."""
+    if jdbc_uri:
+        kyuubi_host, kyuubi_port = kyuubi_host_port_from_jdbc_uri(jdbc_uri=jdbc_uri)
     if not kyuubi_host:
         kyuubi_host = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
         logger.info(f"Reaching out to kyuubi on {kyuubi_host}")
@@ -708,7 +742,7 @@ def validate_sql_queries_with_kyuubi(
         args.update({"username": username})
     if password:
         args.update({"password": password})
-    kyuubi_client = KyuubiClient(**args, use_ssl=use_tls)
+    kyuubi_client = KyuubiClient(**args, use_ssl=use_tls, ca_cert=ca_cert)
 
     with kyuubi_client.connection as conn, conn.cursor() as cursor:
         for line in query_lines:

@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import cast
 
+import jubilant
 import yaml
 
 from core.domain import Status
@@ -13,7 +14,6 @@ from core.domain import Status
 from .helpers import (
     fetch_connection_info,
     fetch_spark_properties,
-    jubilant,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info

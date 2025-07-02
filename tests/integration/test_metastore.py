@@ -290,7 +290,7 @@ def test_remove_relations(juju: jubilant.Juju, charm_versions: IntegrationTestsC
     juju.remove_relation(f"{APP_NAME}:metastore-db", charm_versions.metastore_db.app)
     juju.remove_relation(f"{APP_NAME}:auth-db", charm_versions.auth_db.app)
     juju.remove_relation(APP_NAME, charm_versions.integration_hub.app)
-    juju.wait(jubilant.all_agents_idle)
+    juju.wait(jubilant.all_agents_idle, delay=2)
     juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5)
 
 
@@ -307,11 +307,9 @@ def test_metastore_initialization_with_blocked_kyuubi(
 
     logger.info("Integrate Kyuubi with metastore DB")
     juju.integrate(f"{APP_NAME}:metastore-db", ALT_METASTORE_APP_NAME)
-    juju.wait(jubilant.all_agents_idle)
+    juju.wait(jubilant.all_agents_idle, delay=2)
     juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5)
-    status = juju.wait(
-        lambda status: jubilant.all_active(status, ALT_METASTORE_APP_NAME),
-    )
+    status = juju.wait(lambda status: jubilant.all_active(status, ALT_METASTORE_APP_NAME), delay=5)
 
     postgres_leader = f"{ALT_METASTORE_APP_NAME}/0"
     postgres_host = status.apps[ALT_METASTORE_APP_NAME].units[postgres_leader].address

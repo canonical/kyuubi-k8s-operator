@@ -26,6 +26,12 @@ options:
     type: string
     description: The name of the catalog that has Iceberg capabilities.
     default: iceberg
+  system-users:
+    type: secret
+    description: |
+      Configure the system user 'admin' and it's password. This needs to be a Juju secret URI pointing to a secret that contains the 
+      following content: `admin: <password>`. If this config option is not provided, the charm will generate a random password for the
+      admin user.
   pause_after_unit_refresh:
     description: |
       Wait for manual confirmation to resume refresh after these units refresh

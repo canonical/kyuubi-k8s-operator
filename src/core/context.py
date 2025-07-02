@@ -25,6 +25,7 @@ from constants import (
     PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
     POSTGRESQL_METASTORE_DB_REL,
+    SECRETS_APP,
     SPARK_SERVICE_ACCOUNT_REL,
     TLS_REL,
     ZOOKEEPER_REL,
@@ -70,7 +71,9 @@ class Context(WithLogging):
             ZOOKEEPER_REL,
             database_name=HA_ZNODE_NAME,
         )
-        self.peer_app_interface = DataPeerData(self.model, relation_name=PEER_REL)
+        self.peer_app_interface = DataPeerData(
+            self.model, relation_name=PEER_REL, additional_secret_fields=SECRETS_APP
+        )
         self.peer_unit_interface = DataPeerUnitData(
             self.model, relation_name=PEER_REL, additional_secret_fields=SECRETS_UNIT
         )
@@ -153,7 +156,7 @@ class Context(WithLogging):
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
-        return bool(self.auth_db)
+        return self.auth_db is not None
 
     @property
     def tls(self) -> TLSInfo | None:

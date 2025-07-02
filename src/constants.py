@@ -31,7 +31,10 @@ SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
 # spark 3.4.4, release date 06/05/2025
 JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:7056db56cad6b23927706af3de9d47c47ca61eee1b0a03ec7ed7f43f29503a21"
+
 DEFAULT_ADMIN_USERNAME = "admin"
+PASSWORD_SUFFIX = "-password"
+ADMIN_PASSWORD_KEY = DEFAULT_ADMIN_USERNAME + PASSWORD_SUFFIX
 
 # Zookeeper literals
 HA_ZNODE_NAME = "/kyuubi"
@@ -39,4 +42,4 @@ HA_ZNODE_NAME = "/kyuubi"
 # Literals related to metastore
 HIVE_SCHEMA_VERSION = "2.3.0"
 
-SECRETS_APP: list[str] = []
+SECRETS_APP: list[str] = [ADMIN_PASSWORD_KEY]

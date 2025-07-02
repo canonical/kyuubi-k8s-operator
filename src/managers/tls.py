@@ -13,7 +13,6 @@ import ops.pebble
 
 from core.context import Context
 from core.domain import SANs
-from core.enums import ExposeExternal
 from core.workload import KyuubiWorkloadBase
 from managers.service import DNSEndpoint, IPEndpoint
 
@@ -23,24 +22,25 @@ logger = logging.getLogger(__name__)
 class TLSManager:
     """Manager for building necessary files for Java TLS auth."""
 
+    SUBJECT_NAME_MAX_LENGTH = 64
+
     def __init__(self, context: Context, workload: KyuubiWorkloadBase):
         self.context = context
         self.workload = workload
 
     def get_subject(self) -> str:
         """Get subject name for the unit."""
-        if (
-            self.context.config.expose_external.value == ExposeExternal.LOADBALANCER.value
-            and (lb := self.context.unit_server.loadbalancer_endpoint) is not None
-        ):
-            return lb.host
-        elif (
-            self.context.config.expose_external.value == ExposeExternal.NODEPORT.value
-            and (node_ip := self.context.unit_server.node_ip) != ""
-        ):
-            return node_ip
-
-        return os.uname()[1]
+        if external_address := self.context.unit_server.external_address:
+            subject_name = external_address.host
+        else:
+            subject_name = os.uname()[1]
+        if len(subject_name) > self.SUBJECT_NAME_MAX_LENGTH:
+            logger.warning(
+                f"The subject name {subject_name} is {len(subject_name)} characters long. "
+                f"Using only first {self.SUBJECT_NAME_MAX_LENGTH} characters."
+            )
+            subject_name = subject_name[: self.SUBJECT_NAME_MAX_LENGTH]
+        return subject_name
 
     def build_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""

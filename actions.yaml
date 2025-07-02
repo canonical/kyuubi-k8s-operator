@@ -1,26 +1,17 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
-get-password:
-  description: |
-    Returns the password for the admin user.
-
-set-password:
-  description: |
-    Set the password for the admin user.
-  params:
-    password:
-      type: string
-      description: The password will be auto-generated if this option is not specified.
 set-tls-private-key:
   description: Set the private key, which will be used for certificate signing requests (CSR). Run for each unit separately.
   params:
     internal-key:
       type: string
       description: The content of private key for internal communications with clients. Content will be auto-generated if this option is not specified.
+
 pre-refresh-check:
   description: Check if charm is ready to refresh
   additionalProperties: false
+
 force-refresh-start:
   description: |
     Potential of data loss and downtime
@@ -51,6 +42,7 @@ force-refresh-start:
 
         If `false`, allow refresh to Kyuubi container version that has not been validated to work with the charm revision
   additionalProperties: false
+
 resume-refresh:
   description: |
     Refresh next unit(s) (after you have manually verified that refreshed units are healthy)
