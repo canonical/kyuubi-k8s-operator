@@ -170,6 +170,26 @@ def delete_pod(pod_name: str, namespace: str) -> None:
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
+def delete_engines_pod(namespace: str, pod_prefix: str = "kyuubi-user-spark-sql") -> None:
+    """Delete engine pods with given name and namespace."""
+    logger.info("Delete engines pod.")
+
+    command = ["kubectl", "get", "pods", "-n", namespace]
+
+    process = subprocess.run(command, capture_output=True, check=True)
+    assert process.returncode == 0
+
+    output_lines = process.stdout.decode().splitlines()
+    for line in output_lines:
+        pod_name = line.split()[0]
+        logger.info(f"pod name: {pod_name}")
+        if pod_name.startswith(pod_prefix):
+            logger.info(f"DELETE pod name: {pod_name}")
+            delete_command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
+            process = subprocess.run(delete_command, capture_output=True, check=True)
+            assert process.returncode == 0, "Could not delete the engine pods."
+
+
 def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     """Return the process ID of Kyuubi process in given pod."""
     pod_name = unit.replace("/", "-")
