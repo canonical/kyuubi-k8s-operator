@@ -68,10 +68,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         """Handle the on_config_changed event."""
-        # should_refresh_tls_certificates = False
-        # if self.charm.validate_and_get_private_key():
-        #     should_refresh_tls_certificates = True
-
         if self.charm.unit.is_leader():
             if not self.context.cluster.relation:
                 event.defer()
@@ -116,7 +112,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             "Managed K8s service is available; completed handling config-changed event."
         )
 
-        # if should_refresh_tls_certificates or self.has_sans_changed():
         if self.context.tls:
             self.charm.tls_events.refresh_tls_certificates_event.emit()
 

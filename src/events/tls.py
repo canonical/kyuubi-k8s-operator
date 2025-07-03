@@ -65,8 +65,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
             refresh_events=[self.refresh_tls_certificates_event],
         )
 
-        # self._init_credentials()
-
         self.framework.observe(
             getattr(self.charm.on, "certificates_relation_created"), self._on_certificates_created
         )
@@ -75,23 +73,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
         )
         self.framework.observe(
             getattr(self.charm.on, "certificates_relation_broken"), self._on_certificates_broken
-        )
-
-    def _init_credentials(self) -> None:
-        _, private_key = self.certificates.get_assigned_certificate(
-            self.certificates.certificate_requests[0]
-        )
-        if private_key and private_key.raw != self.context.unit_server.private_key:
-            self.context.unit_server.update({"private-key": private_key.raw})
-
-        # generate unit key/truststore password if not already created
-        self.context.unit_server.update(
-            {
-                "keystore-password": self.context.unit_server.keystore_password
-                or self.workload.generate_password(),  # type: ignore
-                "truststore-password": self.context.unit_server.truststore_password
-                or self.workload.generate_password(),  # type: ignore
-            }
         )
 
     def _on_certificates_created(self, _: RelationCreatedEvent) -> None:
@@ -108,8 +89,21 @@ class TLSEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        self._init_credentials()
+        _, private_key = self.certificates.get_assigned_certificate(
+            self.certificates.certificate_requests[0]
+        )
+        if private_key and private_key.raw != self.context.unit_server.private_key:
+            self.context.unit_server.update({"private-key": private_key.raw})
 
+        # generate unit key/truststore password if not already created
+        self.context.unit_server.update(
+            {
+                "keystore-password": self.context.unit_server.keystore_password
+                or self.workload.generate_password(),  # type: ignore
+                "truststore-password": self.context.unit_server.truststore_password
+                or self.workload.generate_password(),  # type: ignore
+            }
+        )
         self.context.unit_server.update(
             {"certificate": event.certificate.raw, "ca-cert": event.ca.raw}
         )

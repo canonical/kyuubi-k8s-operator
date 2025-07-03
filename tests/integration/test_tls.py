@@ -53,6 +53,7 @@ def fetch_ca_certificate(juju: jubilant.Juju, unit_name: str) -> str:
 
 @pytest.fixture
 def rsa_key_pair(tmp_path: Path) -> tuple[bytes, bytes]:
+    """A fixture that returns a private-public key pair."""
     private_key = tmp_path / "private.key"
     public_key = tmp_path / "public.key.pub"
     subprocess.run(["openssl", "genrsa", "-out", private_key, "2048"], check=True)
@@ -70,7 +71,6 @@ def test_build_and_deploy(
     s3_bucket_and_creds: S3Info,
 ) -> None:
     """Deploy minimal Kyuubi deployments."""
-    """Test the status of default managed K8s service when Kyuubi is deployed."""
     deploy_minimal_kyuubi_setup(
         juju=juju,
         kyuubi_charm=kyuubi_charm,
@@ -106,10 +106,11 @@ def test_jdbc_endpoint_without_tls(
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
-def test_enable_ssl(
+def test_enable_tls(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
 ) -> None:
+    """Enable TLS and check the server responds with the certificate."""
     juju.deploy(
         **charm_versions.tls.deploy_dict(),
         config={"ca-common-name": "kyuubi"},
@@ -137,6 +138,7 @@ def test_jdbc_endpoint_with_tls_enabled(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
 ):
+    """Test the endpoint exposed by Kyuubi while TLS is enabled."""
     ca_cert = fetch_ca_certificate(juju, f"{charm_versions.tls.app}/0")
     jdbc_uri, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     kyuubi_unit_ip = juju.status().apps[APP_NAME].units[f"{APP_NAME}/0"].address
@@ -170,6 +172,7 @@ def test_tls_with_external_exposure(
     expose_external: str,
     service_type: str,
 ):
+    """Test the endpoint exposed by Kyuubi on different types like NodePort and LoadBalancer."""
     logger.info(f"Changing expose-external to '{expose_external}' for kyuubi-k8s charm...")
     juju.config(APP_NAME, {"expose-external": expose_external})
 
@@ -221,6 +224,7 @@ def test_kill_pod_and_verify_tls_on_new_pod(
 
 
 def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
+    """Renew the TLS certificate and check the Kyuubi connection."""
     old_ca_cert = fetch_ca_certificate(juju, f"{charm_versions.tls.app}/0")
 
     # invalidate previous certs
@@ -275,6 +279,7 @@ def test_renew_cert(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms)
 def test_set_tls_private_key_secret_not_granted(
     juju: jubilant.Juju, rsa_key_pair: tuple[bytes, bytes]
 ) -> None:
+    """Set tls-client-private-key config option to a secret which is not granted."""
     private_key, public_key = rsa_key_pair
     secret_name = "tls-key-not-granted"
     secret_uri = juju.add_secret(secret_name, {"private-key": private_key.decode()})
@@ -291,6 +296,7 @@ def test_set_tls_private_key_secret_not_granted(
 def test_set_tls_private_key_secret_not_valid(
     juju: jubilant.Juju, rsa_key_pair: tuple[bytes, bytes]
 ) -> None:
+    """Set tls-client-private-key config option to a secret which is not valid."""
     private_key, public_key = rsa_key_pair
     secret_name = "tls-key-invalid-1"
     secret_uri = juju.add_secret(secret_name, {"foo-bar": private_key.decode()})
@@ -316,6 +322,7 @@ def test_set_tls_private_key_secret_not_valid(
 def test_set_tls_private_key_valid(
     juju: jubilant.Juju, charm_versions, rsa_key_pair: tuple[bytes, bytes], context
 ) -> None:
+    """Set tls-client-private-key config option to a secret that's valid, and test the Kyuubi connection."""
     private_key, public_key = rsa_key_pair
     secret_name = "tls-key-valid"
     secret_uri = juju.add_secret(secret_name, {"private-key": private_key.decode()})
@@ -350,6 +357,7 @@ def test_set_tls_private_key_valid(
 def test_update_tls_private_key(
     juju: jubilant.Juju, charm_versions, rsa_key_pair: tuple[bytes, bytes], context
 ) -> None:
+    """Update the TLS private key set by the user and test Kyuubi connection."""
     private_key, public_key = rsa_key_pair
     secret_name = context.pop("tls_private_key_secret_name")
     b64encoded_private_key = base64.b64encode(private_key).decode()
@@ -385,6 +393,7 @@ def test_update_tls_private_key(
 def test_renew_certificate_using_users_private_key(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, context
 ) -> None:
+    """Test renewal of TLS certificate while the user has configured custom TLS private key."""
     old_ca_cert = fetch_ca_certificate(juju, f"{charm_versions.tls.app}/0")
 
     # invalidate previous certs
@@ -446,9 +455,8 @@ def test_renew_certificate_using_users_private_key(
     )
 
 
-def test_remove_tls_private_key_config(
-    juju: jubilant.Juju, charm_versions, rsa_key_pair: tuple[bytes, bytes], context
-) -> None:
+def test_remove_tls_private_key_config(juju: jubilant.Juju, charm_versions, context) -> None:
+    """Test removal of tls-client-private-key config option."""
     juju.config(APP_NAME, reset="tls-client-private-key")
     juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status), delay=10
