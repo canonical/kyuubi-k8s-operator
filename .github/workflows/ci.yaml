@@ -135,11 +135,25 @@ jobs:
         if: ${{ failure() }}
         run: |
           juju-crashdump
+          # replay juju-debug logs
+          sudo snap install yq
+          for model in $(juju models --format yaml | yq '.models[] | .name');
+          do
+            echo "Model: $model"
+            if [[ ${model} != *"controller"* ]];then
+              juju debug-log --model $model --replay
+            fi
+          done
+
+          # get pods 
+          kubectl get pods -A
+
+          # events
+          kubectl events -A
+
           echo "Done"
 
   test-refresh:
-    # skip refresh test temporarily because the changes are not compatible
-    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -199,4 +213,20 @@ jobs:
         if: ${{ failure() }}
         run: |
           juju-crashdump
+          # replay juju-debug logs
+          sudo snap install yq
+          for model in $(juju models --format yaml | yq '.models[] | .name');
+          do
+            echo "Model: $model"
+            if [[ ${model} != *"controller"* ]];then
+              juju debug-log --model $model --replay
+            fi
+          done
+
+          # get pods 
+          kubectl get pods -A
+
+          # events
+          kubectl events -A
+          
           echo "Done"

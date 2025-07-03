@@ -44,7 +44,9 @@ def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path) -> Non
     logger.info("Setting configuration for kyuubi-k8s charm...")
     namespace = cast(str, juju.model)
     username = "kyuubi-spark-engine"
-    juju.config(APP_NAME, {"namespace": namespace, "service-account": username})
+    juju.config(
+        APP_NAME, {"namespace": namespace, "service-account": username, "profile": "testing"}
+    )
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     status = juju.wait(jubilant.all_blocked, delay=5)
@@ -105,14 +107,6 @@ def test_deploy_integration_hub(
             status, charm_versions.s3.app, charm_versions.integration_hub.app
         )
     )
-
-    # Add configuration key
-    task = juju.run(
-        f"{charm_versions.integration_hub.app}/0",
-        "add-config",
-        {"conf": "spark.kubernetes.executor.request.cores=0.1"},
-    )
-    assert task.return_code == 0
 
     logger.info("Integrating s3-integrator charm with integration-hub charm...")
     juju.integrate(charm_versions.integration_hub.application_name, charm_versions.s3.app)

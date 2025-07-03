@@ -170,6 +170,32 @@ def delete_pod(pod_name: str, namespace: str) -> None:
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
+def delete_engines_pod(namespace: str, pod_prefix: str = "kyuubi-user-spark-sql") -> None:
+    """Delete engine pods with given name and namespace."""
+    logger.info("Delete engines pod.")
+
+    command = ["kubectl", "get", "pods", "-n", namespace]
+
+    process = subprocess.run(command, capture_output=True, check=True)
+    assert process.returncode == 0
+
+    output_lines = process.stdout.decode().splitlines()
+    for line in output_lines:
+        pod_name = line.split()[0]
+        logger.info(f"pod name: {pod_name}")
+        if pod_name.startswith(pod_prefix):
+            logger.info(f"DELETE pod name: {pod_name}")
+            delete_command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
+            try:
+                process = subprocess.run(delete_command, capture_output=True, check=True)
+                if process.returncode == 0:
+                    logger.info(f"Deleted pod: {pod_name}")
+            except Exception:
+                logger.info(f"Delete of pod: {pod_name} failed!")
+                logger.info(f"pod status: {line}")
+                pass
+
+
 def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     """Return the process ID of Kyuubi process in given pod."""
     pod_name = unit.replace("/", "-")
@@ -425,7 +451,7 @@ def deploy_minimal_kyuubi_setup(
         "base": "ubuntu@22.04",
         "trust": trust,
         # TODO(ga): Use stable revision
-        "revision": 87,
+        "revision": 92,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -446,6 +472,12 @@ def deploy_minimal_kyuubi_setup(
     username = "kyuubi-spark-engine"
     charm_config = {"namespace": namespace, "service-account": username}
     juju.config(APP_NAME, charm_config)
+
+    # try to apply profile = testing (cannot be available in charmhub)
+    try:
+        juju.config(APP_NAME, {"profile": "testing"})
+    except Exception:
+        pass
 
     logger.info("Waiting for kyuubi-k8s app to settle...")
     status = juju.wait(jubilant.all_blocked)
