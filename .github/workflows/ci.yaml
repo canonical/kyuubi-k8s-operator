@@ -138,8 +138,6 @@ jobs:
           echo "Done"
 
   test-refresh:
-    # skip refresh test temporarily because the changes are not compatible
-    if: false
     strategy:
       fail-fast: false
       matrix:
