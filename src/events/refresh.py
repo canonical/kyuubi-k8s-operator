@@ -65,14 +65,6 @@ class KyuubiRefresh(charm_refresh.CharmSpecificKubernetes):
         - same MAJOR for kyuubi, greater or equal MINOR, enforced by the 'workload' key
           in refresh_versions.toml
         """
-        # FIXME(refresh): Remove once this check is upstreamed
-        if not old_charm_version.track == new_charm_version.track:
-            logger.info(
-                "Refreshing to a different track is not supported. "
-                f"Got {old_charm_version.track} to {new_charm_version.track}"
-            )
-            return False
-
         # Check charm version compatibility
         if not super().is_compatible(
             old_charm_version=old_charm_version,
