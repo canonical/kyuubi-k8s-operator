@@ -65,7 +65,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
             refresh_events=[self.refresh_tls_certificates_event],
         )
 
-        self._init_credentials()
+        # self._init_credentials()
 
         self.framework.observe(
             getattr(self.charm.on, "certificates_relation_created"), self._on_certificates_created
@@ -103,11 +103,12 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
-        self.logger.error("certfiicate available...")
         # avoid setting tls files and restarting
         if not self.workload.ready():
             event.defer()
             return
+
+        self._init_credentials()
 
         self.context.unit_server.update(
             {"certificate": event.certificate.raw, "ca-cert": event.ca.raw}
