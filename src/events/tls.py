@@ -134,9 +134,8 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         # remove all existing keystores from the unit so we don't preserve certs
         self.tls_manager.remove_stores()
-
-        if not self.charm.unit.is_leader():
-            return
-
-        self.context.cluster.update({"tls": ""})
         self.kyuubi.update(set_tls_none=True)
+
+        if self.charm.unit.is_leader():
+            self.context.cluster.update({"tls": ""})
+            self.charm.provider_events.update_clients_endpoints()
