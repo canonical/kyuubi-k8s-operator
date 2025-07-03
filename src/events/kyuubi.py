@@ -56,9 +56,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             self.charm.on[PEER_REL].relation_joined, self._on_peer_relation_joined
         )
         self.framework.observe(
-            self.charm.on[PEER_REL].relation_changed, self._on_peer_relation_changed
-        )
-        self.framework.observe(
             self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
         )
 
@@ -114,35 +111,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
         if self.context.tls:
             self.charm.tls_events.refresh_tls_certificates_event.emit()
-
-    def has_sans_changed(self):
-        """Check if the certificate needs to be generated again due to change in the sans."""
-        current_sans = self.tls_manager.get_current_sans()
-
-        current_sans_ip = set(current_sans.sans_ip) if current_sans else set()
-        expected_sans_ip = (
-            set(self.tls_manager.build_sans().sans_ip) if self.context.cluster.tls else set()
-        )
-        sans_ip_changed = current_sans_ip ^ expected_sans_ip
-
-        current_sans_dns = set(current_sans.sans_dns) if current_sans else set()
-        expected_sans_dns = (
-            set(self.tls_manager.build_sans().sans_dns) if self.context.cluster.tls else set()
-        )
-        sans_dns_changed = current_sans_dns ^ expected_sans_dns
-
-        if sans_ip_changed or sans_dns_changed:
-            self.logger.info(
-                (
-                    f"SERVER {self.charm.unit.name.split('/')[1]} has its certificate SANs changed - "
-                    f"OLD SANs IP = {current_sans_ip - expected_sans_ip}, "
-                    f"NEW SANs IP = {expected_sans_ip - current_sans_ip}, "
-                    f"OLD SANs DNS = {current_sans_dns - expected_sans_dns}, "
-                    f"NEW SANs DNS = {expected_sans_dns - current_sans_dns}"
-                )
-            )
-            return True
-        return False
 
     def _update_event(self, _):
         """Handle the update event hook."""
@@ -218,12 +186,4 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 self.context.cluster.update_admin_password(password=admin_password)
 
         if self.context.tls and should_refresh_tls_certificates:
-            self.charm.tls_events.refresh_tls_certificates_event.emit()
-
-    @defer_when_not_ready
-    def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
-        """Handle the peer relation changed event."""
-        self.logger.info("Kyuubi peer relation changed...")
-
-        if self.has_sans_changed():
             self.charm.tls_events.refresh_tls_certificates_event.emit()
