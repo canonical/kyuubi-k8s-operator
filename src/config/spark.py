@@ -49,7 +49,8 @@ class SparkConfig(WithLogging):
         if self.charm_config.profile == "testing":
             conf.update(
                 {
-                    "spark.kubernetes.executor.request.cores": "0.1",
+                    "spark.kubernetes.executor.request.cores": "100m",
+                    "spark.kubernetes.driver.request.cores": "100m",
                 }
             )
         return conf

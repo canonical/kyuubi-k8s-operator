@@ -104,6 +104,8 @@ def test_profile_config_option(
     logger.info(f"profile: testing => spark_properties: {spark_properties}")
     if profile == "testing":
         assert "spark.kubernetes.executor.request.cores" in spark_properties
-        assert spark_properties["spark.kubernetes.executor.request.cores"] == "0.1"
+        assert spark_properties["spark.kubernetes.executor.request.cores"] == "100m"
+        assert spark_properties["spark.kubernetes.driver.request.cores"] == "100m"
     else:
         assert "spark.kubernetes.executor.request.cores" not in spark_properties
+        assert "spark.kubernetes.driver.request.cores" not in spark_properties
