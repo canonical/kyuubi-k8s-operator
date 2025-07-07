@@ -107,6 +107,7 @@ def test_populate(
     We will use this to assert that we can still query data written prior to the inplace upgrade.
     """
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    logger.info(f"Username: {username} - Password: {password}")
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         db_name=DB_NAME,
@@ -210,6 +211,7 @@ def test_create_new_data(
 ) -> None:
     """Test that the upgraded deployment is valid (can connect with auth, and write)."""
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    logger.info(f"Username: {username} - Password: {password}")
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
     )
@@ -224,6 +226,7 @@ def test_validate_previous_data(
     This test is skipped if we were relying on the local metastore, since it would be gone.
     """
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    logger.info(f"Username: {username} - Password: {password}")
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         username=username,
@@ -300,6 +303,7 @@ def test_fail_and_rollback(
 
     logger.info("Checking that deployment is working once again")
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    logger.info(f"Username: {username} - Password: {password}")
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
     )
