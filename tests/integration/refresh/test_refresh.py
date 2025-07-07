@@ -196,7 +196,7 @@ def test_run_inplace_upgrade(
     try:
         juju.config(APP_NAME, {"profile": "testing"})
     except Exception:
-        pass
+        logger.info("Failed to apply the profile config option.")
 
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 

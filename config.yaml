@@ -40,7 +40,7 @@ options:
     default: first
   profile:
     description: |
-      "Profile representing the scope of deployment, and used to enable high-level customisation of sysconfigs, resource checks/allocation, warning levels, etc. 
-      Allowed values are: “production”, “staging” and “testing”"
+      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc. 
+      Allowed values are: "production", "staging" and "testing"
     type: string
     default: production

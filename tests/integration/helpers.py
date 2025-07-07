@@ -171,8 +171,8 @@ def delete_pod(pod_name: str, namespace: str) -> None:
 
 
 def delete_engines_pod(namespace: str, pod_prefix: str = "kyuubi-user-spark-sql") -> None:
-    """Delete engine pods with given name and namespace."""
-    logger.info("Delete engines pod.")
+    """Delete engine pods with given name prefix and namespace."""
+    logger.info("Deleting engines pod that are still active.")
 
     command = ["kubectl", "get", "pods", "-n", namespace]
 
@@ -191,9 +191,8 @@ def delete_engines_pod(namespace: str, pod_prefix: str = "kyuubi-user-spark-sql"
                 if process.returncode == 0:
                     logger.info(f"Deleted pod: {pod_name}")
             except Exception:
-                logger.info(f"Delete of pod: {pod_name} failed!")
-                logger.info(f"pod status: {line}")
-                pass
+                logger.info(f"Deletion of pod: {pod_name} failed!")
+                logger.info(f"Pod status: {line}")
 
 
 def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
@@ -473,11 +472,12 @@ def deploy_minimal_kyuubi_setup(
     charm_config = {"namespace": namespace, "service-account": username}
     juju.config(APP_NAME, charm_config)
 
-    # try to apply profile = testing (cannot be available in charmhub)
+    # try to apply profile = testing
     try:
         juju.config(APP_NAME, {"profile": "testing"})
     except Exception:
-        pass
+        # the previous version of the charm (for example in the refresh tests) may not have the profile config option.
+        logger.info("Application of profile config option failed.")
 
     logger.info("Waiting for kyuubi-k8s app to settle...")
     status = juju.wait(jubilant.all_blocked)
