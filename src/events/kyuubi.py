@@ -105,12 +105,27 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        self.logger.info(
-            "Managed K8s service is available; completed handling config-changed event."
+        # Update the TLS private key in the peer app databag, so that peer-relation-changed can regenerate certificates
+        self.charm.context.cluster.set_private_key(
+            key.raw if (key := self.charm.validate_and_get_private_key()) else ""
         )
 
-        if self.context.tls:
-            self.charm.tls_events.refresh_tls_certificates_event.emit()
+        # Check the newly created service endpoint is available
+        if not (
+            endpoint := self.service_manager.get_service_endpoint(
+                expose_external=self.charm.config.expose_external
+            )
+        ):
+            self.logger.info(
+                "Managed K8s service is not available yet; deferring config-changed event now..."
+            )
+            event.defer()
+            return
+        else:
+            self.logger.info(
+                "Managed K8s service is available; completed handling config-changed event."
+            )
+            self.charm.context.unit_server.set_subject_common_name(endpoint.host)
 
     def _update_event(self, _):
         """Handle the update event hook."""
@@ -138,7 +153,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
     def _on_secret_changed(self, event: SecretChangedEvent) -> None:
         """Reconfigure services on a secret changed event."""
-        should_refresh_tls_certificates = False
         if not self.context.cluster.relation:
             event.defer()
             return
@@ -159,9 +173,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         if (
             self.charm.config.tls_client_private_key
             and self.charm.config.tls_client_private_key == event.secret.id
-            and self.charm.validate_and_get_private_key()
+            and (key := self.charm.validate_and_get_private_key())
         ):
-            should_refresh_tls_certificates = True
+            self.context.cluster.set_private_key(key.raw)
 
         if (
             self.charm.unit.is_leader()
@@ -185,5 +199,8 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
                 self.context.cluster.update_admin_password(password=admin_password)
 
-        if self.context.tls and should_refresh_tls_certificates:
-            self.charm.tls_events.refresh_tls_certificates_event.emit()
+    @defer_when_not_ready
+    def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
+        """Handle the peer relation changed event."""
+        self.logger.info("Kyuubi peer relation changed...")
+        self.charm.tls_events.refresh_tls_certificates_event.emit()
