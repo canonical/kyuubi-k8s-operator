@@ -61,7 +61,7 @@ class AuthenticationEvents(BaseEventHandler, WithLogging):
                 self.charm.validate_and_get_admin_password() or auth.generate_password()
             )
             auth.prepare_auth_db(admin_password=admin_password)
-            self.context.cluster.update_admin_password(password=admin_password)
+            self.context.cluster.set_admin_password(password=admin_password)
             self.logger.info("Authentication database created...")
 
         self.kyuubi.update()

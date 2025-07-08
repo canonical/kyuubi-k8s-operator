@@ -321,15 +321,6 @@ class KyuubiServer(RelationState):
         return self.relation_data.get("truststore-password", "")
 
     @property
-    def subject_common_name(self) -> str:
-        """The current certificate signing request contents for the unit."""
-        return self.relation_data.get("subject-common-name", "")
-
-    def set_subject_common_name(self, common_name: str) -> None:
-        """Set the common name of unit server for generating CSR."""
-        self.relation_data.update({"subject-common-name": common_name})
-
-    @property
     def csr(self) -> str:
         """The current certificate signing request contents for the unit."""
         return self.relation_data.get("csr", "")
@@ -413,16 +404,20 @@ class KyuubiCluster(RelationState):
 
     def set_private_key(self, private_key: str) -> None:
         """Update the private key units of the cluster."""
-        self.relation_data.update({"private-key": private_key})
+        self.update({"private-key": private_key})
 
     @property
     def admin_password(self) -> str:
         """The admin password for the cluster."""
         return self.relation_data.get(ADMIN_PASSWORD_KEY, "")
 
-    def update_admin_password(self, password: str) -> None:
+    def set_admin_password(self, password: str) -> None:
         """Update the admin password in peer app databag with given content."""
-        self.relation_data.update({ADMIN_PASSWORD_KEY: password})
+        self.update({ADMIN_PASSWORD_KEY: password})
+
+    def set_kyuubi_address(self, endpoint: Endpoint) -> None:
+        """Set the address of Kyuubi (for certificate regeneration purposes)."""
+        self.update({"kyuubi-address": f"{endpoint.host}:{endpoint.port}"})
 
 
 class Secret(WithLogging):

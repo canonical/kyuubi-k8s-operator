@@ -94,7 +94,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 admin_password := self.charm.validate_and_get_admin_password()
             ) and admin_password != self.context.cluster.admin_password:
                 auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
-                self.context.cluster.update_admin_password(password=admin_password)
+                self.context.cluster.set_admin_password(password=admin_password)
 
         self.kyuubi.update()
 
@@ -108,27 +108,25 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        # Update the TLS private key in the peer app databag, so that peer-relation-changed can regenerate certificates
-        self.charm.context.cluster.set_private_key(
-            key.raw if (key := self.charm.validate_and_get_private_key()) else ""
-        )
-
         # Check the newly created service endpoint is available
-        if not (
-            endpoint := self.service_manager.get_service_endpoint(
-                expose_external=self.charm.config.expose_external
-            )
-        ):
+        external_address = self.context.unit_server.external_address
+        if not external_address:
             self.logger.info(
                 "Managed K8s service is not available yet; deferring config-changed event now..."
             )
             event.defer()
             return
-        else:
-            self.logger.info(
-                "Managed K8s service is available; completed handling config-changed event."
+
+        self.logger.error(
+            "Managed K8s service is available; completed handling config-changed event."
+        )
+        if self.charm.unit.is_leader():
+            # Update the TLS private key in the peer app databag,
+            # so that peer-relation-changed can regenerate certificates
+            self.charm.context.cluster.set_private_key(
+                key.raw if (key := self.charm.validate_and_get_private_key()) else ""
             )
-            self.charm.context.unit_server.set_subject_common_name(endpoint.host)
+            self.context.cluster.set_kyuubi_address(external_address)
 
     @defer_when_not_ready
     def _update_event(self, _):
@@ -201,7 +199,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 admin_password := self.charm.validate_and_get_admin_password()
             ) and admin_password != self.context.cluster.admin_password:
                 auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
-                self.context.cluster.update_admin_password(password=admin_password)
+                self.context.cluster.set_admin_password(password=admin_password)
 
     @defer_when_not_ready
     def _on_peer_relation_changed(self, _: ops.RelationChangedEvent):
