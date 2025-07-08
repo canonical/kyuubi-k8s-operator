@@ -138,8 +138,21 @@ jobs:
         if: ${{ failure() }}
         run: |
           juju-crashdump
+          # replay juju-debug logs
+          sudo snap install yq
+          for model in $(juju models --format yaml | yq '.models[] | .name');
+          do
+            echo "Model: $model"
+            if [[ ${model} != *"controller"* ]];then
+              juju debug-log --model $model --replay
+            fi
+          done
+          # get pods 
+          kubectl get pods -A
+          # events
+          kubectl events -A
           echo "Done"
-
+  
   test-refresh:
     strategy:
       fail-fast: false
