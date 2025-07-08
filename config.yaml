@@ -38,3 +38,9 @@ options:
       Allowed values: "all", "first", "none"
     type: string
     default: first
+  profile:
+    description: |
+      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc. 
+      Allowed values are: "production", "staging" and "testing"
+    type: string
+    default: production
