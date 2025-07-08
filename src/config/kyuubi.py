@@ -80,7 +80,7 @@ class KyuubiConfig(WithLogging):
 
     @property
     def _tls_conf(self) -> dict[str, str]:
-        if not self.tls:
+        if not self.tls or not self.keystore_path:
             return {}
         return {
             "kyuubi.frontend.ssl.keystore.password": self.tls.keystore_password,

@@ -272,6 +272,7 @@ def test_certificate_available(
         ),
         patch("managers.tls.TLSManager.set_truststore") as mock_set_truststore,
         patch("managers.tls.TLSManager.set_p12_keystore") as mock_set_keystore,
+        patch("core.workload.kyuubi.KyuubiWorkload.exists", return_value=True),
         patch(
             "core.workload.kyuubi.KyuubiWorkload.kyuubi_version",
             return_value="1.10.0",
