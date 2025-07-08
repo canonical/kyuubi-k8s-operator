@@ -361,7 +361,6 @@ def test_update_tls_private_key(
     private_key, public_key = rsa_key_pair
     secret_name = context.pop("tls_private_key_secret_name")
     b64encoded_private_key = base64.b64encode(private_key).decode()
-    print(b64encoded_private_key)
     juju.cli("update-secret", secret_name, f"private-key={b64encoded_private_key}")
     context["public_key"] = public_key
     juju.wait(

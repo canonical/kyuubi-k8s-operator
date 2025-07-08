@@ -195,6 +195,7 @@ def test_run_inplace_upgrade(
 def test_create_new_data(
     juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
     """Test that the upgraded deployment is valid (can connect with auth, and write)."""
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
