@@ -56,6 +56,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             self.charm.on[PEER_REL].relation_joined, self._on_peer_relation_joined
         )
         self.framework.observe(
+            self.charm.on[PEER_REL].relation_changed, self._on_peer_relation_changed
+        )
+        self.framework.observe(
             self.charm.on[PEER_REL].relation_departed, self._on_peer_relation_departed
         )
 
@@ -127,6 +130,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             )
             self.charm.context.unit_server.set_subject_common_name(endpoint.host)
 
+    @defer_when_not_ready
     def _update_event(self, _):
         """Handle the update event hook."""
         self.kyuubi.update()
