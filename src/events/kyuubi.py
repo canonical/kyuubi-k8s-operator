@@ -46,6 +46,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.tls_manager = TLSManager(context=self.context, workload=self.workload)
 
         self.framework.observe(self.charm.on.install, self._on_install)
+        self.framework.observe(self.charm.on.upgrade_charm, self._on_kyuubi_upgrade)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
@@ -64,6 +65,22 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
     def _on_install(self, _: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
+
+    @defer_when_not_ready
+    def _on_kyuubi_upgrade(self, event: ops.UpgradeCharmEvent) -> None:
+        """Handle the upgrade_charm event."""
+        if not self.context.cluster.relation:
+            event.defer()
+            return
+
+        # Recreate the TLS files in the container if TLS has been enabled
+        if self.context.tls:
+            self.tls_manager.set_private_key()
+            self.tls_manager.set_ca()
+            self.tls_manager.set_certificate()
+            self.tls_manager.set_truststore()
+            self.tls_manager.set_p12_keystore()
+            self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
