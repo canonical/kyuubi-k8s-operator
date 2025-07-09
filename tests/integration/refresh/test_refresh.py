@@ -20,6 +20,7 @@ import yaml
 
 from integration.helpers import (
     APP_NAME,
+    delete_engines_pod,
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
     get_leader_unit,
@@ -194,6 +195,18 @@ def test_run_inplace_upgrade(
         and jubilant.all_agents_idle(status, APP_NAME),
         delay=10,
     )
+
+    # try to apply testing profile to use less resources
+    try:
+        juju.config(APP_NAME, {"profile": "testing"})
+    except Exception:
+        logger.info("Failed to apply the profile config option.")
+
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
+
+    # kill all existing engines to free up resources in runners.
+
+    delete_engines_pod(juju.model)
 
 
 def test_create_new_data(

@@ -173,6 +173,28 @@ def delete_pod(pod_name: str, namespace: str) -> None:
     assert process.returncode == 0, f"Could not delete the pod {pod_name}."
 
 
+def delete_engines_pod(namespace: str, pod_prefix: str = "kyuubi-user-spark-sql") -> None:
+    """Delete engine pods with given name prefix and namespace."""
+    logger.info("Deleting engines pod that are still active.")
+
+    command = ["kubectl", "get", "pods", "-n", namespace]
+
+    process = subprocess.run(command, capture_output=True, check=True)
+    assert process.returncode == 0
+
+    output_lines = process.stdout.decode().splitlines()
+    for line in output_lines:
+        pod_name = line.split()[0]
+        if pod_name.startswith(pod_prefix):
+            delete_command = ["kubectl", "delete", "pod", pod_name, "-n", namespace]
+            try:
+                process = subprocess.run(delete_command, capture_output=True, check=True)
+                if process.returncode == 0:
+                    logger.info(f"Deleted pod: {pod_name}")
+            except Exception:
+                logger.info(f"Deletion of pod: {pod_name} failed!")
+
+
 def get_kyuubi_pid(juju: jubilant.Juju, unit: str) -> str | None:
     """Return the process ID of Kyuubi process in given pod."""
     pod_name = unit.replace("/", "-")
@@ -449,6 +471,13 @@ def deploy_minimal_kyuubi_setup(
     username = "kyuubi-spark-engine"
     charm_config = {"namespace": namespace, "service-account": username}
     juju.config(APP_NAME, charm_config)
+
+    # try to apply profile = testing
+    try:
+        juju.config(APP_NAME, {"profile": "testing"})
+    except Exception:
+        # the previous version of the charm (for example in the refresh tests) may not have the profile config option.
+        logger.info("Application of profile config option failed.")
 
     logger.info("Waiting for kyuubi-k8s app to settle...")
     status = juju.wait(jubilant.all_blocked)

@@ -7,7 +7,7 @@
 
 import logging
 import re
-from typing import Optional
+from typing import Literal, Optional
 
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
 from pydantic import Field
@@ -30,3 +30,4 @@ class CharmConfig(BaseConfigModel):
     iceberg_catalog_name: str
     system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
     tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
+    profile: Literal["production", "staging", "testing"]
