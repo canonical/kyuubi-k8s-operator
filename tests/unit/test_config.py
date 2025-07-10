@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from unittest.mock import patch
 
+import ops
 import pytest
 import yaml
 from ops.testing import Container, Context, PeerRelation, Relation, State
@@ -42,6 +43,17 @@ def ctx() -> Context:
         actions=ACTIONS,
     )
     return ctx
+
+
+# def check_invalid_values(field: str, erroneus_values: Iterable) -> None:
+#     """Check the incorrectness of the passed values for a field."""
+#     flat_config_options = {
+#         option_name: mapping.get("default") for option_name, mapping in CONFIG["options"].items()
+#     }
+#     for value in erroneus_values:
+#         with pytest.raises(ValidationError) as excinfo:
+#             CharmConfig(**{**flat_config_options, **{field: value}})
+#         assert field in excinfo.value.errors()[0]["loc"]
 
 
 @pytest.fixture()
@@ -110,3 +122,136 @@ def test_profile_config_option(
     else:
         assert "spark.kubernetes.executor.request.cores" not in spark_properties
         assert "spark.kubernetes.driver.request.cores" not in spark_properties
+
+
+@patch("managers.auth.AuthenticationManager.set_password")
+@patch("managers.auth.AuthenticationManager.user_exists", return_value=True)
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch(
+    "events.provider.KyuubiClientProviderEvents.update_clients_endpoints",
+    return_value=True,
+)
+@patch(
+    "managers.service.ServiceManager.get_service_endpoint",
+    return_value="10.10.10.10:10009",
+)
+@patch(
+    "managers.service.ServiceManager.reconcile_services",
+    return_value=True,
+)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch(
+    "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
+)
+@pytest.mark.parametrize(
+    "k8s_selectors",
+    [
+        ("a:b", [("spark.kubernetes.node.selector.a", "b")]),
+        (
+            "a:b,c:d",
+            [("spark.kubernetes.node.selector.a", "b"), ("spark.kubernetes.node.selector.c", "d")],
+        ),
+    ],
+)
+def test_k8s_node_selectors_config_option(
+    mock_sa_conf,
+    mock_s3_configured,
+    mock_get_master,
+    mock_reconcile_service,
+    mock_service_endpoint,
+    mock_update_client_endpoints,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_user_exists,
+    mock_set_password,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
+    kyuubi_peers_relation: PeerRelation,
+    tmp_path,
+    k8s_selectors,
+) -> None:
+    """Test profile config option."""
+    logger.info(f"{k8s_selectors[0]}")
+    logger.info(f"{k8s_selectors[1]}")
+    state = State(
+        relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
+        containers=[kyuubi_container],
+        config={"k8s-node-selectors": k8s_selectors[0]},
+        leader=True,
+    )
+    out = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
+    assert out.unit_status == Status.ACTIVE.value
+
+    spark_properties = parse_spark_properties(tmp_path)
+    logger.info(f"profile: testing => spark_properties: {spark_properties}")
+
+    for k, v in k8s_selectors[1]:
+        assert k in spark_properties
+        assert spark_properties[k] == v
+
+
+@patch("managers.auth.AuthenticationManager.set_password")
+@patch("managers.auth.AuthenticationManager.user_exists", return_value=True)
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch(
+    "events.provider.KyuubiClientProviderEvents.update_clients_endpoints",
+    return_value=True,
+)
+@patch(
+    "managers.service.ServiceManager.get_service_endpoint",
+    return_value="10.10.10.10:10009",
+)
+@patch(
+    "managers.service.ServiceManager.reconcile_services",
+    return_value=True,
+)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch(
+    "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
+)
+@pytest.mark.parametrize(
+    "k8s_selectors",
+    [
+        ("ab", [("spark.kubernetes.node.selector.a", "b")]),
+        (
+            "a:b,c:d,a:c",
+            [("spark.kubernetes.node.selector.a", "b"), ("spark.kubernetes.node.selector.c", "d")],
+        ),
+    ],
+)
+def test_wrong_k8s_node_selectors_config_option(
+    mock_sa_conf,
+    mock_s3_configured,
+    mock_get_master,
+    mock_reconcile_service,
+    mock_service_endpoint,
+    mock_update_client_endpoints,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_user_exists,
+    mock_set_password,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
+    kyuubi_peers_relation: PeerRelation,
+    tmp_path,
+    k8s_selectors,
+) -> None:
+    """Test profile config option."""
+    state = State(
+        relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
+        containers=[kyuubi_container],
+        config={"k8s-node-selectors": k8s_selectors[0]},
+        leader=True,
+    )
+    try:
+        _ = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
+    except ops.testing.errors.UncaughtCharmError as excinfo:
+        assert "ValidationError" in str(excinfo)
