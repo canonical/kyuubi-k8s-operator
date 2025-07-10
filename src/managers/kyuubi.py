@@ -12,7 +12,7 @@ from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
 from core.context import Context
-from core.workload import KyuubiWorkloadBase
+from core.workload.kyuubi import KyuubiWorkload
 from utils.logging import WithLogging
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class KyuubiManager(WithLogging):
     def __init__(
         self,
         charm: KyuubiCharm,
-        workload: KyuubiWorkloadBase,
+        workload: KyuubiWorkload,
         context: Context,
     ):
         self.charm = charm
@@ -108,6 +108,16 @@ class KyuubiManager(WithLogging):
                 self.workload.stop()
             except Exception:
                 self.logger.warning("Could not stop Kyuubi workload even when auth db is missing.")
+            return
+
+        if tls_info and not self.workload.tls_ready():
+            self.logger.info("Workload stopped because TLS is being enabled.")
+            try:
+                self.workload.stop()
+            except Exception:
+                self.logger.warning(
+                    "Could not stop Kyuubi workload even when TLS is being enabled."
+                )
             return
 
         if not should_restart:

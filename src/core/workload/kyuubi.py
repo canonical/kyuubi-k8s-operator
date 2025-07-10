@@ -116,3 +116,16 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
                 return True
 
         return False
+
+    def tls_ready(self) -> bool:
+        """Returns if the workload is ready for TLS to be enabled.
+
+        This means that TLS related files are available in the container.
+        """
+        return all(
+            self.exists(file)
+            for file in [
+                self.paths.truststore,
+                self.paths.keystore,
+            ]
+        )

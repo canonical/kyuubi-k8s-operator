@@ -48,6 +48,7 @@ class Status(Enum):
         "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
     )
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
+    WAITING_FOR_TLS = MaintenanceStatus("Waiting for TLS to be enabled...")
     INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")
 
     SYSTEM_USERS_SECRET_DOES_NOT_EXIST = BlockedStatus(
