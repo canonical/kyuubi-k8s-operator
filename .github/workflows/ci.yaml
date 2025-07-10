@@ -131,9 +131,6 @@ jobs:
         run: tox run -e ${{ matrix.tox-environments }} -- -m '${{ steps.select-tests.outputs.mark_expression }}' --keep-models
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
-      - name: Setup upterm session
-        if: ${{ failure() }}
-        uses: lhotari/action-upterm@v1
       - name: Collect logs if job failed
         if: ${{ failure() }}
         run: |
