@@ -50,3 +50,13 @@ options:
       Allowed values are: "production", "staging" and "testing"
     type: string
     default: production
+  k8s-node-selectors:
+    type: string
+    description: |
+      Comma separated label:value selectors for K8s pods
+      Ex.: "<label1>:<value1>,<label2>:<value2>".
+      Is equivalent to the following Spark configuration:
+
+      spark.kubernetes.node.selector.<label1>=<value1>
+      spark.kubernetes.node.selector.<label2>=<value2>
+    default: ""
