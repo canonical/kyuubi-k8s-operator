@@ -48,6 +48,7 @@ class Status(Enum):
         "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
     )
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
+    WAITING_FOR_TLS = MaintenanceStatus("Waiting for TLS to be enabled...")
     INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")
 
     SYSTEM_USERS_SECRET_DOES_NOT_EXIST = BlockedStatus(
@@ -59,6 +60,16 @@ class Status(Enum):
     SYSTEM_USERS_SECRET_INVALID = BlockedStatus(
         "Secret provided as system-users has invalid content"
     )
+    TLS_SECRET_DOES_NOT_EXIST = BlockedStatus(
+        "Secret provided as tls-client-private-key does not exist"
+    )
+    TLS_SECRET_INSUFFICIENT_PERMISSION = BlockedStatus(
+        "Secret provided as tls-client-private-key has not been granted to the charm"
+    )
+    TLS_SECRET_INVALID = BlockedStatus(
+        "Secret provided as tls-client-private-key has invalid content"
+    )
+
     NOT_SERVING_REQUESTS = MaintenanceStatus("Kyuubi is not serving requests")
 
     ACTIVE = ActiveStatus("")
@@ -385,13 +396,29 @@ class KyuubiCluster(RelationState):
         return self.relation_data.get("tls", "") == "enabled"
 
     @property
+    def private_key(self) -> str:
+        """The private key used for generating CSR cluster-wide.
+
+        If empty, it means the charm leaves the handling of private keys to the TLS lib itself.
+        """
+        return self.relation_data.get("private-key", "")
+
+    def set_private_key(self, private_key: str) -> None:
+        """Update the private key units of the cluster."""
+        self.update({"private-key": private_key})
+
+    @property
     def admin_password(self) -> str:
         """The admin password for the cluster."""
         return self.relation_data.get(ADMIN_PASSWORD_KEY, "")
 
-    def update_admin_password(self, password: str) -> None:
+    def set_admin_password(self, password: str) -> None:
         """Update the admin password in peer app databag with given content."""
-        self.relation_data.update({ADMIN_PASSWORD_KEY: password})
+        self.update({ADMIN_PASSWORD_KEY: password})
+
+    def set_kyuubi_address(self, endpoint: Endpoint) -> None:
+        """Set the address of Kyuubi (for certificate regeneration purposes)."""
+        self.update({"kyuubi-address": f"{endpoint.host}:{endpoint.port}"})
 
 
 class Secret(WithLogging):

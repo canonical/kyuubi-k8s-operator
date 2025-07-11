@@ -152,7 +152,7 @@ jobs:
           kubectl events -A
 
           echo "Done"
-
+  
   test-refresh:
     strategy:
       fail-fast: false

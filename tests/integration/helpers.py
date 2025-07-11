@@ -25,6 +25,9 @@ import requests
 import tomli
 import tomli_w
 import yaml
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import load_pem_x509_certificate
 from lightkube.resources.core_v1 import Service
 from spark8t.domain import PropertyFile
 from spark_test.core.kyuubi import KyuubiClient
@@ -803,3 +806,24 @@ def inject_dependency_fault(original_charm_file: Path) -> Generator[Path, None, 
 
     fault_charm.unlink(missing_ok=True)
     tmp.rmdir()
+
+
+def verify_certificate_matches_public_key(certificate: bytes, public_key: bytes) -> bool:
+    """Return whether the given certificate corresponds to the given public key."""
+    # Load certificate
+    cert_pubkey = load_pem_x509_certificate(certificate, backend=default_backend()).public_key()
+
+    # Load public key
+    given_pubkey = serialization.load_pem_public_key(public_key, backend=default_backend())
+
+    # Compare public keys as raw bytes
+    cert_pubkey_bytes = cert_pubkey.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    given_pubkey_bytes = given_pubkey.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    return cert_pubkey_bytes == given_pubkey_bytes

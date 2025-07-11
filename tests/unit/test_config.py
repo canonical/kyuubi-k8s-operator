@@ -14,6 +14,7 @@ from ops.testing import Container, Context, PeerRelation, Relation, State
 from charm import KyuubiCharm
 from constants import KYUUBI_CONTAINER_NAME
 from core.domain import Status
+from managers.service import Endpoint
 
 from .helpers import (
     parse_spark_properties,
@@ -59,7 +60,7 @@ def charm_configuration():
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
