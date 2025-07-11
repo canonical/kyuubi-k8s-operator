@@ -27,6 +27,7 @@ from ops.testing import Context, PeerRelation, Relation, Secret, State
 
 from charm import KyuubiCharm
 from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL, TLS_REL
+from core.domain import Status
 from managers.service import Endpoint
 
 PEER = "kyuubi-peers"
@@ -171,6 +172,49 @@ def test_relation_created_enables_tls(
     assert state_out.get_relation(cluster_peer.id).local_app_data.get("tls", "") == (
         "enabled" if is_leader else ""
     )
+
+
+@pytest.mark.parametrize("is_leader", [True, False])
+@patch("core.workload.kyuubi.KyuubiWorkload.tls_ready", return_value=False)
+@patch(
+    "managers.service.ServiceManager.get_service_endpoint",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
+)
+@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+def test_tls_enabled_but_not_ready(
+    mock_sa_valid,
+    mock_ns_valid,
+    mock_s3_configured,
+    mock_service_endpoint,
+    mock_tls_ready,
+    is_leader: bool,
+    kyuubi_context: Context[KyuubiCharm],
+    base_state: State,
+    spark_service_account_relation,
+    auth_db_relation,
+    kyuubi_peers_relation,
+) -> None:
+    """Ensure that charm unit goes to maintenance state when TLS enabled but files not ready."""
+    # Given
+    tls_relation = Relation(CERTS_REL_NAME, TLS_NAME)
+    state_in: State = dataclasses.replace(
+        base_state,
+        relations=[
+            kyuubi_peers_relation,
+            tls_relation,
+            spark_service_account_relation,
+            auth_db_relation,
+        ],
+        leader=is_leader,
+    )
+
+    # When
+    state_out = kyuubi_context.run(kyuubi_context.on.relation_created(tls_relation), state_in)
+
+    # Then
+    assert state_out.unit_status == Status.WAITING_FOR_TLS.value
 
 
 def test_certificate_available_gets_deferred_when_workload_not_ready(
