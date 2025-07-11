@@ -7,9 +7,9 @@ import logging
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from ops.testing import Container, Context, Relation, State
+from ops.testing import Container, Context, Relation, State, TCPPort
 
-from constants import JOB_OCI_IMAGE, KYUUBI_CONTAINER_NAME
+from constants import JDBC_PORT, JOB_OCI_IMAGE, KYUUBI_CONTAINER_NAME
 from core.domain import Status
 from managers.service import Endpoint
 
@@ -57,6 +57,7 @@ def test_pebble_ready(
     )
     out = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
     assert out.unit_status == Status.MISSING_INTEGRATION_HUB.value
+    assert out.opened_ports == {TCPPort(JDBC_PORT)}
 
 
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
