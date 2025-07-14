@@ -60,5 +60,5 @@ options:
       spark.kubernetes.node.selector.<label1>=<value1>
       spark.kubernetes.node.selector.<label2>=<value2>
       
-      The node selector will be applied for both driver and executor.
+      The desired configuration will be applied for both driver and executor pods.
     default: ""
