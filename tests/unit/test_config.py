@@ -45,17 +45,6 @@ def ctx() -> Context:
     return ctx
 
 
-# def check_invalid_values(field: str, erroneus_values: Iterable) -> None:
-#     """Check the incorrectness of the passed values for a field."""
-#     flat_config_options = {
-#         option_name: mapping.get("default") for option_name, mapping in CONFIG["options"].items()
-#     }
-#     for value in erroneus_values:
-#         with pytest.raises(ValidationError) as excinfo:
-#             CharmConfig(**{**flat_config_options, **{field: value}})
-#         assert field in excinfo.value.errors()[0]["loc"]
-
-
 @pytest.fixture()
 def charm_configuration():
     """Enable direct mutation on configuration dict."""
@@ -134,7 +123,7 @@ def test_profile_config_option(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
@@ -204,7 +193,7 @@ def test_k8s_node_selectors_config_option(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value="10.10.10.10:10009",
+    return_value=Endpoint(host="10.10.10.10", port=10009),
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
@@ -218,11 +207,16 @@ def test_k8s_node_selectors_config_option(
 @pytest.mark.parametrize(
     "k8s_selectors",
     [
-        ("ab", [("spark.kubernetes.node.selector.a", "b")]),
-        (
-            "a:b,c:d,a:c",
-            [("spark.kubernetes.node.selector.a", "b"), ("spark.kubernetes.node.selector.c", "d")],
-        ),
+        "ab",
+        "a:b,c:d,a:c",
+        "foo : bar  , grok : bar",
+        "foo : bar-grok , foo1 : bar1-grok1 ",
+        "a:b1",
+        "a:b-",
+        "foo-bar : my-val",
+        "foo-bar : my,val",
+        "foo:bar:grok",
+        "foo:bar,:grok",
     ],
 )
 def test_wrong_k8s_node_selectors_config_option(
@@ -248,7 +242,7 @@ def test_wrong_k8s_node_selectors_config_option(
     state = State(
         relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
         containers=[kyuubi_container],
-        config={"k8s-node-selectors": k8s_selectors[0]},
+        config={"k8s-node-selectors": k8s_selectors},
         leader=True,
     )
     try:

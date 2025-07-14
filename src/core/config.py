@@ -35,21 +35,20 @@ class CharmConfig(BaseConfigModel):
 
     @validator("k8s_node_selectors")
     @classmethod
-    def k8s_node_selectors_validator(cls, value: str) -> list[tuple[str, str]] | None:
+    def k8s_node_selectors_validator(cls, value: str) -> dict[str, str] | None:
         """Check validity of `k8s_node_selectors` field."""
         if not value:
             return None
-        pattern = r"^\s*\w+\s*:\s*[^,]+(\s*,\s*\w+\s*:\s*[^,]+)*\s*$"
-        if re.match(pattern, value):
-            res = []
-            keys = set()
-            for selector in value.split(","):
+        res: dict[str, str] = {}
+        for selector in value.split(","):
+            if selector.count(":") == 1:
                 key, val = selector.split(":", 1)
-                if key in keys:
-                    raise ValueError("Duplicate keys in the k8s selector option.")
-                res.append((key, val))
-                keys.add(key)
-
-            return res
-        else:
-            raise ValueError("Malformed k8s_node_selectors options.")
+                # check if key and value for selector respect the kubernetes name criteria
+                pattern = "^[a-z](?:[a-z0-9\\-]{0,61}[a-z0-9])?$"
+                if re.match(pattern, key) and re.match(pattern, val):
+                    if key in res.keys():
+                        raise ValueError("Duplicate keys in the k8s selector option.")
+                    res[key] = val
+            else:
+                raise ValueError("Malformed k8s_node_selectors options.")
+        return res
