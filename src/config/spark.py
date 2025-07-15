@@ -53,6 +53,13 @@ class SparkConfig(WithLogging):
                     "spark.kubernetes.driver.request.cores": "100m",
                 }
             )
+        if self.charm_config.k8s_node_selectors:
+            for k, v in self.charm_config.k8s_node_selectors.items():
+                conf.update(
+                    {
+                        f"spark.kubernetes.node.selector.{k}": v,
+                    }
+                )
         return conf
 
     def _sa_conf(self):
