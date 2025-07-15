@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, cast
 import ops
 from ops import SecretChangedEvent
 
-from constants import DEFAULT_ADMIN_USERNAME, PEER_REL
+from constants import DEFAULT_ADMIN_USERNAME, JDBC_PORT, PEER_REL
 from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
@@ -154,6 +154,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     def _on_kyuubi_pebble_ready(self, _: ops.PebbleReadyEvent):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")
+        self.charm.unit.set_ports(JDBC_PORT)
         self.kyuubi.update()
 
     def _on_peer_relation_joined(self, _: ops.RelationJoinedEvent):
