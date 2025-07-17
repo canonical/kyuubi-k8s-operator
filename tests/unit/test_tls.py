@@ -178,7 +178,7 @@ def test_relation_created_enables_tls(
 @patch("core.workload.kyuubi.KyuubiWorkload.tls_ready", return_value=False)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value=Endpoint(host="10.10.10.10", port=10009),
+    return_value=[Endpoint(host="10.10.10.10", port=10009)],
 )
 @patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
@@ -324,7 +324,7 @@ def test_certificate_available(
         ),
         patch(
             "managers.service.ServiceManager.get_service_endpoint",
-            return_value=Endpoint(host=endpoint_host, port=endpoint_port),
+            return_value=[Endpoint(host=endpoint_host, port=endpoint_port)],
         ),
         patch(
             "config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master"
@@ -412,7 +412,7 @@ def test_certificate_available(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value=Endpoint(host="example.com", port=10009),
+    return_value=[Endpoint(host="example.com", port=10009)],
 )
 @patch("managers.tls.TLSManager.remove_stores")
 def test_relation_broken(
