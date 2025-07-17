@@ -15,46 +15,6 @@ Charmed Apache Kyuubi K8s is useful for administrators of Charmed Apache Spark s
 SEE TEMPLATE
 -->
 
-## Usage
-
-<!--TODO: Remove this entire section once we have a dedicated page-->
-
-To deploy this charm, use:
-
-```shell
-juju add-model <my-model>
-
-juju deploy s3-integrator --channel latest/edge
-juju config s3-integrator bucket=<bucket> endpoint=<endpoint> credentials=<credentials-secret-uri>
-
-juju deploy spark-integration-hub-k8s --channel edge --trust
-juju integrate spark-integration-hub-k8s s3-integrator
-
-juju deploy postgresql-k8s --channel 14/stable --trust
-
-juju deploy data-integrator --channel latest/edge --config database-name=test
-
-juju deploy kyuubi-k8s --channel edge --trust
-juju integrate kyuubi-k8s spark-integration-hub-k8s 
-juju integrate kyuubi-k8s:auth-db postgresql-k8s
-juju integrate kyuubi-k8s data-integrator
-```
-
-> **Note**: You may use a different object storage, such as `azure-storage-integrator`.
-
-The Integration Hub charm will take care of adding relevant configuration to the
-Charmed Spark properties.
-Get the JDBC endpoint and its credentials with the following:
-
-```shell
-juju run data-integrator/leader get-credentials
-```
-
-You may use the endpoint with a JDBC-compliant client, such as `beeline`:
-
-```shell
-beeline -u "<jdbc-endpoint>" -n <username> -p <password>
-```
 
 ## Project and community
 
