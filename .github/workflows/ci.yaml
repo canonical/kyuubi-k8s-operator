@@ -14,6 +14,8 @@ on:
         description: build_charm.yaml `artifact-prefix` output
         value: ${{ jobs.build.outputs.artifact-prefix }}
   pull_request:
+    paths-ignore:
+      - "docs/**"
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
 
@@ -145,14 +147,14 @@ jobs:
             fi
           done
 
-          # get pods 
+          # get pods
           kubectl get pods -A
 
           # events
           kubectl events -A
 
           echo "Done"
-  
+
   test-refresh:
     strategy:
       fail-fast: false
@@ -223,10 +225,10 @@ jobs:
             fi
           done
 
-          # get pods 
+          # get pods
           kubectl get pods -A
 
           # events
           kubectl events -A
-          
+
           echo "Done"
