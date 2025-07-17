@@ -35,11 +35,6 @@ When `expose-external=false`, the following shows the endpoint returned to the c
 
 ```shell
 juju run data-integrator/0 get-credentials
-
-Running operation 7 with 1 task
-  - task 8 on unit-data-integrator-0
-
-Waiting for task 8...
 ```
 
 ```yaml
@@ -71,11 +66,6 @@ juju config kyuubi-k8s expose-external=loadbalancer
 
 # wait for active-idle
 juju run data-integrator/0 get-credentials
-
-Running operation 15 with 1 task
-  - task 16 on unit-data-integrator-0
-
-Waiting for task 16...
 ```
 
 ```yaml

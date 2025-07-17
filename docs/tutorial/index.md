@@ -44,6 +44,21 @@ Get the JDBC endpoint and its credentials with the following command:
 juju run data-integrator/0 get-credentials
 ```
 
+```yaml
+kyuubi:
+  data: '{"database": "test", "external-node-connectivity": "true", "provided-secrets":
+    "[\"mtls-cert\"]", "requested-secrets": "[\"username\", \"password\", \"tls\",
+    \"tls-ca\", \"uris\", \"read-only-uris\"]"}'
+  database: test
+  endpoints: 10.64.140.43:10009
+  password: 31rwWzk8wpnhoZvU
+  tls: "False"
+  uris: jdbc:hive2://10.64.140.43:10009/
+  username: relation_id_15
+  version: 1.10.2
+ok: "True"
+```
+
 You may use the endpoint with a JDBC-compliant client, such as `beeline`.
 
 ```{note}
@@ -51,7 +66,7 @@ We recommend using the [spark-client](https://snapcraft.io/spark-client) snap, w
 ```
 
 ```shell
-spark-client.beeline -u "<jdbc-endpoint>" -n <username> -p <password>
+spark-client.beeline -u "jdbc:hive2://10.64.140.43:10009/" -n relation_id_15 -p 31rwWzk8wpnhoZvU
 ```
 
 ## Enable encryption with TLS
@@ -89,7 +104,7 @@ After the charms settle into `active/idle` states, the Charmed Apache Kyuubi K8s
 This can be tested by requesting the server certificate using `openssl`:
 
 ```shell
-openssl s_client -showcerts -connect <IP>:10009 < /dev/null
+openssl s_client -showcerts -connect 10.64.140.43:10009 < /dev/null
 ```
 
 Requesting the credentials again should now display the certificate to use:
@@ -98,17 +113,53 @@ Requesting the credentials again should now display the certificate to use:
 juju run data-integrator/0 get-credentials
 ```
 
+```
+kyuubi:
+  data: '{"database": "test", "external-node-connectivity": "true", "provided-secrets":
+    "[\"mtls-cert\"]", "requested-secrets": "[\"username\", \"password\", \"tls\",
+    \"tls-ca\", \"uris\", \"read-only-uris\"]"}'
+  database: test
+  endpoints: 10.64.140.43:10009
+  password: 31rwWzk8wpnhoZvU
+  tls: "True"
+  tls-ca: |-
+    -----BEGIN CERTIFICATE-----
+    MIIDMTCCAhmgAwIBAgIUTM5oAAEAuCDfu/gmUnbZ0ei5ZSUwDQYJKoZIhvcNAQEL
+    BQAwHjELMAkGA1UEBhMCVVMxDzANBgNVBAMMBmt5dXViaTAeFw0yNTA3MTcxNDM4
+    NDRaFw0yNjA3MTcxNDM4NDRaMB4xCzAJBgNVBAYTAlVTMQ8wDQYDVQQDDAZreXV1
+    YmkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDcpvObLJIhUhKaNHbP
+    Ju4+XDjHRk6hMJhNdOo76mQHnbJR0c3ZlN8XSdZJ3ekgJOtUe4VY9stVZMZI3LGb
+    5/CcxSYZ8oYeWaQ06ST3v7bwZvyJMoInSRMYzLnCIzzXDSVajfLO9bqDKBhw7sPq
+    cW5j+FYhLlvqDhU1wXgwwf5KfhIpN70PQnBh1UhdYryU0Qg11caf4N8s+6TN39qu
+    hWewhAtADlWrbba/s34yHDSNxl1VVO3cxPmFmYp0UvraecEOsbhRhoX7ZfUlxF+t
+    OVjiB/LwWulDgTTFwOPEBku1Zqwuq1Bgl+VD6wGRC2uRsPy2lekDDfi4lDmBREdN
+    V6hvAgMBAAGjZzBlMB8GA1UdDgQYBBYEFC5E5p+5CDMi8lwiDZKG4RHRNxVYMCEG
+    A1UdIwQaMBiAFgQULkTmn7kIMyLyXCINkobhEdE3FVgwDgYDVR0PAQH/BAQDAgKk
+    MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAEZCONjNJw22Fox/
+    7YCRMgb8TTLjybl5aFnpISVe+DbDiceBHrwcP+gJxHTh6cWs8tBrqi2v9ghcYo7S
+    Ux7MnRzc4qQTSravR+07guGDeQjaSNk6FX2I5J8shrUD4167ZbPDMoYmcawr4wAZ
+    NpIeRGN8IkezA5nMCY0iSrBsrpMYUepDmIPWck8MvrgPGjrR+hZSBq3EJc5J91Os
+    QLWGr1RlSjFOfsP8s8n0dkC2UqXmOBN7NZogizGS2mbQvLAg0dSOvueaJsh8dPBU
+    eN0aIQcZSPwCK/6iPokfO/afCYZIEmr5LBs81i5B8bQXqnxpltmcNbOQICfqA9XK
+    m/BZ6OU=
+    -----END CERTIFICATE-----
+  uris: jdbc:hive2://10.64.140.43:10009/
+  username: relation_id_15
+  version: 1.10.2
+ok: "True"
+```
+
 To connect to Charmed Apache Kyuubi K8s using the spark-client's bundled beeline client, import the certificate in the spark-client snap:
 
 ```shell
-juju run data-integrator/0 get-credentials | yq ".[].certificate" > cert.pem
+juju run data-integrator/0 get-credentials | yq ".kyuubi.tls-ca" > cert.pem
 spark-client.import-certificate tutorial-cert cert.pem
 ```
 
 Then, add `;ssl=true` to the JDBC endpoint you got from the data-integrator charm.
 
 ```shell
-spark-client.beeline -u "<jdbc-endpoint>;ssl=true" -n <username> -p <password>
+spark-client.beeline -u "jdbc:hive2://10.64.140.43:10009/;ssl=true" -n relation_id_15 -p 31rwWzk8wpnhoZvU
 ```
 
 Congratulations! You are now connected to Charmed Apache Kyuubi K8s using TLS.
