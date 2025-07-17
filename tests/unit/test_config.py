@@ -123,7 +123,7 @@ def test_profile_config_option(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value=Endpoint(host="10.10.10.10", port=10009),
+    return_value=[Endpoint(host="10.10.10.10", port=10009)],
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
@@ -193,7 +193,7 @@ def test_k8s_node_selectors_config_option(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value=Endpoint(host="10.10.10.10", port=10009),
+    return_value=[Endpoint(host="10.10.10.10", port=10009)],
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
