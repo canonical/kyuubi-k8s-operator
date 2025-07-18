@@ -32,6 +32,9 @@ class Endpoint:
     def __str__(self) -> str:  # noqa: D105
         return f"{self.host}:{self.port}"
 
+    def __hash__(self) -> int:  # noqa: D105
+        return hash((self.host, self.port))
+
 
 class DNSEndpoint(Endpoint):
     """DNS endpoint type."""
