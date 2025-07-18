@@ -41,14 +41,12 @@ juju remove-relation <tls-certificates> kyuubi-k8s
 Updates to private keys for certificate signing requests (CSR) can be made via the `tls-client-private-key` configuration option.
 If this configuration option is not provided, the charm will generate a new private key and use it instead.
 
-We recommend passing the private key as a base64 encoded string using `base64 -w0`, _not_ `cat`, as follows:
-
 ```shell
 # generate shared internal key
 openssl genrsa -out internal-key.pem 3072
 
 # create a new juju secret 
-juju add-secret kyuubi-tls-secret private-key=$(base64 -w0 internal-key.pem)
+juju add-secret kyuubi-tls-secret private-key#file=internal-key.pem
 # The command above returns the secret id e.g. secret:d1seounmp25c76bq4ha0
 
 # grant secret access to the app, and configure the app to use the secret
