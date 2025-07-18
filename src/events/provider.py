@@ -68,15 +68,26 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             app_name=self.charm.app.name,
         )
 
-        kyuubi_endpoint = service_manager.get_service_endpoint(
-            expose_external=self.charm.config.expose_external
+        kyuubi_endpoints = service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external,
+            units=[unit.name for unit in self.context.app_units],
         )
-        if kyuubi_endpoint is None:
+
+        if not kyuubi_endpoints:
             return
 
-        # FIXME: What about nodeports? Same in _on_database_requested
-        jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
-        endpoint = f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}"
+        jdbc_uri = ",".join(
+            [
+                f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
+                for kyuubi_endpoint in kyuubi_endpoints
+            ]
+        )
+        endpoint = ",".join(
+            [
+                f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}"
+                for kyuubi_endpoint in kyuubi_endpoints
+            ]
+        )
 
         for client in self.context.client_relations:
             self.database_provides.set_endpoints(
@@ -112,11 +123,12 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             app_name=self.charm.app.name,
         )
 
-        kyuubi_endpoint = service_manager.get_service_endpoint(
-            expose_external=self.charm.config.expose_external
+        kyuubi_endpoints = service_manager.get_service_endpoint(
+            expose_external=self.charm.config.expose_external,
+            units=[unit.name for unit in self.context.app_units],
         )
 
-        if kyuubi_endpoint is None:
+        if not kyuubi_endpoints:
             event.defer()
             return
 
@@ -127,12 +139,22 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        jdbc_uri = f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
-
+        jdbc_uri = ",".join(
+            [
+                f"jdbc:hive2://{kyuubi_endpoint.host}:{kyuubi_endpoint.port}/"
+                for kyuubi_endpoint in kyuubi_endpoints
+            ]
+        )
+        endpoints = ",".join(
+            [
+                f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}"
+                for kyuubi_endpoint in kyuubi_endpoints
+            ]
+        )
         # Set the JDBC endpoint.
         self.database_provides.set_endpoints(
             event.relation.id,
-            f"{kyuubi_endpoint.host}:{kyuubi_endpoint.port}",
+            endpoints,
         )
 
         # Set the JDBC URI
