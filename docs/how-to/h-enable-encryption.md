@@ -55,3 +55,11 @@ juju config kyuubi-k8s tls-client-private-key=secret:d1seounmp25c76bq4ha0
 ```
 
 Private keys may be rotated by updating the secret using `juju update-secret`.
+
+## Retrieve the certificate chain
+
+The data-integrator charm can be used to retrieve the certificate in use, through the `kyuubi_client` interface.
+
+```shell
+juju run data-integrator/0 get-credentials | yq ".kyuubi.tls-ca"
+```
