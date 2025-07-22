@@ -26,17 +26,17 @@ juju grant-secret <secret_name> kyuubi-k8s
 
 ## Configure `system-users`
 
-To set the `system-users` config option to the secret URI:
+To set the `system-users` configuration option to the secret URI:
 
 ```text
 juju config charm-app system-users=<secret_URI>
 ```
 
-When the `system-users` config option is set, the charm will:
-* Use the content of the secret specified by the `system-users` config option instead of the one generated.
+When the `system-users` configuration option is set, the charm will:
+* Use the content of the secret specified by the `system-users` configuration option instead of the one generated.
 * Update the passwords of the internal `system-users` in its user database.
 
-If the config option is **not** specified, the charm will automatically generate passwords for the internal system-users and store them in a secret.
+If the configuration option is **not** specified, the charm will automatically generate passwords for the internal system-users and store them in a secret.
 
 To retrieve the password of an internal system-user, run the `juju show-secret` command with the respective secret URI.
 
