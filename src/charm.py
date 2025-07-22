@@ -232,7 +232,10 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             app_name=self.app.name,
         )
 
-        if not service_manager.get_service_endpoint(expose_external=self.config.expose_external):
+        if not service_manager.get_service_endpoint(
+            expose_external=self.config.expose_external,
+            units=[unit.name for unit in self.context.app_units],
+        ):
             statuses.append(Status.WAITING_FOR_SERVICE.value)
 
         if self.context.tls and not self.workload.tls_ready():

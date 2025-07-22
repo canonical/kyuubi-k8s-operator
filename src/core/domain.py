@@ -344,8 +344,14 @@ class KyuubiServer(RelationState):
     @property
     def external_address(self) -> Endpoint | None:
         """The external address for the unit, for external communication."""
-        return self.k8s.get_service_endpoint(
-            expose_external=str(self.unit._backend.config_get().get("expose-external"))
+        endpoints = self.k8s.get_service_endpoint(
+            expose_external=str(self.unit._backend.config_get().get("expose-external")),
+            units=[self.unit.name],
+        )
+
+        return next(
+            iter(endpoints),
+            None,
         )
 
     @property
@@ -364,7 +370,9 @@ class KyuubiServer(RelationState):
     @cached_property
     def loadbalancer_endpoint(self) -> Endpoint | None:
         """The IPV4/IPV6 IP address or hostname of the LoadBalancer exposing the unit."""
-        return self.k8s.get_service_endpoint("loadbalancer")
+        return next(
+            iter(self.k8s.get_service_endpoint(expose_external="loadbalancer", units=[])), None
+        )
 
 
 class KyuubiCluster(RelationState):

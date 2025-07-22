@@ -79,7 +79,7 @@ def test_system_users_config_secret_invalid(
 )
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
-    return_value=Endpoint(host="10.10.10.10", port=10009),
+    return_value=[Endpoint(host="10.10.10.10", port=10009)],
 )
 @patch(
     "managers.service.ServiceManager.reconcile_services",
