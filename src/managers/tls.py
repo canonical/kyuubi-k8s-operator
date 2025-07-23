@@ -4,17 +4,23 @@
 
 """Manager for building necessary files for Java TLS auth."""
 
+from __future__ import annotations
+
 import logging
 import os
 import socket
 import subprocess
+from typing import TYPE_CHECKING
 
 import ops.pebble
 
 from core.context import Context
 from core.domain import SANs
 from core.workload import KyuubiWorkloadBase
-from managers.service import DNSEndpoint, IPEndpoint
+from managers.service import DNSEndpoint, IPEndpoint, ServiceManager
+
+if TYPE_CHECKING:
+    from charm import KyuubiCharm
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +30,15 @@ class TLSManager:
 
     SUBJECT_NAME_MAX_LENGTH = 64
 
-    def __init__(self, context: Context, workload: KyuubiWorkloadBase):
+    def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkloadBase):
+        self.charm = charm
         self.context = context
         self.workload = workload
+        self.k8s = ServiceManager(
+            namespace=self.charm.model.name,
+            unit_name=self.charm.unit.name,
+            app_name=self.charm.app.name,
+        )
 
     def get_subject(self) -> str:
         """Get subject name for the unit."""
@@ -66,7 +78,12 @@ class TLSManager:
             socket.getfqdn(),
         ]
 
-        if (ext_address := self.context.unit_server.external_address) is not None:
+        external_addresses = self.k8s.get_service_endpoint(
+            expose_external=str(self.context.config.expose_external.value),
+            units=[unit.name for unit in self.context.app_units],
+        )
+
+        for ext_address in external_addresses:
             sans_dns.extend(
                 [
                     f"{ext_address.host}:{ext_address.port}",
