@@ -29,8 +29,8 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 JDBC_PORT = 10009
 SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
-# spark 3.4.4, release date 06/05/2025
-JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:7056db56cad6b23927706af3de9d47c47ca61eee1b0a03ec7ed7f43f29503a21"
+# spark 3.5.4, release date 25/07/2025
+JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:419e52a232451dda17b8dd22fa39c66822ced2e89a22aa2f1ecc27f2aabb91fd"
 
 DEFAULT_ADMIN_USERNAME = "admin"
 PASSWORD_SUFFIX = "-password"
