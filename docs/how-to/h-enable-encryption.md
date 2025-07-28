@@ -11,21 +11,24 @@ One possible option, suitable for testing, could be to use the `self-signed-cert
 To deploy a `self-signed-certificates` charm:
 
 ```shell
-# deploy the TLS charm
 juju deploy self-signed-certificates --channel=1/stable
-# add the necessary configurations for TLS
+```
+
+Add necessary configuration parameters:
+
+```shell
 juju config self-signed-certificates ca-common-name="Test CA"
 ```
 
 [note]
-This setup is not recommended for production clusters.
-Please refer to [this post](https://charmhub.io/topics/security-with-x-509-certificates) for an overview of the TLS certificates Providers charms and some guidance on how to choose the right charm for your use case.
+We recommend to avoid using self-signed TLS certificates for production environments.
+Please refer to the [X.509 certificates post](https://charmhub.io/topics/security-with-x-509-certificates) for an overview of the TLS certificates Providers charms and some guidance on how to choose the right charm for your use case.
 [/note]
 
 ## Relate the charms
 
 ```
-juju relate <tls-certificates> kyuubi-k8s
+juju integrate <tls-certificates> kyuubi-k8s
 ```
 
 where `<tls-certificates>` is the name of the TLS certificate provider charm deployed.

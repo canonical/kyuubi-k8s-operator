@@ -1,6 +1,6 @@
-# How to perform a minor upgrade on the charm
+# How to upgrade
 
-Charmed Apache Kyuubi K8s charm can perform in-place upgrades to update the charm and the workload to a newer version.
+Charmed Apache Kyuubi K8s can perform in-place upgrades to update the charm and the workload to a newer version.
 
 ```{caution}
 This charm does not support in-place upgrades for major version changes, nor for a Spark support track change (e.g. upgrading from the channel `3.4` to `3.5`).
@@ -13,7 +13,7 @@ This is because it is not possible to prevent refresh of the highest number unit
 
 ## Step 1: Pre-upgrade checks
 
-Here are some key topics to consider before upgrading.
+Here are some key topics to consider before upgrading: concurrent operations, data backup, rollback preparation, and automated checks.
 
 ### Concurrency with other operations
 
@@ -25,7 +25,7 @@ Those operations include (but not limited to) the following:
 - Creating, upgrading or destroying relations
 - Changing the workload configuration
 
-In summary, the cluster must be as stable as possible before upgrading.
+In short, the cluster must be as stable as possible before upgrading.
 
 ### Backups
 
@@ -33,10 +33,10 @@ Make sure to have a backup of your data when running any kind of upgrade.
 
 A guide on how to backup and restore the metastore and the user databases can be find [here](#TODO).
 
-### Collect
+### Rollback preparations
 
 ```{note}
-This step is only valid when deploying from [charmhub](https://charmhub.io/). 
+This step is only valid when deploying from [Charmhub](https://charmhub.io/). 
 
 If a [local charm](https://juju.is/docs/sdk/deploy-a-charm) is deployed (revision is small, e.g. 0-10), make sure the proper/current local revision of the `.charm` file is available BEFORE going further. You might need it for a rollback.
 ```
@@ -71,13 +71,11 @@ Before running the [juju refresh](https://juju.is/docs/juju/juju-refresh) comman
 juju run kyuubi-k8s/leader pre-refresh-check
 ```
 
-Make sure there are no errors in the result output.
+Make sure there are no errors in the resulted output.
 
 ## Step 2: Upgrade and check first unit
 
-Use the `juju refresh` command to trigger the charm upgrade process.
-
-Example with specific revision:
+Use the `juju refresh` command to trigger the charm upgrade process, for example:
 
 ```shell
 juju refresh kyuubi-k8s --revision=104
@@ -107,7 +105,7 @@ juju run kyuubi-k8s/leader resume-refresh
 
 All units will be refreshed (i.e. receive new charm content), and the upgrade will execute one unit at a time.
 
-## Step 4: Rollback in case of failure
+## Step 4: {Optional) Rollback in case of failure
 
 Should a failure arise at any point after the `juju refresh` command is run, the application status should display the command to run to rollback the changes.
 This command can also be found in the logs using `juju debug-log`.

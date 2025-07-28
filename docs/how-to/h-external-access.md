@@ -1,11 +1,11 @@
 # How to connect from outside of Kubernetes
 
-To expose Charmed Apache Kyuubi K8s externally, this charm provides a configuration option `expose-external` (with options `false`, `nodeport` and `loadbalancer`) to control precisely how the service will be exposed.
+To expose Charmed Apache Kyuubi K8s externally, use the `expose-external` configuration option. Possible values are: `false`, `nodeport`, and `loadbalancer`.
 
-By default (when `expose-external=false`), Charmed Apache Kyuubi K8s create a K8s service of type `ClusterIP` which it provides as endpoints to the related client applications.
-These endpoints are only accessible from within the K8s namespace (or juju model) where the Charmed Apache Kyuubi K8s is deployed.
+By default (when `expose-external=false`), Charmed Apache Kyuubi K8s creates a K8s service of type `ClusterIP` which it provides as endpoints to the related client applications.
+These endpoints are only accessible from within the K8s namespace (or Juju model) where the Charmed Apache Kyuubi K8s is deployed.
 
-Below is a juju models where Charmed Apache Kyuubi K8s is related to Data Integrator, which we will later use to demonstrate the configuration of `expose-external`:
+Below is a Juju model where Charmed Apache Kyuubi K8s is related to Data Integrator, which we will later use to demonstrate the configuration of `expose-external`:
 
 ```text
 juju status
@@ -31,11 +31,13 @@ s3/0*                        active    idle   10.1.111.77
 zookeeper/0*                 active    idle   10.1.111.114
 ```
 
-When `expose-external=false`, the following shows the endpoint returned to the client:
+When `expose-external=false`, to see the endpoint returned to the client:
 
 ```shell
 juju run data-integrator/0 get-credentials
 ```
+
+The output contains both the endpoint and credentials, for example:
 
 ```yaml
 kyuubi:
@@ -54,19 +56,26 @@ ok: "True"
 
 ## External access
 
-```{note}
-We recommend exposing the service using Loadbalancer.
-```
 
-Charmed Apache Kyuubi K8s can be made externally accessible by setting `expose-external=loadbalancer` (or `expose-external=nodeport`).
-When `expose-external=loadbalancer`, Charmed Apache Kyuubi K8s will provide as endpoint the K8s LoadBalancer service IP (or hostname, depending on your K8s cluster provider) and port.
+To make Charmed Apache Kyuubi K8s accessible from outside of Kubernetes, set the `expose-external` parameter to `loadbalancer` or `nodeport`.
+
+[note]
+We recommend exposing the service using the `loadbalancer` option.
+[/note]
+
+When `expose-external` is set to `loadbalancer`, Charmed Apache Kyuubi K8s will provide as endpoint the K8s LoadBalancer service IP (or hostname, depending on your K8s cluster provider) and port.
 
 ```shell
 juju config kyuubi-k8s expose-external=loadbalancer
+```
 
-# wait for active-idle
+Wait for the application to settle up with the `active` / `idle` status and retrieve credentials:
+
+```shell
 juju run data-integrator/0 get-credentials
 ```
+
+The output of this command contains both endpoint and credentials, for example:
 
 ```yaml
 kyuubi:

@@ -44,6 +44,8 @@ Get the JDBC endpoint and its credentials with the following command:
 juju run data-integrator/0 get-credentials
 ```
 
+The resulted output should look like the following:
+
 ```yaml
 kyuubi:
   data: '{"database": "test", "external-node-connectivity": "true", "provided-secrets":
@@ -59,11 +61,8 @@ kyuubi:
 ok: "True"
 ```
 
-You may use the endpoint with a JDBC-compliant client, such as `beeline`.
+Use the `spark-client.beeline` command to access the endpoint with a JDBC-compliant client `beeline`:
 
-```{note}
-We recommend using the [spark-client](https://snapcraft.io/spark-client) snap, which exposes a beeline client under the `spark-client.beeline` command.
-```
 
 ```shell
 spark-client.beeline -u "jdbc:hive2://10.64.140.43:10009/" -n relation_id_15 -p 31rwWzk8wpnhoZvU
@@ -81,12 +80,11 @@ TLS is enabled by integrating Charmed Apache Kyuubi K8s with the [Self-signed ce
 This charm centralises TLS certificate management consistently and handles operations like providing, requesting, and renewing TLS certificates.
 
 ```{caution}
-**[Self-signed certificates](https://en.wikipedia.org/wiki/Self-signed_certificate) are not recommended for a production environment.**
-
-Check [this guide](https://discourse.charmhub.io/t/security-with-x-509-certificates/11664) for an overview of the TLS certificates charms available.
+We recommend to avoid using self-signed TLS certificates for production environments.
+Please refer to the [X.509 certificates post](https://charmhub.io/topics/security-with-x-509-certificates) for an overview of the TLS certificates Providers charms and some guidance on how to choose the right charm for your use case.
 ```
 
-Before enabling TLS on Charmed Apache Kyuubi K8s, we must deploy the `self-signed-certificates` charm:
+Before enabling TLS on Charmed Apache Kyuubi K8s, deploy the `self-signed-certificates` charm to use as a certificate provider:
 
 ```shell
 juju deploy self-signed-certificates --config ca-common-name="Tutorial CA"
@@ -94,7 +92,7 @@ juju deploy self-signed-certificates --config ca-common-name="Tutorial CA"
 
 Wait for the charm settle into an `active/idle` state, as shown by the `juju status`.
 
-To enable TLS on Charmed Apache Kyuubi K8s, relate the `kyuubi-k8s` charm with the `self-signed-certificates` charm:
+To enable TLS on Charmed Apache Kyuubi K8s, integrate the `kyuubi-k8s` charm with the `self-signed-certificates` charm:
 
 ```shell
 juju relate kyuubi-k8s self-signed-certificates
@@ -112,6 +110,8 @@ Requesting the credentials again should now display the certificate to use:
 ```shell
 juju run data-integrator/0 get-credentials
 ```
+
+The resulted output should look like the following:
 
 ```
 kyuubi:

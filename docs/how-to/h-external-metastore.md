@@ -18,9 +18,6 @@ Then, integrate it with the Charmed Apache Kyuubi K8s charm on the `metastore-db
 juju integrate kyuubi-k8s:metastore-db postgresql-k8s
 ```
 
-```{note}
-We must specify the relation name because the Charmed Apache Kyuubi K8s charm offers two different relations under the `postgresql_client` interface.
-```
 
 Once the two charms settles in `active/idle`, the metastore is configured for all deployed units.
 A guide on how to backup and restore the metastore can be find [here](#TODO).
