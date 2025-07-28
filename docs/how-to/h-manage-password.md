@@ -3,7 +3,7 @@
 Charmed Apache Kyuubi K8s uses [Juju secrets](https://documentation.ubuntu.com/juju/latest/reference/secret/#secret) to manage passwords.
 
 ```{seealso}
-[Juju | How to manage secrets](https://documentation.ubuntu.com/juju/latest/howto/manage-secrets/#manage-secrets)
+> See also: [Juju | How to manage secrets](https://documentation.ubuntu.com/juju/latest/howto/manage-secrets/#manage-secrets)
 ```
 
 ## Create a password
@@ -15,8 +15,7 @@ juju add-secret <secret_name> admin=<password>
 ```
 
 The above outputs a secret URI, which you need for configuring `system-users` configuration parameter.
-
-Admin user that was not included in the secret will use an automatically created password.
+Without a valid secret granted to the application, the admin user uses an automatically created password.
 
 To grant the secret to the `kyuubi-k8s` charm:
 

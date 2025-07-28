@@ -44,24 +44,42 @@ juju remove-relation <tls-certificates> kyuubi-k8s
 Updates to private keys for certificate signing requests (CSR) can be made via the `tls-client-private-key` configuration option.
 If this configuration option is not provided, the charm will generate a new private key and use it instead.
 
+To generate a shared internal key:
+
 ```shell
-# generate shared internal key
 openssl genrsa -out internal-key.pem 3072
+```
 
-# create a new juju secret 
+Create a new juju secret using the content of the shared key file:
+
+```shell
 juju add-secret kyuubi-tls-secret private-key#file=internal-key.pem
-# The command above returns the secret id e.g. secret:d1seounmp25c76bq4ha0
+```
 
-# grant secret access to the app, and configure the app to use the secret
+The previous command above returns a secret id, e.g. `secret:d1seounmp25c76bq4ha0`.
+To grant the application access to the secret, run:
+
+```shell
 juju grant-secret kyuubi-tls-secret kyuubi-k8s
+```
+
+Finally, configure the application to use the secret using the secret id from above
+
+```shell
 juju config kyuubi-k8s tls-client-private-key=secret:d1seounmp25c76bq4ha0
 ```
 
-Private keys may be rotated by updating the secret using `juju update-secret`.
+To rotate a private key, update the associated secret:
+
+```shell
+juju update-secret kyuubi-tls-secret private-key#file=new-internal-key.pem
+```
+
+> See also: `juju update-secret` command [reference](https://documentation.ubuntu.com/juju/3.6/reference/juju-cli/list-of-juju-cli-commands/update-secret/).
 
 ## Retrieve the certificate chain
 
-The data-integrator charm can be used to retrieve the certificate in use, through the `kyuubi_client` interface.
+To retrieve the certificate in use, use the data-integrator charm:
 
 ```shell
 juju run data-integrator/0 get-credentials | yq ".kyuubi.tls-ca"

@@ -5,58 +5,6 @@ To expose Charmed Apache Kyuubi K8s externally, use the `expose-external` config
 By default (when `expose-external=false`), Charmed Apache Kyuubi K8s creates a K8s service of type `ClusterIP` which it provides as endpoints to the related client applications.
 These endpoints are only accessible from within the K8s namespace (or Juju model) where the Charmed Apache Kyuubi K8s is deployed.
 
-Below is a Juju model where Charmed Apache Kyuubi K8s is related to Data Integrator, which we will later use to demonstrate the configuration of `expose-external`:
-
-```text
-juju status
-Model              Controller  Cloud/Region        Version  SLA          Timestamp
-jubilant-7db2fec3  microk8s    microk8s/localhost  3.6.8    unsupported  16:43:19+02:00
-
-App                       Version  Status  Scale  Charm                      Channel        Rev  Address         Exposed  Message
-auth-db                   14.15    active      1  postgresql-k8s             14/stable      281  10.152.183.19   no
-data-integrator                    active      1  data-integrator            latest/stable  161  10.152.183.94   no
-integration-hub                    active      1  spark-integration-hub-k8s  latest/edge     43  10.152.183.220  no
-kyuubi-k8s                1.10     active      3  kyuubi-k8s                 latest/edge     92  10.152.183.84   no
-s3                                 active      1  s3-integrator              1/stable       146  10.152.183.103  no
-zookeeper                 3.8.2    active      1  zookeeper-k8s              3/stable        78  10.152.183.42   no
-
-Unit                         Workload  Agent  Address       Ports  Message
-auth-db/0*                   active    idle   10.1.111.95          Primary
-data-integrator/0*           active    idle   10.1.111.66
-integration-hub/0*           active    idle   10.1.111.101
-kyuubi-k8s/0                 active    idle   10.1.111.80
-kyuubi-k8s/1                 active    idle   10.1.111.78
-kyuubi-k8s/2*                active    idle   10.1.111.98
-s3/0*                        active    idle   10.1.111.77
-zookeeper/0*                 active    idle   10.1.111.114
-```
-
-When `expose-external=false`, to see the endpoint returned to the client:
-
-```shell
-juju run data-integrator/0 get-credentials
-```
-
-The output contains both the endpoint and credentials, for example:
-
-```yaml
-kyuubi:
-  data: '{"database": "test", "external-node-connectivity": "true", "provided-secrets":
-    "[\"mtls-cert\"]", "requested-secrets": "[\"username\", \"password\", \"tls\",
-    \"tls-ca\", \"uris\", \"read-only-uris\"]"}'
-  database: test
-  endpoints: kyuubi-k8s-service.jubilant-7db2fec3.svc.cluster.local:10009
-  password: 31rwWzk8wpnhoZvU
-  tls: "False"
-  uris: jdbc:hive2://kyuubi-k8s-service.jubilant-7db2fec3.svc.cluster.local:10009/
-  username: relation_id_15
-  version: 1.10.2
-ok: "True"
-```
-
-## External access
-
-
 To make Charmed Apache Kyuubi K8s accessible from outside of Kubernetes, set the `expose-external` parameter to `loadbalancer` or `nodeport`.
 
 [note]

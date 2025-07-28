@@ -2,14 +2,15 @@
 
 Charmed Apache Kyuubi K8s can perform in-place upgrades to update the charm and the workload to a newer version.
 
-```{caution}
+[note]
 This charm does not support in-place upgrades for major version changes, nor for a Spark support track change (e.g. upgrading from the channel `3.4` to `3.5`).
-```
+[/note]
 
-```{caution}
-Like other K8s charms, this guide is only valid for multi units deployments.
-This is because it is not possible to prevent refresh of the highest number unit and after the first and only unit refreshes the application's refresh has completed.
-```
+[note]
+A one-unit deployment presents some limitations compared to a multi units deployment.
+For instance, it is not possible to rollback an upgrade in progress.
+Therefore, it is not supported.
+[/note]
 
 ## Step 1: Pre-upgrade checks
 
@@ -35,32 +36,20 @@ A guide on how to backup and restore the metastore and the user databases can be
 
 ### Rollback preparations
 
-```{note}
-This step is only valid when deploying from [Charmhub](https://charmhub.io/). 
+[note]
+This step is only valid when deploying from [Charmhub](https://charmhub.io/).
 
 If a [local charm](https://juju.is/docs/sdk/deploy-a-charm) is deployed (revision is small, e.g. 0-10), make sure the proper/current local revision of the `.charm` file is available BEFORE going further. You might need it for a rollback.
-```
+[/note]
 
 We recommend recording the revision of the running application as a safety measure for a rollback action.
-To accomplish this, run the `juju status` command and look for the deployed Charmed Apache Kyuubi K8s revision in the command output, e.g.:
+To get the currently in use revision for Charmed Apache Kyuubi K8s, use:
 
-```text
-juju status
-Model              Controller  Cloud/Region        Version  SLA          Timestamp
-jubilant-7db2fec3  microk8s    microk8s/localhost  3.6.8    unsupported  16:43:19+02:00
-
-App                       Version  Status  Scale  Charm                      Channel        Rev  Address         Exposed  Message
-kyuubi-k8s                1.10     active      3  kyuubi-k8s                 latest/edge    103  10.152.183.84   no
-...
-
-Unit                         Workload  Agent  Address       Ports  Message
-kyuubi-k8s/0                 active    idle   10.1.111.80
-kyuubi-k8s/1                 active    idle   10.1.111.78
-kyuubi-k8s/2*                active    idle   10.1.111.98
-...
+```shell
+juju status --format yaml | yq ".applications.<application-name>.charm-rev"
 ```
 
-In this example, the current revision is `103`.
+where `<application-name>` is the name of the Charmed Apache Kyuubi K8s application in your model.
 Store it safely to use in case of a rollback.
 
 ### Automated checks
@@ -81,14 +70,22 @@ Use the `juju refresh` command to trigger the charm upgrade process, for example
 juju refresh kyuubi-k8s --revision=104
 ```
 
-After the first unit finishes its refresh, its status should be `active/idle`.
-It could however show a "Refresh incompatible" or "Incorrect OCI resource" depending on the channel, revision or OCI resource passed in the `juju refresh` command.
-This usually indicates that you need to rollback, but if you consider the risks acceptable (like if you purposefully overwrote the OCI resource to use a custom one), you can force the charm to start the workload using the following, where `<refreshed-unit-number>` should be the highest ordinal one ("2" for a three units deployment) and `<parameters>` one or more action parameter set to false (for instance `check-workload-container=false` if you purposefully overwrite the OCI resource).
+After some time, the first unit finishes its refresh.
+Its status can be of two different kinds:
+
+- if it is `active/idle`, you may proceed to Step 3.
+- if it shows a blocked status, read below.
+
+The charm has a number of built-in checks that are ran post refresh, such as checking that the OCI resource is the one defined by the charm or making sure you don't upgrade to an incompatible revision (like updating to a revision built for Apache Spark 3.5 if your original deployment uses Apache Spark 3.4).
+
+If your in-progress upgrade violates one or more of these checks, the first unit to refresh displays a blocked status with a "Refresh incompatible" or "Incorrect OCI resource" message.
+This usually indicates that you need to rollback, but if you consider the risks acceptable (like if you purposefully overwrote the OCI resource to use a custom one), you can force the charm to start the workload anyway on the blocked unit using the following:
 
 ```shell
 juju run kyuubi-k8s/<refreshed-unit-number> force-refresh-start <parameters>
 ```
 
+where `<refreshed-unit-number>` should be the highest ordinal one ("2" for a three units deployment) and `<parameters>` one or more action parameter set to false (for instance `check-workload-container=false` if you purposefully overwrite the OCI resource).
 The first unit to refresh must end up in `active/idle` state before moving on with the next step.
 Make sure that you test that it is properly functioning as well.
 
@@ -105,9 +102,14 @@ juju run kyuubi-k8s/leader resume-refresh
 
 All units will be refreshed (i.e. receive new charm content), and the upgrade will execute one unit at a time.
 
-## Step 4: {Optional) Rollback in case of failure
+## Step 4: (Optional) Rollback in case of failure
 
-Should a failure arise at any point after the `juju refresh` command is run, the application status should display the command to run to rollback the changes.
+Should a failure arise at any point after the `juju refresh` command is run, the application status should display the command to run to rollback the changes, for instance:
+
+```shell
+juju refresh kyuubi-k8s --revision 103 --resource kyuubi-image=ghcr.io/canonical/charmed-spark-kyuubi@sha256:153eaf8be341dcea2c91277cbc2a69a1c9c48d3f7847151898ab2e5a81753ec5
+```
+
 This command can also be found in the logs using `juju debug-log`.
 
 The procedure is similar to an upgrade: the highest ordinal unit is the first to rollback, then after a manual confirmation the rest can proceed.
