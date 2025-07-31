@@ -6,6 +6,7 @@
 """Kyuubi workload configurations."""
 
 from constants import AUTHENTICATION_TABLE_NAME
+from core.config import CharmConfig
 from core.domain import DatabaseConnectionInfo, TLSInfo, ZookeeperInfo
 from utils.logging import WithLogging
 
@@ -15,11 +16,13 @@ class KyuubiConfig(WithLogging):
 
     def __init__(
         self,
+        charm_config: CharmConfig,
         db_info: DatabaseConnectionInfo | None,
         zookeeper_info: ZookeeperInfo | None,
         tls_info: TLSInfo | None,
         keystore_path: str,
     ):
+        self.charm_config = charm_config
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
         self.tls = tls_info
@@ -52,6 +55,13 @@ class KyuubiConfig(WithLogging):
         conf = {
             "kyuubi.session.engine.initialize.timeout": "PT10M",
         }
+
+        if self.charm_config.profile == "testing":
+            conf.update(
+                {
+                    "kyuubi.session.engine.idle.timeout": "PT1M",
+                }
+            )
         return conf
 
     @property

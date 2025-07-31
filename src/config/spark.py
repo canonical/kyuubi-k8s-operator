@@ -9,7 +9,7 @@ from typing import Optional
 
 from lightkube import Client
 
-from constants import JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
+from constants import GPU_JOB_OCI_IMAGE, JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
 from core.config import CharmConfig
 from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
 from utils.logging import WithLogging
@@ -101,6 +101,32 @@ class SparkConfig(WithLogging):
             )
         return conf
 
+    def _gpu_conf(self):
+        """Return GPU Spark configurations."""
+        return (
+            {
+                # many of those parameters can be further parametrized
+                "spark.executor.instances": "1",
+                "spark.executor.resource.gpu.amount": "1",
+                "spark.executor.memory": "4G",
+                "spark.executor.cores": "1",
+                "spark.task.cpus": "1",
+                "spark.task.resource.gpu.amount": "1",
+                "spark.rapids.memory.pinnedPool.size": "1G",
+                "spark.executor.memoryOverhead": "1G",
+                "spark.sql.files.maxPartitionBytes": "512m",
+                "spark.sql.shuffle.partitions": "10",
+                "spark.plugins": "com.nvidia.spark.SQLPlugin",
+                "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
+                "spark.executor.resource.gpu.vendor": "nvidia.com",
+                "spark.driver-memory": "2G",
+                "spark.kubernetes.executor.podTemplateFile": "/etc/spark8t/conf/gpu_executor_template.yaml",
+                "spark.kubernetes.container.image": GPU_JOB_OCI_IMAGE,
+            }
+            if self.charm_config.enable_gpu
+            else {}
+        )
+
     def to_dict(self) -> dict[str, str]:
         """Return the dict representation of the configuration file.
 
@@ -108,7 +134,7 @@ class SparkConfig(WithLogging):
             1. Configurations associated with service account read from Spark8t
             2. Base configurations
         """
-        return self._base_conf() | self._sa_conf() | self._iceberg_conf()
+        return self._base_conf() | self._sa_conf() | self._iceberg_conf() | self._gpu_conf()
 
     @property
     def contents(self) -> str:

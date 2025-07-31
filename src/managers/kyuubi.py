@@ -69,6 +69,21 @@ class KyuubiManager(WithLogging):
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
         tls_info = None if set_tls_none else self.context.tls
 
+        # tmp to write yaml
+        gpu_template = """
+apiVersion: v1
+kind: Pod
+spec:
+  ttlSecondsAfterFinished: 300
+  containers:
+    - name: executor
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+        """
+
+        self.workload.write(gpu_template, self.workload.paths.gpu_executor_template)
+
         # Restart workload only if some configuration has changed.
         should_restart = any(
             [
@@ -86,6 +101,7 @@ class KyuubiManager(WithLogging):
                 ),
                 self._compare_and_update_file(
                     KyuubiConfig(
+                        charm_config=self.context.config,
                         db_info=auth_db_info,
                         zookeeper_info=zookeeper_info,
                         tls_info=tls_info,

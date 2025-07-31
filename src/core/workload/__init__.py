@@ -86,6 +86,11 @@ class KyuubiPaths:
         """The path to the schematool binary."""
         return f"{self.hive_root}/bin/schematool.sh"
 
+    @property
+    def gpu_executor_template(self) -> str:
+        """The path of the pod template required to use GPU."""
+        return f"{self.spark_conf_path}/gpu_executor_template.yaml"
+
 
 class KyuubiWorkloadBase(AbstractWorkload):
     """Base interface for common workload operations."""

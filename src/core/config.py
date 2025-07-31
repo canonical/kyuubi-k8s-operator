@@ -32,6 +32,7 @@ class CharmConfig(BaseConfigModel):
     tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
     profile: Literal["production", "staging", "testing"]
     k8s_node_selectors: str
+    enable_gpu: bool
 
     @validator("k8s_node_selectors")
     @classmethod

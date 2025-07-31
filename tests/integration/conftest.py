@@ -52,6 +52,15 @@ def pytest_addoption(parser):
         help="keep temporarily-created models",
     )
 
+    parser.addoption(
+        "--test-gpu",
+        nargs="?",
+        const=False,
+        default=False,
+        type=bool,
+        help="Enable tests on GPU.",
+    )
+
 
 @pytest.fixture(scope="module")
 def charm_versions() -> IntegrationTestsCharms:
@@ -231,3 +240,9 @@ def context():
     """A common data store read+writeable by all tests."""
     context = {}
     return context
+
+
+@pytest.fixture(scope="module")
+def test_gpu(request) -> bool:
+    """Enable gpu feature on the charm for the tests."""
+    return request.config.getoption("--test-gpu") or False

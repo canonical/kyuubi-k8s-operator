@@ -24,7 +24,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
-def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path) -> None:
+def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path, test_gpu) -> None:
     """Test building and deploying the charm without relation with any other charm."""
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
@@ -47,6 +47,14 @@ def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path) -> Non
     juju.config(
         APP_NAME, {"namespace": namespace, "service-account": username, "profile": "testing"}
     )
+
+    # Enable options to run Kyuubi with GPU enabled
+    if test_gpu:
+        logger.info("Test GPU")
+        juju.config(
+            # enable gpu
+            {"enable-gpu": "true"}
+        )
 
     logger.info("Waiting for kyuubi-k8s app to be idle...")
     status = juju.wait(jubilant.all_blocked, delay=5)
