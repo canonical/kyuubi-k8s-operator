@@ -12,6 +12,7 @@ on:
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
 
+
 jobs:
   lint:
     name: Lint
