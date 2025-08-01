@@ -29,24 +29,25 @@ options:
   system-users:
     type: secret
     description: |
-      Configure the system user 'admin' and it's password. This needs to be a Juju secret URI pointing to a secret that contains the 
+      Configure the system user 'admin' and it's password. This needs to be a Juju secret URI pointing to a secret that contains the
       following content: `admin: <password>`. If this config option is not provided, the charm will generate a random password for the
       admin user.
   tls-client-private-key:
     type: secret
     description: |
-      A Juju secret URI of a secret containing the private key for client-to-server TLS certificates. This needs to be a Juju secret 
-      URI pointing to a secret that has the content { private-key: <key> }, where <key> is the key to be used by the charm to generate 
+      A Juju secret URI of a secret containing the private key for client-to-server TLS certificates. This needs to be a Juju secret
+      URI pointing to a secret that has the content { private-key: <key> }, where <key> is the key to be used by the charm to generate
       Certificate Signing Request (CSR). If this config option is not provided, the charm will generate a new private key and use it instead.
-  pause_after_unit_refresh:
+  pause-after-unit-refresh:
     description: |
       Wait for manual confirmation to resume refresh after these units refresh
+
       Allowed values: "all", "first", "none"
     type: string
     default: first
   profile:
     description: |
-      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc. 
+      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc.
       Allowed values are: "production", "staging" and "testing"
     type: string
     default: production
@@ -59,6 +60,6 @@ options:
 
       spark.kubernetes.node.selector.<label1>=<value1>
       spark.kubernetes.node.selector.<label2>=<value2>
-      
+
       The desired configuration will be applied for both driver and executor pods.
     default: ""
