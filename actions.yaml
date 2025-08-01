@@ -4,7 +4,6 @@
 pre-refresh-check:
   description: Check if charm is ready to refresh
   additionalProperties: false
-
 force-refresh-start:
   description: |
     Potential of data loss and downtime
@@ -35,17 +34,16 @@ force-refresh-start:
 
         If `false`, allow refresh to Kyuubi container version that has not been validated to work with the charm revision
   additionalProperties: false
-
 resume-refresh:
   description: |
     Refresh next unit(s) (after you have manually verified that refreshed units are healthy)
 
-    If the `pause_after_unit_refresh` config is set to `all`, this action will refresh the next unit.
+    If the `pause-after-unit-refresh` config is set to `all`, this action will refresh the next unit.
 
-    If `pause_after_unit_refresh` is set to `first`, this action will refresh all remaining units.
+    If `pause-after-unit-refresh` is set to `first`, this action will refresh all remaining units.
     Exception: if automatic health checks fail after a unit has refreshed, the refresh will pause.
 
-    If `pause_after_unit_refresh` is set to `none`, this action will have no effect unless it is called with `check-health-of-refreshed-units` as `false`.
+    If `pause-after-unit-refresh` is set to `none`, this action will have no effect unless it is called with `check-health-of-refreshed-units` as `false`.
   params:
     check-health-of-refreshed-units:
       type: boolean
