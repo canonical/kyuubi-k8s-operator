@@ -86,6 +86,7 @@ class KyuubiManager(WithLogging):
                 ),
                 self._compare_and_update_file(
                     KyuubiConfig(
+                        charm_config=self.context.config,
                         db_info=auth_db_info,
                         zookeeper_info=zookeeper_info,
                         tls_info=tls_info,

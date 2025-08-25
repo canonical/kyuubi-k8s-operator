@@ -10,7 +10,7 @@ import re
 from typing import Literal, Optional
 
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
-from pydantic import Field, validator
+from pydantic import Field, NonNegativeInt, PositiveInt, validator
 
 from .enums import ExposeExternal
 
@@ -22,16 +22,22 @@ SECRET_REGEX = re.compile("secret:[a-z0-9]{20}")
 class CharmConfig(BaseConfigModel):
     """Manager for the structured configuration."""
 
-    namespace: str
-    service_account: str
-    expose_external: ExposeExternal
-    loadbalancer_extra_annotations: str
+    driver_pod_template: str
     enable_dynamic_allocation: bool
+    enable_gpu: bool
+    executor_cores: PositiveInt | None
+    executor_memory: PositiveInt | None
+    executor_pod_template: str
+    expose_external: ExposeExternal
+    gpu_engine_executors_limit: NonNegativeInt
     iceberg_catalog_name: str
+    k8s_node_selectors: str
+    loadbalancer_extra_annotations: str
+    namespace: str
+    profile: Literal["production", "staging", "testing"]
+    service_account: str
     system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
     tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
-    profile: Literal["production", "staging", "testing"]
-    k8s_node_selectors: str
 
     @validator("k8s_node_selectors")
     @classmethod

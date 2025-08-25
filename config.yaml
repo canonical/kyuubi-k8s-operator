@@ -2,55 +2,90 @@
 # See LICENSE file for licensing details.
 
 options:
-  namespace:
+  driver-pod-template:
     type: string
-    description: The namespace to be used by driver to create executor pods. If not configured, the model namespace will be used.
+    description: |
+      Define K8s driver pod from a file accessible to the workload.
+      Ex.: "s3a://bucket/template.yml".
+      Is equivalent to the following Spark configuration:
+
+      spark.kubernetes.driver.podTemplateFile=<driver-pod-template>
+
     default: ""
-  service-account:
-    type: string
-    description: The service account to be used by driver to create executor pods.
-    default: "kyuubi-spark-engine"
-  expose-external:
-    type: string
-    description: The mode in which the service should be exposed externally. Valid values are false, nodeport and loadbalancer.
-    default: "false"
-  loadbalancer-extra-annotations:
-    type: string
-    description: Optional extra annotations to be supplied to the load balancer service.
-    default: "{}"
+
   enable-dynamic-allocation:
     type: boolean
     description: Enable dynamic allocation of pods for Spark jobs.
     default: false
+
+  enable-gpu:
+    type: boolean
+    description: |
+      Enable GPU acceleration for the SparkSQLEngine.
+      This option override 'enable-dynamic-allocation' toggling auto-scaling for executor pods.
+      Is equivalent to the following Spark configuration:
+
+      spark.plugins=com.nvidia.spark.SQLPlugin
+      spark.executor.resource.gpu.amount=1
+      spark.executor.resource.gpu.vendor=nvidia.com
+      spark.kubernetes.container.image=GPU_JOB_OCI_IMAGE
+      spark.executor.resource.gpu.discoveryScript=/opt/getGpusResources.sh
+      kyuubi.session.engine.idle.timeout=PT3M
+      spark.rapids.memory.pinnedPool.size=1G
+      spark.executor.memoryOverhead=1G
+      spark.task.resource.gpu.amount=0.5
+      spark.rapids.sql.concurrentGpuTasks=2
+
+    default: false
+
+  executor-cores:
+    type: int
+    description: |
+      Set K8s executor pods cpu limit.
+      Is equivalent to the following Spark configuration:
+
+      spark.executor.cores=4
+
+  executor-memory:
+    type: int
+    description: |
+      Set K8s executor pods memory limit (in GB).
+      Is equivalent to the following Spark configuration:
+
+      spark.executor.memory=4G
+
+  executor-pod-template:
+    type: string
+    description: |
+      Define K8s executor pods from a file accessible to the workload.
+      Ex.: "s3a://bucket/template.yml".
+      Is equivalent to the following Spark configuration:
+
+      spark.kubernetes.executor.podTemplateFile=<executor-pod-template>
+
+    default: ""
+
+  expose-external:
+    type: string
+    description: The mode in which the service should be exposed externally. Valid values are false, nodeport and loadbalancer.
+    default: "false"
+
+  gpu-engine-executors-limit:
+    type: int
+    description: |
+      Limit the number of GPUs an engine can schedule executor pods on. If 0, use all GPUs available. The more tenants are expected, the less this value should be.
+      This option is ignored if 'enable-gpu' is set to false.
+      Is equivalent to the following Spark configuration:
+
+      spark.executor.instances=1
+
+    default: 1
+
   iceberg-catalog-name:
     type: string
     description: The name of the catalog that has Iceberg capabilities.
     default: iceberg
-  system-users:
-    type: secret
-    description: |
-      Configure the system user 'admin' and it's password. This needs to be a Juju secret URI pointing to a secret that contains the
-      following content: `admin: <password>`. If this config option is not provided, the charm will generate a random password for the
-      admin user.
-  tls-client-private-key:
-    type: secret
-    description: |
-      A Juju secret URI of a secret containing the private key for client-to-server TLS certificates. This needs to be a Juju secret
-      URI pointing to a secret that has the content { private-key: <key> }, where <key> is the key to be used by the charm to generate
-      Certificate Signing Request (CSR). If this config option is not provided, the charm will generate a new private key and use it instead.
-  pause-after-unit-refresh:
-    description: |
-      Wait for manual confirmation to resume refresh after these units refresh
 
-      Allowed values: "all", "first", "none"
-    type: string
-    default: first
-  profile:
-    description: |
-      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc.
-      Allowed values are: "production", "staging" and "testing"
-    type: string
-    default: production
   k8s-node-selectors:
     type: string
     description: |
@@ -63,3 +98,47 @@ options:
 
       The desired configuration will be applied for both driver and executor pods.
     default: ""
+
+  loadbalancer-extra-annotations:
+    type: string
+    description: Optional extra annotations to be supplied to the load balancer service.
+    default: "{}"
+
+  namespace:
+    type: string
+    description: The namespace to be used by driver to create executor pods. If not configured, the model namespace will be used.
+    default: ""
+
+  pause-after-unit-refresh:
+    description: |
+      Wait for manual confirmation to resume refresh after these units refresh
+
+      Allowed values: "all", "first", "none"
+    type: string
+    default: first
+
+  profile:
+    description: |
+      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc.
+      Allowed values are: "production", "staging" and "testing"
+    type: string
+    default: production
+
+  service-account:
+    type: string
+    description: The service account to be used by driver to create executor pods.
+    default: "kyuubi-spark-engine"
+
+  system-users:
+    type: secret
+    description: |
+      Configure the system user 'admin' and it's password. This needs to be a Juju secret URI pointing to a secret that contains the
+      following content: `admin: <password>`. If this config option is not provided, the charm will generate a random password for the
+      admin user.
+
+  tls-client-private-key:
+    type: secret
+    description: |
+      A Juju secret URI of a secret containing the private key for client-to-server TLS certificates. This needs to be a Juju secret
+      URI pointing to a secret that has the content { private-key: <key> }, where <key> is the key to be used by the charm to generate
+      Certificate Signing Request (CSR). If this config option is not provided, the charm will generate a new private key and use it instead.

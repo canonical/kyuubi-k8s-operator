@@ -31,6 +31,8 @@ SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
 # spark 3.4.4, release date 25/07/2025
 JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:568d652977b06a1791588ae1b57529c0b32a44641fac7364f4f16cde5f1c18b4"
+# spark-gpu 3.4.4, release date 08/08/2025
+GPU_JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-gpu@sha256:b93f46e6c532d95ab08e047aa16c332d2078f8881ba85bad26e4ba37853c7aa6"
 
 DEFAULT_ADMIN_USERNAME = "admin"
 PASSWORD_SUFFIX = "-password"
