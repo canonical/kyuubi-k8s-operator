@@ -84,7 +84,7 @@ spec:
         """
 
         self.workload.write(
-            gpu_template, f"{self.workload.paths.spark_conf_path}/gpu_executor_template"
+            gpu_template, f"{self.workload.paths.spark_conf_path}/gpu_executor_template.yaml"
         )
 
     @defer_when_not_ready
