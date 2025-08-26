@@ -112,7 +112,8 @@ def charm_versions() -> IntegrationTestsCharms:
 
 
 @pytest.fixture(scope="module")
-def s3_bucket_and_creds():
+def s3_bucket_and_creds(request: pytest.FixtureRequest):
+    keep_models = bool(request.config.getoption("--keep-models"))
     logger.info("Fetching S3 credentials from minio.....")
 
     fetch_s3_output = (
@@ -163,12 +164,13 @@ def s3_bucket_and_creds():
         "path": TEST_PATH_NAME,
     }
 
-    logger.info("Tearing down test bucket...")
-    for obj in test_bucket.objects.all():
-        # We need to iterate over keys because delete_objects (plural) has mandatory checksum
-        obj.delete()
+    if not keep_models:
+        logger.info("Tearing down test bucket...")
+        for obj in test_bucket.objects.all():
+            # We need to iterate over keys because delete_objects (plural) has mandatory checksum
+            obj.delete()
 
-    test_bucket.delete()
+        test_bucket.delete()
 
 
 @pytest.fixture(scope="module")
