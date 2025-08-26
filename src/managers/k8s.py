@@ -65,5 +65,5 @@ class K8sManager(WithLogging):
         """Get the total number of GPUs across all nodes."""
         n_gpus = 0
         for node in Client().list(Node):
-            n_gpus += getattr(getattr(node.status, "capacity", None), "nvidia.com/gpu", 0)
+            n_gpus += int(getattr(node.status, "capacity", {}).get("nvidia.com/gpu", 0))
         return n_gpus
