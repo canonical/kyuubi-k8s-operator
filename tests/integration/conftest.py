@@ -58,15 +58,15 @@ def charm_versions() -> IntegrationTestsCharms:
     return IntegrationTestsCharms(
         s3=TestCharm(
             name="s3-integrator",
-            channel="edge",
-            revision=41,
+            channel="1/stable",
+            revision=145,
             base="ubuntu@22.04",
             alias="s3",
         ),
         metastore_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=281,
+            revision=495,
             base="ubuntu@22.04",
             alias="metastore",
             trust=True,
@@ -74,15 +74,15 @@ def charm_versions() -> IntegrationTestsCharms:
         auth_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=281,
+            revision=495,
             base="ubuntu@22.04",
             alias="auth-db",
             trust=True,
         ),
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",
-            channel="latest/edge",
-            revision=43,
+            channel="3/stable",
+            revision=67,
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
@@ -96,8 +96,8 @@ def charm_versions() -> IntegrationTestsCharms:
         ),
         tls=TestCharm(
             name="self-signed-certificates",
-            channel="latest/stable",
-            revision=163,  # FIXME (certs): Unpin the revision once the charm is fixed
+            channel="1/stable",
+            revision=317,
             base="ubuntu@22.04",
             alias="self-signed-certificates",
         ),
