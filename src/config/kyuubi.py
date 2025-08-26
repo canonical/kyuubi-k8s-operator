@@ -62,6 +62,13 @@ class KyuubiConfig(WithLogging):
                     "kyuubi.session.engine.idle.timeout": "PT3M",
                 }
             )
+
+        if self.charm_config.profile == "testing":
+            conf.update(
+                {
+                    "kyuubi.session.engine.idle.timeout": "PT1M",
+                }
+            )
         return conf
 
     @property
