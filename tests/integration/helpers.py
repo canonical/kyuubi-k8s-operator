@@ -665,6 +665,13 @@ def run_command_in_pod(
     return stdout, stderr
 
 
+def get_pod_logs(juju: jubilant.Juju, pod_name: str) -> str:
+    """Get logs from pod."""
+    client = lightkube.Client()
+    lines = client.log(pod_name, namespace=cast(str, juju.model))
+    return "".join(lines)
+
+
 def umask_named_temporary_file(*args, **kargs):
     """Return a temporary file descriptor readable by all users."""
     file_desc = NamedTemporaryFile(*args, **kargs)
