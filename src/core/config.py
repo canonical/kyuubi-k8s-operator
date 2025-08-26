@@ -31,7 +31,7 @@ class CharmConfig(BaseConfigModel):
     expose_external: ExposeExternal
     gpu_engine_executors_limit: NonNegativeInt
     iceberg_catalog_name: str
-    k8s_node_selectors: str
+    k8s_node_selectors: dict[str, str] | None
     loadbalancer_extra_annotations: str
     namespace: str
     profile: Literal["production", "staging", "testing"]
@@ -39,7 +39,7 @@ class CharmConfig(BaseConfigModel):
     system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
     tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
 
-    @validator("k8s_node_selectors")
+    @validator("k8s_node_selectors", pre=True)
     @classmethod
     def k8s_node_selectors_validator(cls, value: str) -> dict[str, str] | None:
         """Check validity of `k8s_node_selectors` field."""
