@@ -69,8 +69,9 @@ class Status(Enum):
     TLS_SECRET_INVALID = BlockedStatus(
         "Secret provided as tls-client-private-key has invalid content"
     )
-
     NOT_SERVING_REQUESTS = MaintenanceStatus("Kyuubi is not serving requests")
+    GPU_NOT_FOUND = BlockedStatus("Cannot find GPU resources")
+    MISSING_EXEC_POD_TEMPLATE = BlockedStatus("Need 'executor-pod-template' option with GPU limit")
 
     ACTIVE = ActiveStatus("")
 

@@ -10,6 +10,7 @@ from lightkube import Client
 from constants import GPU_JOB_OCI_IMAGE, JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
 from core.config import CharmConfig
 from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
+from core.workload.kyuubi import SPARK_CONF_PATH
 from utils.logging import WithLogging
 
 
@@ -21,10 +22,12 @@ class SparkConfig(WithLogging):
         charm_config: CharmConfig,
         service_account_info: SparkServiceAccountInfo | None,
         metastore_db_info: DatabaseConnectionInfo | None,
+        gpu_capacity: int,
     ):
         self.charm_config = charm_config
         self.service_account_info = service_account_info
         self.metastore_db_info = metastore_db_info
+        self.gpu_capacity = gpu_capacity
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
@@ -46,24 +49,6 @@ class SparkConfig(WithLogging):
                 }
             )
 
-        if self.charm_config.enable_gpu:
-            conf.update(
-                {
-                    "spark.executor.instances": str(
-                        self.charm_config.gpu_engine_executors_limit
-                    ),  # TODO: all gpus
-                    "spark.executor.memoryOverhead": "1G",
-                    "spark.executor.resource.gpu.amount": "1",
-                    "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
-                    "spark.executor.resource.gpu.vendor": "nvidia.com",
-                    "spark.kubernetes.container.image": GPU_JOB_OCI_IMAGE,
-                    "spark.plugins": "com.nvidia.spark.SQLPlugin",
-                    "spark.rapids.memory.pinnedPool.size": "1G",
-                    "spark.rapids.sql.concurrentGpuTasks": "2",
-                    "spark.task.resource.gpu.amount": "0.5",
-                }
-            )
-
         if dpt := self.charm_config.driver_pod_template:
             conf.update(
                 {
@@ -77,6 +62,34 @@ class SparkConfig(WithLogging):
                     "spark.kubernetes.executor.podTemplateFile": ept,
                 }
             )
+
+        if self.charm_config.enable_gpu:
+            conf.update(
+                {
+                    "spark.executor.instances": str(
+                        self.charm_config.gpu_engine_executors_limit or self.gpu_capacity
+                    ),
+                    "spark.executor.memoryOverhead": "1G",
+                    "spark.executor.resource.gpu.amount": "1",
+                    "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
+                    "spark.executor.resource.gpu.vendor": "nvidia.com",
+                    "spark.kubernetes.container.image": GPU_JOB_OCI_IMAGE,
+                    "spark.plugins": "com.nvidia.spark.SQLPlugin",
+                    "spark.rapids.memory.pinnedPool.size": "1G",
+                    "spark.rapids.sql.concurrentGpuTasks": "2",
+                    "spark.task.resource.gpu.amount": "0.5",
+                }
+            )
+            if ept:
+                self.logger.info(
+                    "'executor-pod-template' option used, make sure that gpu limits are properly set."
+                )
+            else:
+                conf.update(
+                    {
+                        "spark.kubernetes.executor.podTemplateFile": f"{SPARK_CONF_PATH}/gpu_executor_template.yaml",
+                    }
+                )
 
         if e_cores := self.charm_config.executor_cores:
             conf.update(
@@ -101,12 +114,12 @@ class SparkConfig(WithLogging):
             )
 
         if self.charm_config.k8s_node_selectors:
-            for k, v in self.charm_config.k8s_node_selectors.items():
-                conf.update(
-                    {
-                        f"spark.kubernetes.node.selector.{k}": v,
-                    }
-                )
+            conf.update(
+                {
+                    f"spark.kubernetes.node.selector.{k}": v
+                    for k, v in self.charm_config.k8s_node_selectors.items()
+                }
+            )
         return conf
 
     def _sa_conf(self) -> dict[str, str]:

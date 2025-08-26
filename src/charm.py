@@ -207,6 +207,17 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if not k8s_manager.is_service_account_valid():
             statuses.append(Status.INVALID_SERVICE_ACCOUNT.value)
 
+        if self.config.enable_gpu and not k8s_manager.get_number_of_gpus():
+            statuses.append(Status.GPU_NOT_FOUND.value)
+
+        if (
+            self.config.enable_gpu
+            and k8s_manager.is_executor_pod_template_configured()
+            and not self.config.executor_pod_template
+        ):
+            # Executor pod template defined in integration hub
+            statuses.append(Status.MISSING_EXEC_POD_TEMPLATE.value)
+
         if not self.context.auth_db:
             statuses.append(Status.MISSING_AUTH_DB.value)
 

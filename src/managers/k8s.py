@@ -9,7 +9,7 @@ import re
 
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
-from lightkube.resources.core_v1 import Namespace, ServiceAccount
+from lightkube.resources.core_v1 import Namespace, Node, ServiceAccount
 
 from core.domain import SparkServiceAccountInfo
 from core.workload.kyuubi import KyuubiWorkloadBase
@@ -55,3 +55,15 @@ class K8sManager(WithLogging):
         """Return whether Azure object storage backend has been configured."""
         pattern = r"spark\.hadoop\.fs\.azure\.account\.key\..*\.dfs\.core\.windows\.net$"
         return any(re.match(pattern, prop) for prop in self.spark_properties)
+
+    def is_executor_pod_template_configured(self) -> bool:
+        """Return whether executor pod template has been configured."""
+        pattern = r"spark\.kubernetes\.executor\.podTemplateFile$"
+        return any(re.match(pattern, prop) for prop in self.spark_properties)
+
+    def get_number_of_gpus(self) -> int:
+        """Get the total number of GPUs across all nodes."""
+        n_gpus = 0
+        for node in Client().list(Node):
+            n_gpus += getattr(getattr(node.status, "capacity", None), "nvidia.com/gpu", 0)
+        return n_gpus
