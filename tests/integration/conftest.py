@@ -98,7 +98,7 @@ def charm_versions() -> IntegrationTestsCharms:
             name="self-signed-certificates",
             channel="1/stable",
             revision=317,
-            base="ubuntu@22.04",
+            base="ubuntu@24.04",
             alias="self-signed-certificates",
         ),
         data_integrator=TestCharm(
