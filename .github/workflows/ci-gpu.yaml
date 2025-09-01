@@ -97,7 +97,7 @@ jobs:
           sudo apt-get install build-essential tox python3-dev libpq-dev -yqq
           sudo snap install yq
           sudo snap install juju --channel 3.6/stable
-          sudo snap install microk8s --channel 1.32/stable
+          sudo snap install microk8s --channel 1.32/stable --classic
 
       - name: Configure microk8s
         run: |
