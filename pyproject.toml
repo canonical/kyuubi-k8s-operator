@@ -9,12 +9,12 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-ops = "^2.17.0"
-boto3 = ">=1.36.0"
-lightkube = ">=0.15.6"
-psycopg2 = "^2.9.9"
-tenacity = ">=8.0.1"
-spark8t = ">=0.0.11"
+ops = "^2.23.1"
+boto3 = ">=1.40.23"
+lightkube = ">=0.17.2"
+psycopg2 = "^2.9.10"
+tenacity = ">=8.5.0"
+spark8t = ">=0.0.12"
 charm-refresh = "^3.1.0.0"
 
 [tool.poetry.group.charm-libs.dependencies]
@@ -35,37 +35,37 @@ jsonschema = "*"
 optional = true
 
 [tool.poetry.group.format.dependencies]
-ruff = ">=0.10.0"
+ruff = ">=0.12.11"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = ">=0.10.0"
-codespell = ">=2.2.2"
-mypy = "^1.15.0"
+ruff = ">=0.12.11"
+codespell = ">=2.4.1"
+mypy = "^1.17.1"
 types-psycopg2 = "^2.9.21.20250318"
 types-pyyaml = "^6.0.12.20250402"
 types-requests = "^2.32.0.20250328"
-types-boto3 = { extras = ["essentials"], version = ">=1.36.0" }
+types-boto3 = { extras = ["essentials"], version = ">=1.40.23" }
 
 [tool.poetry.group.unit]
 optional = true
 
 [tool.poetry.group.unit.dependencies]
-pytest = ">=7.2"
+pytest = ">=7.4.4"
 coverage = { extras = ["toml"], version = ">7.0" }
-ops = { version = "^2.17.0", extras = ["testing"] }
+ops = { version = "^2.23.1", extras = ["testing"] }
 
 [tool.poetry.group.integration]
 optional = true
 
 [tool.poetry.group.integration.dependencies]
-pytest = ">=7.2"
-boto3 = ">=1.36.0"
-tenacity = "^8.2.2"
+pytest = ">=7.4.4"
+boto3 = ">=1.40.23"
+tenacity = "^8.5.0"
 spark-k8s-test = "^0.0.4"
-jubilant = "^1.0.0"
+jubilant = "^1.4.0"
 tomli = "^2.2.1"
 tomli-w = "^1.2.0"
 
@@ -73,7 +73,7 @@ tomli-w = "^1.2.0"
 optional = true
 
 [tool.poetry.group.build-refresh-version.dependencies]
-charm-refresh-build-version = "^0.2.0"
+charm-refresh-build-version = "^0.4.0"
 
 [tool.ruff]
 line-length = 99
