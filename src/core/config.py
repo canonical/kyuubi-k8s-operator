@@ -30,6 +30,7 @@ class CharmConfig(BaseConfigModel):
     expose_external: ExposeExternal
     gpu_enable: bool
     gpu_engine_executors_limit: NonNegativeInt
+    gpu_pinned_memory: NonNegativeInt
     iceberg_catalog_name: str
     k8s_node_selectors: dict[str, str] | None
     loadbalancer_extra_annotations: str

@@ -69,15 +69,13 @@ class SparkConfig(WithLogging):
                     "spark.executor.instances": str(
                         self.charm_config.gpu_engine_executors_limit or self.gpu_capacity
                     ),
-                    "spark.executor.memoryOverhead": "1G",
+                    "spark.executor.memoryOverhead": f"{self.charm_config.gpu_pinned_memory + 1}G",
                     "spark.executor.resource.gpu.amount": "1",
                     "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
                     "spark.executor.resource.gpu.vendor": "nvidia.com",
                     "spark.kubernetes.container.image": GPU_JOB_OCI_IMAGE,
                     "spark.plugins": "com.nvidia.spark.SQLPlugin",
-                    "spark.rapids.memory.pinnedPool.size": "1G",
-                    "spark.rapids.sql.concurrentGpuTasks": "2",
-                    "spark.task.resource.gpu.amount": "0.5",
+                    "spark.rapids.memory.pinnedPool.size": f"{self.charm_config.gpu_pinned_memory}G",
                 }
             )
             if ept:
