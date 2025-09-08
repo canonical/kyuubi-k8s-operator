@@ -67,7 +67,9 @@ class SparkConfig(WithLogging):
             conf.update(
                 {
                     "spark.executor.instances": str(
-                        self.charm_config.gpu_engine_executors_limit or self.gpu_capacity
+                        self.charm_config.gpu_engine_executors_limit
+                        if self.charm_config.gpu_engine_executors_limit != -1
+                        else self.gpu_capacity
                     ),
                     "spark.executor.memoryOverhead": f"{self.charm_config.gpu_pinned_memory + 1}G",
                     "spark.executor.resource.gpu.amount": "1",

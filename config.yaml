@@ -63,17 +63,14 @@ options:
       spark.kubernetes.container.image=GPU_JOB_OCI_IMAGE
       spark.executor.resource.gpu.discoveryScript=/opt/getGpusResources.sh
       kyuubi.session.engine.idle.timeout=PT3M
-      spark.rapids.memory.pinnedPool.size=1G
-      spark.executor.memoryOverhead=1G
-      spark.task.resource.gpu.amount=0.5
-      spark.rapids.sql.concurrentGpuTasks=2
 
     default: false
 
   gpu-engine-executors-limit:
     type: int
     description: |
-      Limit the number of GPUs an engine can schedule executor pods on. If 0, use all GPUs available. The more tenants are expected, the less this value should be.
+      Limit the number of GPUs an engine can schedule executor pods on. If -1, use all GPUs available. The more tenants are expected, the less this value should be.
+      This option should be set to either -1 or a positive integer.
       This option is ignored if 'gpu-enable' is set to false.
       Is equivalent to the following Spark configuration:
 
