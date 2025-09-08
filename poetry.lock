@@ -1218,41 +1218,40 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "ops"
-version = "2.23.1"
+version = "3.2.0"
 description = "The Python library behind great charms"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["main", "charm-libs", "unit"]
 files = [
-    {file = "ops-2.23.1-py3-none-any.whl", hash = "sha256:fdf58163beafd25180c12a4c7efaf1e76e5f8710508a97840c07055bb78b0c77"},
-    {file = "ops-2.23.1.tar.gz", hash = "sha256:aecacd67ef7ca913f63f397e0330bfa93d70529a3ef71ed2d99e2bc232564ae3"},
+    {file = "ops-3.2.0-py3-none-any.whl", hash = "sha256:2227acceef8f60432b17287f1130135690dd0f6b44edcd025c413ee25f5de010"},
+    {file = "ops-3.2.0.tar.gz", hash = "sha256:1974a002a64e88665f4b23187fb2b1534be15507c2cb6523a5acb5d933b45815"},
 ]
 
 [package.dependencies]
-importlib-metadata = "*"
 opentelemetry-api = ">=1.0,<2.0"
-ops-scenario = {version = "7.23.1", optional = true, markers = "extra == \"testing\""}
+ops-scenario = {version = "8.2.0", optional = true, markers = "extra == \"testing\""}
 PyYAML = "==6.*"
 websocket-client = "==1.*"
 
 [package.extras]
-testing = ["ops-scenario (==7.23.1)"]
-tracing = ["ops-tracing (==2.23.1)"]
+testing = ["ops-scenario (==8.2.0)"]
+tracing = ["ops-tracing (==3.2.0)"]
 
 [[package]]
 name = "ops-scenario"
-version = "7.23.1"
+version = "8.2.0"
 description = "Python library providing a state-transition testing API for Operator Framework charms."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["unit"]
 files = [
-    {file = "ops_scenario-7.23.1-py3-none-any.whl", hash = "sha256:fe56f4cd19fb003285505b2fe22bc5c5beda77e06496bd0ed833456b55008324"},
-    {file = "ops_scenario-7.23.1.tar.gz", hash = "sha256:ae71a9a27c953b65d621495008f9f785aff28543810660063541d0b2990b2101"},
+    {file = "ops_scenario-8.2.0-py3-none-any.whl", hash = "sha256:35e0786b50f8ddd2067c78dbaff2d9219ef701cbebbbace50f8330aaa1fa91f0"},
+    {file = "ops_scenario-8.2.0.tar.gz", hash = "sha256:33eb2ad46f6ee916747a2a0c5d6691454f23c9a7dc03dce24d0be4370c54d45a"},
 ]
 
 [package.dependencies]
-ops = "2.23.1"
+ops = "3.2.0"
 PyYAML = ">=6.0.1"
 
 [[package]]
@@ -1854,14 +1853,14 @@ typing-extensions = ">=4.14.1,<5.0.0"
 
 [[package]]
 name = "tenacity"
-version = "8.5.0"
+version = "9.1.2"
 description = "Retry code until it succeeds"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main", "charm-libs", "integration"]
 files = [
-    {file = "tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687"},
-    {file = "tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78"},
+    {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
+    {file = "tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb"},
 ]
 
 [package.extras]
@@ -2539,4 +2538,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "053d4a171cad98b3c3f4d8740995c453d47f028d291c135658443f2d3d3a1aa4"
+content-hash = "b01577fdc36bb457b01fb5039da1628465eeba55a295a41643fd8d2546aa4eaa"
