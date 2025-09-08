@@ -11,6 +11,8 @@ import jubilant
 import yaml
 from spark_test.utils import get_spark_executors
 
+from core.domain import Status
+
 from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
@@ -75,3 +77,9 @@ def test_gpu_used_for_query(juju: jubilant.Juju, charm_versions: IntegrationTest
         "ExecutorPluginContainer: Initialized executor component for plugin com.nvidia.spark.SQLPlugin"
         in logs
     )
+
+
+def test_request_more_gpu_than_capacity(juju: jubilant.Juju) -> None:
+    juju.config(APP_NAME, {"gpu-engine-executors-limit": 99})
+    status = juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5, timeout=500)
+    assert status.apps[APP_NAME].app_status.message == Status.NOT_ENOUGH_GPUS.value.message

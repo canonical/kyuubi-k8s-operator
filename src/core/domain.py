@@ -71,6 +71,7 @@ class Status(Enum):
     )
     NOT_SERVING_REQUESTS = MaintenanceStatus("Kyuubi is not serving requests")
     GPU_NOT_FOUND = BlockedStatus("Cannot find GPU resources")
+    NOT_ENOUGH_GPUS = BlockedStatus("Cannot request more GPU than cluster capacity")
     MISSING_EXEC_POD_TEMPLATE = BlockedStatus("Need 'executor-pod-template' option with GPU limit")
 
     ACTIVE = ActiveStatus("")
