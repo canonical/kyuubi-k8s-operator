@@ -70,7 +70,7 @@ class KyuubiManager(WithLogging):
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
         tls_info = None if set_tls_none else self.context.tls
 
-        if self.context.config.enable_gpu and self.context.service_account:
+        if self.context.config.gpu_enable and self.context.service_account:
             k8s_manager = K8sManager(
                 service_account_info=self.context.service_account,
                 workload=self.workload,

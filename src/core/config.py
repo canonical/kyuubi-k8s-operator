@@ -7,7 +7,7 @@
 
 import logging
 import re
-from typing import Literal, Optional
+from typing import Literal
 
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
 from pydantic import Field, NonNegativeInt, PositiveInt, validator
@@ -24,11 +24,11 @@ class CharmConfig(BaseConfigModel):
 
     driver_pod_template: str
     enable_dynamic_allocation: bool
-    enable_gpu: bool
     executor_cores: PositiveInt | None
     executor_memory: PositiveInt | None
     executor_pod_template: str
     expose_external: ExposeExternal
+    gpu_enable: bool
     gpu_engine_executors_limit: NonNegativeInt
     iceberg_catalog_name: str
     k8s_node_selectors: dict[str, str] | None
@@ -36,8 +36,8 @@ class CharmConfig(BaseConfigModel):
     namespace: str
     profile: Literal["production", "staging", "testing"]
     service_account: str
-    system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
-    tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
+    system_users: str | None = Field(pattern=SECRET_REGEX, exclude=True)
+    tls_client_private_key: str | None = Field(pattern=SECRET_REGEX, exclude=True)
 
     @validator("k8s_node_selectors", pre=True)
     @classmethod

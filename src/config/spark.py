@@ -41,7 +41,7 @@ class SparkConfig(WithLogging):
             "spark.submit.deployMode": "cluster",
         }
 
-        if self.charm_config.enable_dynamic_allocation and not self.charm_config.enable_gpu:
+        if self.charm_config.enable_dynamic_allocation and not self.charm_config.gpu_enable:
             conf.update(
                 {
                     "spark.dynamicAllocation.enabled": "true",
@@ -63,7 +63,7 @@ class SparkConfig(WithLogging):
                 }
             )
 
-        if self.charm_config.enable_gpu:
+        if self.charm_config.gpu_enable:
             conf.update(
                 {
                     "spark.executor.instances": str(

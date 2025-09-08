@@ -56,7 +56,7 @@ class KyuubiConfig(WithLogging):
             "kyuubi.session.engine.initialize.timeout": "PT10M",
         }
 
-        if self.charm_config.enable_gpu:
+        if self.charm_config.gpu_enable:
             conf.update(
                 {
                     "kyuubi.session.engine.idle.timeout": "PT3M",

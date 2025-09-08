@@ -13,7 +13,6 @@ from core.domain import Status
 
 from .helpers import (
     fetch_connection_info,
-    fetch_spark_properties,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info

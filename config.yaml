@@ -18,26 +18,6 @@ options:
     description: Enable dynamic allocation of pods for Spark jobs.
     default: false
 
-  enable-gpu:
-    type: boolean
-    description: |
-      Enable GPU acceleration for the SparkSQLEngine.
-      This option override 'enable-dynamic-allocation' toggling auto-scaling for executor pods.
-      Is equivalent to the following Spark configuration:
-
-      spark.plugins=com.nvidia.spark.SQLPlugin
-      spark.executor.resource.gpu.amount=1
-      spark.executor.resource.gpu.vendor=nvidia.com
-      spark.kubernetes.container.image=GPU_JOB_OCI_IMAGE
-      spark.executor.resource.gpu.discoveryScript=/opt/getGpusResources.sh
-      kyuubi.session.engine.idle.timeout=PT3M
-      spark.rapids.memory.pinnedPool.size=1G
-      spark.executor.memoryOverhead=1G
-      spark.task.resource.gpu.amount=0.5
-      spark.rapids.sql.concurrentGpuTasks=2
-
-    default: false
-
   executor-cores:
     type: int
     description: |
@@ -70,11 +50,31 @@ options:
     description: The mode in which the service should be exposed externally. Valid values are false, nodeport and loadbalancer.
     default: "false"
 
+  gpu-enable:
+    type: boolean
+    description: |
+      Enable GPU acceleration for the SparkSQLEngine.
+      This option override 'enable-dynamic-allocation' toggling auto-scaling for executor pods.
+      Is equivalent to the following Spark configuration:
+
+      spark.plugins=com.nvidia.spark.SQLPlugin
+      spark.executor.resource.gpu.amount=1
+      spark.executor.resource.gpu.vendor=nvidia.com
+      spark.kubernetes.container.image=GPU_JOB_OCI_IMAGE
+      spark.executor.resource.gpu.discoveryScript=/opt/getGpusResources.sh
+      kyuubi.session.engine.idle.timeout=PT3M
+      spark.rapids.memory.pinnedPool.size=1G
+      spark.executor.memoryOverhead=1G
+      spark.task.resource.gpu.amount=0.5
+      spark.rapids.sql.concurrentGpuTasks=2
+
+    default: false
+
   gpu-engine-executors-limit:
     type: int
     description: |
       Limit the number of GPUs an engine can schedule executor pods on. If 0, use all GPUs available. The more tenants are expected, the less this value should be.
-      This option is ignored if 'enable-gpu' is set to false.
+      This option is ignored if 'gpu-enable' is set to false.
       Is equivalent to the following Spark configuration:
 
       spark.executor.instances=1
