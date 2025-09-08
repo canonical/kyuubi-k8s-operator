@@ -75,7 +75,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 apiVersion: v1
 kind: Pod
 spec:
-  ttlSecondsAfterFinished: 300
   containers:
     - name: executor
       resources:
