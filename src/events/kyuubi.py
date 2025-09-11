@@ -46,7 +46,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.tls_manager = TLSManager(context=self.context, workload=self.workload)
 
         self.framework.observe(self.charm.on.install, self._on_install)
-        self.framework.observe(self.charm.on.start, self._on_start)
         self.framework.observe(self.charm.on.upgrade_charm, self._on_kyuubi_upgrade)
         self.framework.observe(self.charm.on.kyuubi_pebble_ready, self._on_kyuubi_pebble_ready)
         self.framework.observe(self.charm.on.update_status, self._update_event)
@@ -66,25 +65,6 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
 
     def _on_install(self, _: ops.InstallEvent) -> None:
         """Handle the `on_install` event."""
-
-    @defer_when_not_ready
-    def _on_start(self, _: ops.StartEvent) -> None:
-        """Handle the `on_start` event."""
-        # FIXME: Remove once it's part of the OCI resource itself
-        gpu_template = """
-apiVersion: v1
-kind: Pod
-spec:
-  containers:
-    - name: executor
-      resources:
-        limits:
-          nvidia.com/gpu: 1
-        """
-
-        self.workload.write(
-            gpu_template, f"{self.workload.paths.spark_conf_path}/gpu_executor_template.yaml"
-        )
 
     @defer_when_not_ready
     def _on_kyuubi_upgrade(self, event: ops.UpgradeCharmEvent) -> None:
