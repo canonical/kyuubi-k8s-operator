@@ -29,8 +29,10 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 JDBC_PORT = 10009
 SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
-# spark 3.4.4, release date 25/07/2025
-JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:568d652977b06a1791588ae1b57529c0b32a44641fac7364f4f16cde5f1c18b4"
+# spark 3.4.4, release date 11/09/2025
+JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:c4e9b0a9404e9b5caff24d7937b30f5228da12b1a2c75e6126c4856619f39972"
+# spark-gpu 3.4.4, release date 11/09/2025
+GPU_JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-gpu@sha256:eb8200b96e43584df7d9b49030c74fceef29246b976a6ac11d7412c64765f9f8"
 
 DEFAULT_ADMIN_USERNAME = "admin"
 PASSWORD_SUFFIX = "-password"
