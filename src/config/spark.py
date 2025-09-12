@@ -5,13 +5,12 @@
 
 """Spark related configurations."""
 
-from typing import Optional
-
 from lightkube import Client
 
-from constants import JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
+from constants import GPU_JOB_OCI_IMAGE, JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
 from core.config import CharmConfig
 from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
+from core.workload.kyuubi import SPARK_CONF_PATH
 from utils.logging import WithLogging
 
 
@@ -21,31 +20,91 @@ class SparkConfig(WithLogging):
     def __init__(
         self,
         charm_config: CharmConfig,
-        service_account_info: Optional[SparkServiceAccountInfo],
-        metastore_db_info: Optional[DatabaseConnectionInfo],
+        service_account_info: SparkServiceAccountInfo | None,
+        metastore_db_info: DatabaseConnectionInfo | None,
+        gpu_capacity: int,
     ):
         self.charm_config = charm_config
         self.service_account_info = service_account_info
         self.metastore_db_info = metastore_db_info
+        self.gpu_capacity = gpu_capacity
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
         return f"k8s://{cluster_address}"
 
-    def _base_conf(self):
+    def _base_conf(self) -> dict[str, str]:
         """Return base Spark configurations."""
         conf = {
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": JOB_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
         }
-        if self.charm_config.enable_dynamic_allocation:
+
+        if self.charm_config.enable_dynamic_allocation and not self.charm_config.gpu_enable:
             conf.update(
                 {
                     "spark.dynamicAllocation.enabled": "true",
                     "spark.dynamicAllocation.shuffleTracking.enabled": "true",
                 }
             )
+
+        if dpt := self.charm_config.driver_pod_template:
+            conf.update(
+                {
+                    "spark.kubernetes.driver.podTemplateFile": dpt,
+                }
+            )
+
+        if ept := self.charm_config.executor_pod_template:
+            conf.update(
+                {
+                    "spark.kubernetes.executor.podTemplateFile": ept,
+                }
+            )
+
+        if self.charm_config.gpu_enable:
+            conf.update(
+                {
+                    "spark.executor.instances": str(
+                        self.charm_config.gpu_engine_executors_limit
+                        if self.charm_config.gpu_engine_executors_limit != -1
+                        else self.gpu_capacity
+                    ),
+                    "spark.executor.memoryOverhead": f"{self.charm_config.gpu_pinned_memory + 1}G",
+                    "spark.executor.resource.gpu.amount": "1",
+                    "spark.executor.resource.gpu.discoveryScript": "/opt/getGpusResources.sh",
+                    "spark.executor.resource.gpu.vendor": "nvidia.com",
+                    "spark.kubernetes.container.image": GPU_JOB_OCI_IMAGE,
+                    "spark.plugins": "com.nvidia.spark.SQLPlugin",
+                    "spark.rapids.memory.pinnedPool.size": f"{self.charm_config.gpu_pinned_memory}G",
+                }
+            )
+            if ept:
+                self.logger.info(
+                    "'executor-pod-template' option used, make sure that gpu limits are properly set."
+                )
+            else:
+                conf.update(
+                    {
+                        "spark.kubernetes.executor.podTemplateFile": f"{SPARK_CONF_PATH}/gpu_executor_template.yaml",
+                    }
+                )
+
+        if e_cores := self.charm_config.executor_cores:
+            conf.update(
+                {
+                    "spark.executor.cores": str(e_cores),
+                }
+            )
+
+        if e_memory := self.charm_config.executor_memory:
+            conf.update(
+                {
+                    "spark.executor.memory": f"{e_memory}G",
+                }
+            )
+
         if self.charm_config.profile == "testing":
             conf.update(
                 {
@@ -53,16 +112,17 @@ class SparkConfig(WithLogging):
                     "spark.kubernetes.driver.request.cores": "100m",
                 }
             )
+
         if self.charm_config.k8s_node_selectors:
-            for k, v in self.charm_config.k8s_node_selectors.items():
-                conf.update(
-                    {
-                        f"spark.kubernetes.node.selector.{k}": v,
-                    }
-                )
+            conf.update(
+                {
+                    f"spark.kubernetes.node.selector.{k}": v
+                    for k, v in self.charm_config.k8s_node_selectors.items()
+                }
+            )
         return conf
 
-    def _sa_conf(self):
+    def _sa_conf(self) -> dict[str, str]:
         """Spark configurations read from Spark8t."""
         if not self.service_account_info:
             return {}
@@ -74,7 +134,7 @@ class SparkConfig(WithLogging):
         conf.update(self.service_account_info.spark_properties)
         return conf
 
-    def _iceberg_conf(self):
+    def _iceberg_conf(self) -> dict[str, str]:
         """Apache iceberg related configurations."""
         sa_conf = self._sa_conf()
         if not sa_conf or not sa_conf.get("spark.sql.warehouse.dir"):
