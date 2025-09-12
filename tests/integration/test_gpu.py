@@ -3,20 +3,20 @@
 # See LICENSE file for licensing details.
 
 
+import json
 import logging
 from pathlib import Path
 from typing import cast
 
 import jubilant
 import yaml
-from spark_test.utils import get_spark_executors
+from spark_test.utils import LightKubePod, get_spark_drivers, get_spark_executors
 
 from core.domain import Status
 
 from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
-    get_pod_logs,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -64,19 +64,34 @@ def test_deploy_kyuubi_setup(
 
 
 def test_gpu_used_for_query(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
+    """Check that the GPU resource is used by the executor pod, but not by the driver."""
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)
 
+    # The test plan should have spawn one driver and one executor
     executor_pods = get_spark_executors(namespace=cast(str, juju.model))
+    driver_pods = get_spark_drivers(namespace=cast(str, juju.model))
     assert len(executor_pods) == 1
+    assert len(driver_pods) == 1
 
-    exec_pod = executor_pods[0].pod_name
-    logs = get_pod_logs(juju, exec_pod)
-
+    # The executor pod should request a GPU resource, and the RAPIDS plugin needs to be present
+    # in its logs.
+    exec_pod = executor_pods[0]
+    pod_obj = exec_pod.client.get(
+        LightKubePod, name=exec_pod.pod_name, namespace=exec_pod.namespace
+    ).to_dict()
+    assert "nvidia.com/gpu" in json.dumps(pod_obj)
     assert (
         "ExecutorPluginContainer: Initialized executor component for plugin com.nvidia.spark.SQLPlugin"
-        in logs
+        in "".join(exec_pod.logs())
     )
+
+    # The driver pod should not have requested a GPU resource
+    driver_pod = driver_pods[0]
+    pod_obj = driver_pod.client.get(
+        LightKubePod, name=driver_pod.pod_name, namespace=driver_pod.namespace
+    ).to_dict()
+    assert "nvidia.com/gpu" not in json.dumps(pod_obj)
 
 
 def test_request_more_gpu_than_capacity(juju: jubilant.Juju) -> None:
