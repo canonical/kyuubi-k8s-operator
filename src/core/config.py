@@ -7,10 +7,10 @@
 
 import logging
 import re
-from typing import Literal, Optional
+from typing import Literal
 
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
-from pydantic import Field, validator
+from pydantic import Field, NonNegativeInt, PositiveInt, validator
 
 from .enums import ExposeExternal
 
@@ -22,18 +22,25 @@ SECRET_REGEX = re.compile("secret:[a-z0-9]{20}")
 class CharmConfig(BaseConfigModel):
     """Manager for the structured configuration."""
 
-    namespace: str
-    service_account: str
-    expose_external: ExposeExternal
-    loadbalancer_extra_annotations: str
+    driver_pod_template: str
     enable_dynamic_allocation: bool
+    executor_cores: PositiveInt | None
+    executor_memory: PositiveInt | None
+    executor_pod_template: str
+    expose_external: ExposeExternal
+    gpu_enable: bool
+    gpu_engine_executors_limit: PositiveInt | Literal[-1]
+    gpu_pinned_memory: NonNegativeInt
     iceberg_catalog_name: str
-    system_users: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
-    tls_client_private_key: Optional[str] = Field(pattern=SECRET_REGEX, exclude=True)
+    k8s_node_selectors: dict[str, str] | None
+    loadbalancer_extra_annotations: str
+    namespace: str
     profile: Literal["production", "staging", "testing"]
-    k8s_node_selectors: str
+    service_account: str
+    system_users: str | None = Field(pattern=SECRET_REGEX, exclude=True)
+    tls_client_private_key: str | None = Field(pattern=SECRET_REGEX, exclude=True)
 
-    @validator("k8s_node_selectors")
+    @validator("k8s_node_selectors", pre=True)
     @classmethod
     def k8s_node_selectors_validator(cls, value: str) -> dict[str, str] | None:
         """Check validity of `k8s_node_selectors` field."""
