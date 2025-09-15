@@ -43,7 +43,9 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             app_name=self.charm.app.name,
         )
 
-        self.tls_manager = TLSManager(context=self.context, workload=self.workload)
+        self.tls_manager = TLSManager(
+            charm=self.charm, context=self.context, workload=self.workload
+        )
 
         self.framework.observe(self.charm.on.install, self._on_install)
         self.framework.observe(self.charm.on.upgrade_charm, self._on_kyuubi_upgrade)

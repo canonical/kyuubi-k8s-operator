@@ -44,7 +44,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
         self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
-        self.tls_manager = TLSManager(context, workload)
+        self.tls_manager = TLSManager(self.charm, self.context, self.workload)
 
         common_name = self.tls_manager.get_subject()
         sans = self.tls_manager.build_sans()
