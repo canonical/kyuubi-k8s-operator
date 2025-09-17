@@ -1,0 +1,13 @@
+venv/
+build/
+*.charm
+.tox/
+.coverage
+coverage.xml
+__pycache__/
+*.py[cod]
+.idea
+.vscode/
+env/
+.env
+.ruff_cache/

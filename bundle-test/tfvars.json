@@ -1,0 +1,8 @@
+{
+  "s3": {
+      "bucket": "spark",
+      "endpoint": "http://10.152.183.64:80"
+  },
+  "kyuubi_user": "kyuubi-service-account",
+  "model": "spark"
+}

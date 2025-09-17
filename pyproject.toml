@@ -1,0 +1,144 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+[tool.poetry]
+name = "kyuubi-k8s-operator"
+version = "1.0"
+description = "kyuubi-k8s-operator"
+authors = []
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+ops = "^2.17.0"
+boto3 = ">=1.36.0"
+lightkube = ">=0.15.6"
+psycopg2 = "^2.9.9"
+tenacity = ">=8.0.1"
+spark8t = ">=0.0.11"
+charm-refresh = "^3.0.0.3"
+
+[tool.poetry.group.charm-libs.dependencies]
+ops = "^2.13.0"
+poetry-core = "*"
+# grafana_agent/v0/cos_agent.py requires pydantic <2
+pydantic = "^1.10.17, <2"
+# grafana, loki, prometheus
+pyyaml = "^6.0.1"
+# prometheus, loki
+cosl = "^0.0.57"
+# tls_certificates_interface/v1/tls_certificates.py
+# tls_certificates lib uses a feature only available in cryptography >=42.0.5
+cryptography = ">=42.0.5"
+jsonschema = "*"
+
+[tool.poetry.group.format]
+optional = true
+
+[tool.poetry.group.format.dependencies]
+ruff = ">=0.10.0"
+
+[tool.poetry.group.lint]
+optional = true
+
+[tool.poetry.group.lint.dependencies]
+ruff = ">=0.10.0"
+codespell = ">=2.2.2"
+mypy = "^1.15.0"
+types-psycopg2 = "^2.9.21.20250318"
+types-pyyaml = "^6.0.12.20250402"
+types-requests = "^2.32.0.20250328"
+types-boto3 = { extras = ["essentials"], version = ">=1.36.0" }
+
+[tool.poetry.group.unit]
+optional = true
+
+[tool.poetry.group.unit.dependencies]
+pytest = ">=7.2"
+coverage = { extras = ["toml"], version = ">7.0" }
+ops = { version = "^2.17.0", extras = ["testing"] }
+
+[tool.poetry.group.integration]
+optional = true
+
+[tool.poetry.group.integration.dependencies]
+pytest = ">=7.2"
+boto3 = ">=1.36.0"
+tenacity = "^8.2.2"
+spark-k8s-test = "^0.0.4"
+jubilant = "^1.0.0"
+tomli = "^2.2.1"
+tomli-w = "^1.2.0"
+
+[tool.poetry.group.build-refresh-version]
+optional = true
+
+[tool.poetry.group.build-refresh-version.dependencies]
+charm-refresh-build-version = "^0.2.0"
+
+[tool.ruff]
+line-length = 99
+extend-exclude = ["__pycache__", "*.egg_info"]
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "C", "N", "D", "I001"]
+ignore = ["E501", "D107"]
+per-file-ignores = { "tests/*" = ["D100", "D101", "D102", "D103", "D104", "E999"], "src/literals.py" = ["D101"], "src/*/__init__.py" = ["D104"] }
+extend-ignore = [
+  "D203",
+  "D204",
+  "D213",
+  "D215",
+  "D400",
+  "D401",
+  "D404",
+  "D406",
+  "D407",
+  "D408",
+  "D409",
+  "D413",
+]
+mccabe.max-complexity = 10
+
+[tool.mypy]
+exclude = [
+  "lib",
+]
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = [
+  "charms.data_platform_libs.*",
+  "charms.grafana_k8s.*",
+  "charms.loki_k8s.*",
+  "charms.prometheus_k8s.*",
+  "charms.tls_certificates_interface.*",
+  "charms.spark_integration_hub_k8s.*",
+  "spark8t.services",
+  "charm_refresh",
+]
+ignore_missing_imports = true
+
+# Testing tools configuration
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+markers = ["unstable"]
+
+[tool.pyright]
+include = ["src"]
+extraPaths = ["./lib", "src"]
+pythonVersion = "3.10"
+pythonPlatform = "All"
+typeCheckingMode = "basic"
+reportIncompatibleMethodOverride = false
+reportImportCycles = false
+reportMissingModuleSource = true
+stubPath = ""

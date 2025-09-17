@@ -1,0 +1,77 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+bundle: kubernetes
+applications:
+  kyuubi:
+    charm: kyuubi-k8s
+    channel: latest/edge
+    revision: 6
+    resources:
+      kyuubi-image: 1
+    scale: 1
+    options:
+      namespace: {{ namespace }}
+      service-account: {{ service_account }}
+    constraints: arch=amd64
+    trust: true
+  kyuubi-users:
+    charm: postgresql-k8s
+    channel: 14/stable
+    revision: 193
+    resources:
+      postgresql-image: 149
+    scale: 1
+    constraints: arch=amd64
+    storage:
+      pgdata: kubernetes,1,1024M
+    trust: true
+  metastore:
+    charm: postgresql-k8s
+    channel: 14/stable
+    revision: 193
+    resources:
+      postgresql-image: 149
+    scale: 1
+    constraints: arch=amd64
+    storage:
+      pgdata: kubernetes,1,1024M
+    trust: true
+  s3:
+    charm: s3-integrator
+    channel: latest/edge
+    revision: 17
+    scale: 1
+    options:
+      bucket: {{ bucket }}
+      endpoint: {{ s3_endpoint }}
+      path: spark-events
+    constraints: arch=amd64
+  history-server:
+    charm: spark-history-server-k8s
+    channel: 3.4/edge
+    revision: 25
+    resources:
+      spark-history-server-image: 12
+    scale: 1
+    constraints: arch=amd64
+  integration-hub:
+    charm: spark-integration-hub-k8s
+    channel: latest/edge
+    revision: 4
+    resources:
+      integration-hub-image: 1
+    scale: 1
+    constraints: arch=amd64
+    trust: true
+relations:
+- - integration-hub:s3-credentials
+  - s3:s3-credentials
+- - kyuubi:s3-credentials
+  - s3:s3-credentials
+- - history-server:s3-credentials
+  - s3:s3-credentials
+- - kyuubi:metastore-db
+  - metastore:database
+- - kyuubi:auth-db
+  - kyuubi-users:database

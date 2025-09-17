@@ -1,0 +1,64 @@
+# Copyright 2024 Canonical Limited
+# See LICENSE file for licensing details.
+
+options:
+  namespace:
+    type: string
+    description: The namespace to be used by driver to create executor pods. If not configured, the model namespace will be used.
+    default: ""
+  service-account:
+    type: string
+    description: The service account to be used by driver to create executor pods.
+    default: "kyuubi-spark-engine"
+  expose-external:
+    type: string
+    description: The mode in which the service should be exposed externally. Valid values are false, nodeport and loadbalancer.
+    default: "false"
+  loadbalancer-extra-annotations:
+    type: string
+    description: Optional extra annotations to be supplied to the load balancer service.
+    default: "{}"
+  enable-dynamic-allocation:
+    type: boolean
+    description: Enable dynamic allocation of pods for Spark jobs.
+    default: false
+  iceberg-catalog-name:
+    type: string
+    description: The name of the catalog that has Iceberg capabilities.
+    default: iceberg
+  system-users:
+    type: secret
+    description: |
+      Configure the system user 'admin' and it's password. This needs to be a Juju secret URI pointing to a secret that contains the 
+      following content: `admin: <password>`. If this config option is not provided, the charm will generate a random password for the
+      admin user.
+  tls-client-private-key:
+    type: secret
+    description: |
+      A Juju secret URI of a secret containing the private key for client-to-server TLS certificates. This needs to be a Juju secret 
+      URI pointing to a secret that has the content { private-key: <key> }, where <key> is the key to be used by the charm to generate 
+      Certificate Signing Request (CSR). If this config option is not provided, the charm will generate a new private key and use it instead.
+  pause_after_unit_refresh:
+    description: |
+      Wait for manual confirmation to resume refresh after these units refresh
+      Allowed values: "all", "first", "none"
+    type: string
+    default: first
+  profile:
+    description: |
+      Profile representing the scope of the deployment, and used to enable high-level customization of system configurations, resource checks/allocation, warning levels, etc. 
+      Allowed values are: "production", "staging" and "testing"
+    type: string
+    default: production
+  k8s-node-selectors:
+    type: string
+    description: |
+      Comma separated label:value selectors for K8s pods
+      Ex.: "<label1>:<value1>,<label2>:<value2>".
+      Is equivalent to the following Spark configuration:
+
+      spark.kubernetes.node.selector.<label1>=<value1>
+      spark.kubernetes.node.selector.<label2>=<value2>
+      
+      The desired configuration will be applied for both driver and executor pods.
+    default: ""

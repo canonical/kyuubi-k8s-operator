@@ -1,0 +1,21 @@
+"groups":                                         
+- "name": "kyuubi.alerts"
+  "rules":
+  - "alert": "KyuubiBufferPoolCapacityLow"
+    "annotations":
+      "message": "Buffer pool capacity is low"
+      "summary": "Low buffer pool capacity"
+    "expr": |
+      kyuubi_buffer_pool_direct_capacity < 1000
+    "for": "2m"
+    "labels":
+      "severity": "critical"                                   
+  - "alert": "KyuubiJVMUptime"
+    "annotations":
+      "message": "JVM Uptime"
+      "summary": "JVM Uptime"
+    "expr": |
+      kyuubi_jvm_uptime == 0
+    "for": "1m"
+    "labels":
+      "severity": "critical"                                   
