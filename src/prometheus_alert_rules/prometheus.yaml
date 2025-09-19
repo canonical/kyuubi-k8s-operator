@@ -1,21 +1,56 @@
-"groups":                                         
-- "name": "kyuubi.alerts"
-  "rules":
-  - "alert": "KyuubiBufferPoolCapacityLow"
-    "annotations":
-      "message": "Buffer pool capacity is low"
-      "summary": "Low buffer pool capacity"
-    "expr": |
-      kyuubi_buffer_pool_direct_capacity < 1000
-    "for": "2m"
-    "labels":
-      "severity": "critical"                                   
-  - "alert": "KyuubiJVMUptime"
-    "annotations":
-      "message": "JVM Uptime"
-      "summary": "JVM Uptime"
-    "expr": |
-      kyuubi_jvm_uptime == 0
-    "for": "1m"
-    "labels":
-      "severity": "critical"                                   
+groups:
+  - name: kyuubi.alerts
+    rules:
+      - alert: KyuubiMissing
+        expr: group by (juju_model, juju_application) (kyuubi_jvm_uptime) == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Prometheus target missing (instance {{ $labels.instance }})
+          description: "Kyuubi target has disappeared. An exporter might be crashed.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: KyuubiJvmMemoryFillingUp
+        expr: (sum by (instance)(kyuubi_memory_usage_heap_used) / sum by (instance)(kyuubi_memory_usage_heap_max)) * 100 > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: JVM memory filling up (instance {{ $labels.instance }})
+          description: "JVM memory is filling up (> 80%)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: KyuubiHighAvailability
+        expr: sum by (juju_model, juju_application)(up{juju_charm="kyuubi-k8s"}) < 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Not enough units for HA (instance {{ $labels.instance }})
+          description: "High Availability is achieved by having at least three units. \n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: KyuubiKeyStoreExpiration
+        expr: kyuubi_thrift_ssl_cert_expiration < 259200000
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: Thrift SSL KeyStore hosting certificates expiring in less than three days (instance {{ $labels.instance }})
+          description: "KeyStore expiration is near\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: KyuubiJvmThreadsDeadLocked
+        expr: kyuubi_thread_state_deadlock_count > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kyuubi JVM threads Deadlock occurred ({{ $labels.juju_unit }})"
+          description: "JVM Thread Deadlock means a situation where two or more JVM threads are blocked forever, waiting for each other. Deadlock occurs when multiple threads need the same locks but obtain them in different order. Also look to JVM documentation about threads state: https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Thread.State.html\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: KyuubiEngineStartFailure
+        expr: rate(kyuubi_operation_state_LaunchEngine_error_total[15m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} has failed to start an engine in the last 15m."
+          description: "This could be an indication of a misconfiguration, a password rotation or a blob deletion on the object storage.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
