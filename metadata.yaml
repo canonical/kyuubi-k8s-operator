@@ -47,11 +47,9 @@ requires:
   auth-db:
     interface: postgresql_client
     limit: 1
-    optional: false
   spark-service-account:
     interface: spark_service_account
     limit: 1
-    optional: false
   metastore-db:
     interface: postgresql_client
     limit: 1
