@@ -3,7 +3,7 @@
 
 name: kyuubi-k8s
 display-name: Kyuubi K8s
-summary: Kubernetes based charm for the Apache Kyuubi
+summary: Kubernetes based charm for the Apache Kyuubi (Test)
 description: |
   This is a charm for Apache Kyuubi.
 
