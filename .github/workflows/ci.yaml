@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install tox
         run: pipx install tox
       - name: Run linters
@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install tox
         run: pipx install tox
       - name: Run tests
@@ -48,7 +48,7 @@ jobs:
         path:
           - .
     name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.2
     with:
       path-to-charm-directory: ${{ matrix.path }}
 
@@ -87,7 +87,7 @@ jobs:
           printf '\nDisk usage after cleanup\n'
           df --human-readable
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Get prefsrc
         # One IP needed to test external access
         run: |
@@ -97,12 +97,13 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           juju-channel: 3.6/stable
+          bootstrap-options: "--agent-version 3.6.9"
           provider: microk8s
           channel: 1.32-strict/stable
           microk8s-group: snap_microk8s
           microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
       - name: Download packed charm(s)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
@@ -180,18 +181,19 @@ jobs:
           printf '\nDisk usage after cleanup\n'
           df --human-readable
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup operator environment
         # TODO: Replace with custom image on self-hosted runner
         uses: charmed-kubernetes/actions-operator@main
         with:
           juju-channel: 3.6/stable
+          bootstrap-options: "--agent-version 3.6.9"
           provider: microk8s
           channel: 1.32-strict/stable
           microk8s-group: snap_microk8s
           microk8s-addons: "rbac hostpath-storage dns minio"
       - name: Download packed charm(s)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true

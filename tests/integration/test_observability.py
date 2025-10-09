@@ -111,7 +111,7 @@ def test_kyuubi_cos_data_published(juju: jubilant.Juju) -> None:
             logger.info("Checking if alert rules are published...")
             alerts_data = published_prometheus_alerts(juju, cos_address)
 
-            for alert in ["KyuubiBufferPoolCapacityLow", "KyuubiJVMUptime"]:
+            for alert in ["KyuubiMissing", "KyuubiHighAvailability"]:
                 assert any(
                     rule["name"] == alert
                     for group in alerts_data["data"]["groups"]

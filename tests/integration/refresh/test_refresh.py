@@ -162,7 +162,7 @@ def test_run_inplace_upgrade(
     task_params = {"check-compatibility": False}
     # Blocked status is expected due to:
     # (on PR) compatibility checks (on PR charm revision is '3.4/1.25.0+dirty...')
-    # (non-PR) the first unit upgraded and paused (pause_after_unit_refresh=first)
+    # (non-PR) the first unit upgraded and paused (pause-after-unit-refresh=first)
     status = juju.wait(lambda status: jubilant.any_blocked(status, APP_NAME), timeout=30)
 
     first_unit_status_msg = status.apps[APP_NAME].units[refresh_order[0]].workload_status.message
