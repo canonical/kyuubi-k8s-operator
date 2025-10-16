@@ -6,7 +6,6 @@
 
 import re
 import secrets
-import socket
 import string
 
 import httpx
@@ -115,7 +114,7 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         """Is kyuubi serving requests."""
         try:
             res = httpx.get(
-                f"http://{socket.getfqdn()}:{REST_PORT}/api/v1/ping",
+                f"http://127.0.0.1:{REST_PORT}/api/v1/ping",
                 auth=httpx.BasicAuth(DEFAULT_ADMIN_USERNAME, admin_password),
                 timeout=httpx.Timeout(15),
             )
