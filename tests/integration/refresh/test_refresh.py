@@ -17,6 +17,7 @@ from pathlib import Path
 import jubilant
 import pytest
 import yaml
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from integration.helpers import (
     APP_NAME,
@@ -107,14 +108,16 @@ def test_populate(
     We will use this to assert that we can still query data written prior to the inplace upgrade.
     """
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
-    assert validate_sql_queries_with_kyuubi(
-        juju=juju,
-        db_name=DB_NAME,
-        table_name=TABLE_NAME,
-        username=username,
-        password=password,
-        use_tls=with_tls,
-    )
+    for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_fixed(60)):
+        with attempt:
+            assert validate_sql_queries_with_kyuubi(
+                juju=juju,
+                db_name=DB_NAME,
+                table_name=TABLE_NAME,
+                username=username,
+                password=password,
+                use_tls=with_tls,
+            )
 
 
 def test_pre_refresh_check(juju: jubilant.Juju) -> None:
