@@ -440,14 +440,14 @@ def test_kyuubi_not_serving_requests(
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
-    mock_socket_connect: Mock,
+    mock_workload_running: Mock,
 ) -> None:
     """This test simulates a running pebble service not actively serving requests.
 
     This can happen if the keystore file is missing, the service would loop restart.
     """
     # Given
-    mock_socket_connect.return_value = False
+    mock_workload_running.return_value = False
     state = State(
         relations=[spark_service_account_relation, auth_db_relation],
         containers=[kyuubi_container],
