@@ -258,7 +258,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if self.context.tls and not self.workload.tls_ready():
             statuses.append(Status.WAITING_FOR_TLS.value)
 
-        if not self.workload.serving_requests():
+        if not self.workload.is_serving_requests(self.context.cluster.admin_password):
             statuses.append(Status.NOT_SERVING_REQUESTS.value)
 
         return statuses
