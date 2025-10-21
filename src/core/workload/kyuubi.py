@@ -6,16 +6,18 @@
 
 import re
 import secrets
-import socket
 import string
 
+import httpx
 import ops.pebble
 from ops.model import Container
 
 from common.workload.k8s import K8sWorkload
 from constants import (
+    DEFAULT_ADMIN_USERNAME,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
+    REST_PORT,
 )
 from core.domain import User
 from core.workload import KyuubiPaths, KyuubiWorkloadBase
@@ -108,14 +110,20 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         """
         return "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(32)])
 
-    def serving_requests(self) -> bool:
+    def is_serving_requests(self, admin_password: str) -> bool:
         """Is kyuubi serving requests."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if not s.connect_ex((socket.getfqdn(), 10009)):
-                # All good, the port is in use
-                return True
+        try:
+            res = httpx.get(
+                f"http://127.0.0.1:{REST_PORT}/api/v1/ping",
+                auth=httpx.BasicAuth(DEFAULT_ADMIN_USERNAME, admin_password),
+                timeout=httpx.Timeout(15),
+            )
+            res.raise_for_status()
+        except httpx.HTTPError:
+            self.logger.info("Unit is not serving requests")
+            return False
 
-        return False
+        return True
 
     def tls_ready(self) -> bool:
         """Returns if the workload is ready for TLS to be enabled.

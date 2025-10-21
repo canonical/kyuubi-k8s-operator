@@ -54,6 +54,8 @@ class KyuubiConfig(WithLogging):
         """Return base Kyuubi configurations."""
         conf = {
             "kyuubi.session.engine.initialize.timeout": "PT10M",
+            "kyuubi.frontend.protocols": "THRIFT_BINARY,REST",
+            "kyuubi.frontend.rest.bind.host": "127.0.0.1",
         }
 
         if self.charm_config.gpu_enable:
@@ -104,10 +106,6 @@ class KyuubiConfig(WithLogging):
             "kyuubi.frontend.ssl.keystore.path": self.keystore_path,
             "kyuubi.frontend.ssl.keystore.type": "PKCS12",
             "kyuubi.frontend.thrift.binary.ssl.enabled": "true",
-            # enable thrift http frontend with certificate
-            "kyuubi.frontend.thrift.http.ssl.keystore.password": self.tls.keystore_password,
-            "kyuubi.frontend.thrift.http.ssl.keystore.path": self.keystore_path,
-            "kyuubi.frontend.thrift.http.use.SSL": "true",
         }
 
     def to_dict(self) -> dict[str, str]:
