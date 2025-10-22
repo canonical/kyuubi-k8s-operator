@@ -27,6 +27,7 @@ COS_LOG_RELATION_NAME_SERVER = "logging"
 
 # Literals related to Kyuubi
 JDBC_PORT = 10009
+REST_PORT = 10099
 SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
 # spark 3.5.5, release date 12/09/2025

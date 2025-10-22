@@ -107,16 +107,22 @@ jobs:
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
-      - id: cache-image
-        name: Cache Spark Image Locally
+      - id: cache-images
+        name: Cache Images Locally
         run: |
-          # Download image for avoiding time out
-          IMAGE=$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
-          docker pull $IMAGE
-          docker save $IMAGE -o image.tar
-          sudo microk8s ctr images import --base-name $IMAGE image.tar
-          docker rmi $IMAGE
-          rm image.tar
+          # Download images for avoiding time out
+          IMAGES=(
+           $(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
+           $(python3 -c "from src.constants import JOB_OCI_IMAGE;print(JOB_OCI_IMAGE, end='')")
+          )
+
+          for IMAGE in "${IMAGES[@]}"; do
+            docker pull $IMAGE
+            docker save $IMAGE -o image.tar
+            sudo microk8s ctr images import --base-name $IMAGE image.tar
+            docker rmi $IMAGE
+            rm image.tar
+          done
       - name: Select tests
         id: select-tests
         run: |
@@ -136,6 +142,10 @@ jobs:
         if: ${{ failure() }}
         run: |
           juju-crashdump
+
+          # get pods
+          kubectl get pods -A
+
           # replay juju-debug logs
           sudo snap install yq
           for model in $(juju models --format yaml | yq '.models[] | .name');
@@ -146,14 +156,10 @@ jobs:
             fi
           done
 
-          # get pods 
-          kubectl get pods -A
-
           # events
           kubectl events -A
-
           echo "Done"
-  
+
   test-refresh:
     strategy:
       fail-fast: false
@@ -197,16 +203,24 @@ jobs:
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
-      - id: cache-image
-        name: Cache Spark Image Locally
+      - id: cache-images
+        name: Cache Images Locally
         run: |
-          # Download image for avoiding time out
-          IMAGE=$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
-          docker pull $IMAGE
-          docker save $IMAGE -o image.tar
-          sudo microk8s ctr images import --base-name $IMAGE image.tar
-          docker rmi $IMAGE
-          rm image.tar
+          # Download images for avoiding time out
+          IMAGES=(
+           $(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
+           $(python3 -c "from src.constants import JOB_OCI_IMAGE;print(JOB_OCI_IMAGE, end='')")
+           "ghcr.io/canonical/charmed-spark-kyuubi@sha256:e2029c6976fc5b9ee2865eced632ca42ce554039d9832af20dfa3e63113e00f7" # rev 112 charm OCI resource
+           "ghcr.io/canonical/charmed-spark@sha256:f1f944369108c0b0112212fb0242f3c314dfad362926c234857029f13c5de2c0" # rev 112 job OCI resource
+          )
+
+          for IMAGE in "${IMAGES[@]}"; do
+            docker pull $IMAGE
+            docker save $IMAGE -o image.tar
+            sudo microk8s ctr images import --base-name $IMAGE image.tar
+            docker rmi $IMAGE
+            rm image.tar
+          done
       - name: Run inplace upgrade tests
         run: tox run -e integration-refresh -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
         env:
@@ -215,6 +229,10 @@ jobs:
         if: ${{ failure() }}
         run: |
           juju-crashdump
+
+          # get pods
+          kubectl get pods -A
+
           # replay juju-debug logs
           sudo snap install yq
           for model in $(juju models --format yaml | yq '.models[] | .name');
@@ -225,10 +243,6 @@ jobs:
             fi
           done
 
-          # get pods 
-          kubectl get pods -A
-
           # events
           kubectl events -A
-          
           echo "Done"

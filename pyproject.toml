@@ -16,6 +16,7 @@ psycopg2 = "^2.9.10"
 tenacity = ">=9.1.2"
 spark8t = "^1.0.0"
 charm-refresh = "^3.1.0.0"
+httpx = "^0.28.1"
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^3.2.0"
