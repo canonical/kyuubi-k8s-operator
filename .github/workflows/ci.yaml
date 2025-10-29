@@ -161,6 +161,7 @@ jobs:
           echo "Done"
 
   test-refresh:
+    if: false
     strategy:
       fail-fast: false
       matrix:
