@@ -103,6 +103,15 @@ jobs:
           snap alias microk8s.kubectl kubectl
           usermod -aG microk8s ubuntu
 
+      - name: Setup microceph
+        run: |
+          sudo snap install microceph
+          sudo microceph cluster bootstrap
+          sudo microceph disk add loop,1G,3
+          sudo microceph enable rgw
+          sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
+          echo -e "ENDPOINT=${{env.IPADDR}}\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
+
       - name: Configure user, microk8s and juju
         run: |
           su ubuntu -c "/bin/bash ./tests/integration/setup/setup-ec2-gpu.sh"

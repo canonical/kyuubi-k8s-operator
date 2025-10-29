@@ -69,6 +69,7 @@ spark-k8s-test = "^0.0.4"
 jubilant = "^1.4.0"
 tomli = "^2.2.1"
 tomli-w = "^1.2.0"
+python-dotenv = "^1.2.1"
 
 [tool.poetry.group.build-refresh-version]
 optional = true

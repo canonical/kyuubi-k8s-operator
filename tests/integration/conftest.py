@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import os
 import subprocess
 from pathlib import Path
 from string import Template
@@ -14,11 +15,14 @@ import jubilant
 import pytest
 import yaml
 from botocore.client import Config
+from dotenv import load_dotenv
 
 from .types import IntegrationTestsCharms, TestCharm
 
 logger = logging.getLogger(__name__)
 logging.getLogger("jubilant.wait").setLevel(logging.WARNING)
+
+load_dotenv()
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
@@ -116,19 +120,25 @@ def s3_bucket_and_creds(request: pytest.FixtureRequest):
     keep_models = bool(request.config.getoption("--keep-models"))
     logger.info("Fetching S3 credentials from minio.....")
 
-    fetch_s3_output = (
-        subprocess.check_output(
-            "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
-            shell=True,
-            stderr=None,
+    if os.environ.get("ACCESS_KEY", None) is None:
+        fetch_s3_output = (
+            subprocess.check_output(
+                "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
+                shell=True,
+                stderr=None,
+            )
+            .decode("utf-8")
+            .strip()
         )
-        .decode("utf-8")
-        .strip()
-    )
 
-    logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
+        logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
 
-    endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
+        endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
+
+    else:
+        endpoint_url = os.environ["ENDPOINT"]
+        access_key = os.environ["ACCESS_KEY"]
+        secret_key = os.environ["SECRET_KEY"]
 
     session = boto3.session.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     s3 = session.resource(
