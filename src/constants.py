@@ -30,10 +30,10 @@ JDBC_PORT = 10009
 REST_PORT = 10099
 SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
-# spark 3.5.5, release date 12/09/2025
-JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:13afe46fec2a84685e92c03fc94d96b52fbeee5c9494c5086537e6de86af512b"
-# spark-gpu 3.5.5, release date 12/09/2025
-GPU_JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-gpu@sha256:4ba140bc052089f4a4679e199e99c0f30b16bf6829b62e50bb3d8bef20e67872"
+# spark 4.0.1, release date 29/10/2025
+JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark@sha256:5ee407585ff35d04cc6ec82a87150e43ccbaec337de06c9a2b12cd95798031ab"
+# spark-gpu 4.0.1, release date 12/09/2025
+GPU_JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-gpu@sha256:603d9fc6b4629e9fbbda3dae54486ceb01abcd8a97ec5ef372cbd0f749fd3abd"
 
 DEFAULT_ADMIN_USERNAME = "admin"
 PASSWORD_SUFFIX = "-password"
