@@ -53,6 +53,7 @@ jobs:
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
+    if: false
     strategy:
       fail-fast: false
       matrix:

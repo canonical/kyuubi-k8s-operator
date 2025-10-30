@@ -128,8 +128,9 @@ jobs:
           mv ./** /home/ubuntu/workdir
           chown -R ubuntu /home/ubuntu
           cd /home/ubuntu/workdir
-          echo -e "ENDPOINT=http://${{env.IPADDR}}:80/\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
-          chown ubuntu .env
+          echo -e "ENDPOINT=http://$(ip -4 -j route get 2.2.2.2 | yq '.[].prefsrc'):80/\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
+          chown ubuntu:ubuntu .env
+          cat .env
           su ubuntu -c "~/.local/bin/tox run -e integration-gpu"
 
   stop-runner:
