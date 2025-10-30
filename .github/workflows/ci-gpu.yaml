@@ -110,7 +110,6 @@ jobs:
           sudo microceph disk add loop,1G,3
           sudo microceph enable rgw
           sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
-          echo -e "ENDPOINT=http://${{env.IPADDR}}:80/\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
 
       - name: Configure user, microk8s and juju
         run: |
@@ -129,6 +128,8 @@ jobs:
           mv ./** /home/ubuntu/workdir
           chown -R ubuntu /home/ubuntu
           cd /home/ubuntu/workdir
+          echo -e "ENDPOINT=http://${{env.IPADDR}}:80/\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
+          chown ubuntu .env
           su ubuntu -c "~/.local/bin/tox run -e integration-gpu"
 
   stop-runner:
