@@ -113,7 +113,7 @@ jobs:
           sudo microceph disk add loop,1G,3
           sudo microceph enable rgw
           sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
-          echo -e "ENDPOINT=${{env.IPADDR}}\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
+          echo -e "ENDPOINT=http://${{env.IPADDR}}:80/\nACCESS_KEY=foo\nSECRET_KEY=bar" > .env
           cat .env
 
       - name: Download packed charm(s)
