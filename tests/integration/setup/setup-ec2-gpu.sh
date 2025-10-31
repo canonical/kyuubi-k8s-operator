@@ -8,7 +8,7 @@ sudo microk8s status --wait-ready
 mkdir ~/.kube
 mkdir ~/workdir
 sudo microk8s config > ~/.kube/config
-sudo microk8s enable hostpath-storage dns rbac nvidia minio
+sudo microk8s enable hostpath-storage dns rbac nvidia
 sudo microk8s status --wait-ready
 
 while ! sudo microk8s.kubectl logs -n gpu-operator-resources -l app=nvidia-operator-validator | grep "all validations are successful"
