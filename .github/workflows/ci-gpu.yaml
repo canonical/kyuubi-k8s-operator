@@ -103,6 +103,14 @@ jobs:
           snap alias microk8s.kubectl kubectl
           usermod -aG microk8s ubuntu
 
+      - name: Setup microceph
+        run: |
+          sudo snap install microceph
+          sudo microceph cluster bootstrap
+          sudo microceph disk add loop,1G,3
+          sudo microceph enable rgw
+          sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
+
       - name: Configure user, microk8s and juju
         run: |
           su ubuntu -c "/bin/bash ./tests/integration/setup/setup-ec2-gpu.sh"
@@ -120,6 +128,8 @@ jobs:
           mv ./** /home/ubuntu/workdir
           chown -R ubuntu /home/ubuntu
           cd /home/ubuntu/workdir
+          echo -e "S3_SERVER_URL=http://$(ip -4 -j route get 2.2.2.2 | yq '.[].prefsrc'):80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
+          chown ubuntu:ubuntu .env
           su ubuntu -c "~/.local/bin/tox run -e integration-gpu"
 
   stop-runner:

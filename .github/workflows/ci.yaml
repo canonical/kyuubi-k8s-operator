@@ -88,10 +88,7 @@ jobs:
           df --human-readable
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Get prefsrc
-        # One IP needed to test external access
-        run: |
-          echo "IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')" >> $GITHUB_ENV
+
       - name: Setup operator environment
         # TODO: Replace with custom image on self-hosted runner
         uses: charmed-kubernetes/actions-operator@main
@@ -101,7 +98,18 @@ jobs:
           provider: microk8s
           channel: 1.32-strict/stable
           microk8s-group: snap_microk8s
-          microk8s-addons: "rbac hostpath-storage dns minio metallb:${{ env.IPADDR }}-${{ env.IPADDR }}"
+          microk8s-addons: "rbac hostpath-storage dns minio metallb:10.64.140.43-10.64.140.49"
+
+      - name: Setup microceph
+        id: microceph
+        run: |
+          sudo snap install microceph
+          sudo microceph cluster bootstrap
+          sudo microceph disk add loop,1G,3
+          sudo microceph enable rgw
+          sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
+          echo -e "S3_SERVER_URL=http://$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc'):80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
+
       - name: Download packed charm(s)
         uses: actions/download-artifact@v5
         with:
