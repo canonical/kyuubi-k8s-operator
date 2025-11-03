@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import os
 import subprocess
 from pathlib import Path
 from string import Template
@@ -14,9 +15,11 @@ import jubilant
 import pytest
 import yaml
 from botocore.client import Config
+from dotenv import load_dotenv
 
-from .types import IntegrationTestsCharms, TestCharm
+from .types import IntegrationTestsCharms, S3Info, TestCharm
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 logging.getLogger("jubilant.wait").setLevel(logging.WARNING)
 
@@ -112,23 +115,29 @@ def charm_versions() -> IntegrationTestsCharms:
 
 
 @pytest.fixture(scope="module")
-def s3_bucket_and_creds(request: pytest.FixtureRequest):
+def s3_bucket_and_creds(request: pytest.FixtureRequest) -> Iterable[S3Info]:
     keep_models = bool(request.config.getoption("--keep-models"))
-    logger.info("Fetching S3 credentials from minio.....")
 
-    fetch_s3_output = (
-        subprocess.check_output(
-            "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
-            shell=True,
-            stderr=None,
+    if any(
+        (
+            (access_key := os.environ.get("S3_ACCESS_KEY", None)) is None,
+            (secret_key := os.environ.get("S3_SECRET_KEY", None)) is None,
+            (endpoint_url := os.environ.get("S3_SERVER_URL", None)) is None,
         )
-        .decode("utf-8")
-        .strip()
-    )
+    ):
+        logger.info("Fetching S3 credentials from minio.....")
+        fetch_s3_output = (
+            subprocess.check_output(
+                "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
+                shell=True,
+                stderr=None,
+            )
+            .decode("utf-8")
+            .strip()
+        )
 
-    logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
-
-    endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
+        logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
+        endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
 
     session = boto3.session.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     s3 = session.resource(
@@ -155,13 +164,14 @@ def s3_bucket_and_creds(request: pytest.FixtureRequest):
     # Create the test bucket
     s3.create_bucket(Bucket=TEST_BUCKET_NAME)
     logger.info(f"Created bucket: {TEST_BUCKET_NAME}")
-    test_bucket.put_object(Key=TEST_PATH_NAME)
+    test_bucket.put_object(Key=os.path.join(TEST_PATH_NAME, "touch"))
     yield {
-        "endpoint": endpoint_url,
-        "access_key": access_key,
-        "secret_key": secret_key,
+        "endpoint": str(endpoint_url),
+        "access_key": str(access_key),
+        "secret_key": str(secret_key),
         "bucket": TEST_BUCKET_NAME,
         "path": TEST_PATH_NAME,
+        "ca_bundle_path": os.environ.get("S3_CA_BUNDLE_PATH", ""),
     }
 
     if not keep_models:
