@@ -95,9 +95,11 @@ parts:
       write-charm-version
 
       craftctl default
+      grep 'charm =' refresh_versions.toml | cut -d '"' -f 2 > $CRAFT_PART_INSTALL/version
     prime:
       - LICENSE
       - refresh_versions.toml
+      - version
   libpq:
     build-packages:
       - libpq-dev
