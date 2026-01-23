@@ -20,7 +20,7 @@ website:
   - https://canonical.com/data/docs/spark/k8s
   - https://charmhub.io/kyuubi-k8s
   - https://github.com/canonical/kyuubi-k8s-operator
-  - https://matrix.to/#/%23charmhub-data-platform%3Aubuntu.com
+  - https://matrix.to/#/#charmhub-analytics:ubuntu.com
 maintainers:
   - Canonical Data Platform <data-platform@lists.launchpad.net>
 assumes:
