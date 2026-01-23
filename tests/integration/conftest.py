@@ -119,26 +119,9 @@ def charm_versions() -> IntegrationTestsCharms:
 def s3_bucket_and_creds(request: pytest.FixtureRequest) -> Iterable[S3Info]:
     keep_models = bool(request.config.getoption("--keep-models"))
 
-    if any(
-        (
-            (access_key := os.environ.get("S3_ACCESS_KEY", None)) is None,
-            (secret_key := os.environ.get("S3_SECRET_KEY", None)) is None,
-            (endpoint_url := os.environ.get("S3_SERVER_URL", None)) is None,
-        )
-    ):
-        logger.info("Fetching S3 credentials from minio.....")
-        fetch_s3_output = (
-            subprocess.check_output(
-                "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
-                shell=True,
-                stderr=None,
-            )
-            .decode("utf-8")
-            .strip()
-        )
-
-        logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
-        endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
+    access_key = os.environ["S3_ACCESS_KEY"]
+    secret_key = os.environ["S3_SECRET_KEY"]
+    endpoint_url = os.environ["S3_SERVER_URL"]
 
     session = boto3.session.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     s3 = session.resource(
