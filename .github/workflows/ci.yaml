@@ -110,6 +110,14 @@ jobs:
           printf '\nDisk usage after cleanup\n'
           df --human-readable
 
+      - name: Install build deps
+        if: ${{ matrix.system.os == 'ubuntu-22.04-arm' }}
+        shell: bash
+        run: |
+          sudo apt update
+          sudo apt install build-essential
+          sudo apt install libpq-dev
+
       - name: Checkout
         uses: actions/checkout@v6
 
