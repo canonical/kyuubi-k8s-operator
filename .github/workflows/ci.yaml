@@ -52,6 +52,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        system:
+          - os: ubuntu-22.04
+            arch: amd64
+          - os: ubuntu-22.04-arm
+            arch: arm64
         tox-environments:
           - integration-charm
           - integration-metastore
@@ -64,12 +69,34 @@ jobs:
           - integration-iceberg
           - integration-provider
           - integration-trust
-    name: ${{ matrix.tox-environments }}
+
+        exclude:
+          - tox-environments: integration-charm # No ARM build for zk
+            system:
+              os: ubuntu-22.04-arm
+              arch: arm64
+
+          - tox-environments: integration-observability # No ARM build for obs charms
+            system:
+              os: ubuntu-22.04-arm
+              arch: arm64
+
+          - tox-environments: integration-ha # No ARM build for zk
+            system:
+              os: ubuntu-22.04-arm
+              arch: arm64
+
+          - tox-environments: integration-external-access # No ARM build for zk
+            system:
+              os: ubuntu-22.04-arm
+              arch: arm64
+
+    name: ${{ matrix.tox-environments }} (${{ matrix.system.arch }})
     needs:
       - lint
       - unit-test
       - build
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.system.os }}
     timeout-minutes: 120
     steps:
       - name: (GitHub hosted) Free up disk space
