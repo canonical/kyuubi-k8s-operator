@@ -6,6 +6,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
+from platform import machine
 from string import Template
 from typing import Iterable, cast
 
@@ -230,9 +231,19 @@ def test_pod(juju: jubilant.Juju) -> Iterable[str]:
 
 
 @pytest.fixture(scope="module")
-def kyuubi_charm() -> Path:
+def platform() -> str:
+    """Fixture to provide the platform architecture for testing."""
+    platforms = {
+        "x86_64": "amd64",
+        "aarch64": "arm64",
+    }
+    return platforms.get(machine(), "amd64")
+
+
+@pytest.fixture(scope="module")
+def kyuubi_charm(platform: str) -> Path:
     """Path to the packed kyuubi charm."""
-    if not (path := next(iter(Path.cwd().glob("*.charm")), None)):
+    if not (path := next(iter(Path.cwd().glob(f"*-{platform}.charm")), None)):
         raise FileNotFoundError("Could not find packed kyuubi charm.")
 
     return path

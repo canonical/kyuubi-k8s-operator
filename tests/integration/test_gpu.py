@@ -32,6 +32,7 @@ def test_deploy_kyuubi_setup(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
+    platform: str,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
     deploy_minimal_kyuubi_setup(
@@ -39,6 +40,7 @@ def test_deploy_kyuubi_setup(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
+        platform=platform,
         trust=True,
         integrate_zookeeper=True,
         integrate_data_integrator=True,
@@ -47,7 +49,7 @@ def test_deploy_kyuubi_setup(
     juju.wait(jubilant.all_active, delay=5)
 
     logger.info("Deploying postgresql-k8s charm for metastore...")
-    juju.deploy(**charm_versions.metastore_db.deploy_dict())
+    juju.deploy(**charm_versions.metastore_db.deploy_dict(), constraints={"arch": platform})
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(jubilant.all_active, delay=15, timeout=1000)

@@ -439,6 +439,7 @@ def deploy_minimal_kyuubi_setup(
     kyuubi_charm: str | Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
+    platform: str,
     trust: bool = True,
     num_units=1,
     integrate_zookeeper=False,
@@ -452,6 +453,7 @@ def deploy_minimal_kyuubi_setup(
         "base": "ubuntu@22.04",
         "trust": trust,
         "revision": LATEST_STABLE_REV,
+        "constraints": {"arch": platform},
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -485,9 +487,9 @@ def deploy_minimal_kyuubi_setup(
     assert status.apps[APP_NAME].app_status.message == Status.MISSING_INTEGRATION_HUB.value.message
 
     logger.info("Deploying mandatory charms...")
-    juju.deploy(**charm_versions.s3.deploy_dict())
-    juju.deploy(**charm_versions.integration_hub.deploy_dict())
-    juju.deploy(**charm_versions.auth_db.deploy_dict())
+    juju.deploy(**charm_versions.s3.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.integration_hub.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.auth_db.deploy_dict(), constraints={"arch": platform})
 
     logger.info("Waiting for s3-integrator app to be idle...")
     status = juju.wait(
@@ -578,7 +580,7 @@ def deploy_minimal_kyuubi_setup(
 
     if integrate_zookeeper:
         # Deploy Zookeeper and wait
-        juju.deploy(**charm_versions.zookeeper.deploy_dict())
+        juju.deploy(**charm_versions.zookeeper.deploy_dict(), constraints={"arch": platform})
         logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
         juju.wait(
             lambda status: jubilant.all_active(
@@ -605,7 +607,9 @@ def deploy_minimal_kyuubi_setup(
 
     if integrate_data_integrator:
         juju.deploy(
-            **charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"}
+            **charm_versions.data_integrator.deploy_dict(),
+            config={"database-name": "test"},
+            constraints={"arch": platform},
         )
         logger.info("Waiting for data-integrator charm to be idle...")
         juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))

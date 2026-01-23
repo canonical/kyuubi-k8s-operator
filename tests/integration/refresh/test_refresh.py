@@ -48,6 +48,7 @@ def test_deploy(
     with_multi_units: bool,
     with_tls: bool,
     with_metastore: bool,
+    platform: str,
 ):
     """Initial deployment.
 
@@ -65,6 +66,7 @@ def test_deploy(
         kyuubi_charm="kyuubi-k8s",
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
+        platform=platform,
         trust=True,
         num_units=num_units,
         integrate_zookeeper=integrate_zookeeper,
@@ -79,13 +81,14 @@ def test_deploy(
         juju.deploy(
             **charm_versions.tls.deploy_dict(),
             config={"ca-common-name": "kyuubi"},
+            constraints={"arch": platform},
         )
         juju.wait(lambda status: jubilant.all_active(status, charm_versions.tls.app), delay=5)
         juju.integrate(APP_NAME, charm_versions.tls.app)
 
     if with_metastore:
         logger.info("Deploying postgresql-k8s charm...")
-        juju.deploy(**charm_versions.metastore_db.deploy_dict())
+        juju.deploy(**charm_versions.metastore_db.deploy_dict(), constraints={"arch": platform})
 
         logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
         juju.wait(
