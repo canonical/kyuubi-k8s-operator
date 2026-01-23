@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install tox
         run: pipx install tox
       - name: Run linters
@@ -31,21 +31,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install tox
         run: pipx install tox
       - name: Run tests
         run: tox run -e unit
 
   build:
-    strategy:
-      matrix:
-        path:
-          - .
-    name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v41.1.0
     with:
-      path-to-charm-directory: ${{ matrix.path }}
+      cache: false
 
   start-runner:
     name: Start self-hosted EC2 runner
@@ -88,7 +84,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install required packages/snaps
         run: |
@@ -117,7 +113,7 @@ jobs:
         timeout-minutes: 20
 
       - name: Download packed charm(s)
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
