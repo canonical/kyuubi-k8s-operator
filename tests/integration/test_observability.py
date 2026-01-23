@@ -72,7 +72,11 @@ def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju, platform: str) -> None
     # Deploying and relating to grafana-agent
     logger.info("Deploying grafana-agent-k8s charm...")
     juju.deploy(
-        COS_AGENT_APP_NAME, num_units=1, base="ubuntu@22.04", constraints={"arch": platform}
+        COS_AGENT_APP_NAME,
+        channel="1/stable",
+        num_units=1,
+        base="ubuntu@22.04",
+        constraints={"arch": platform},
     )
 
     logger.info("Waiting for test charm to be idle...")
@@ -82,7 +86,7 @@ def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju, platform: str) -> None
     juju.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:grafana-dashboard")
     juju.integrate(COS_AGENT_APP_NAME, f"{APP_NAME}:logging")
 
-    juju.deploy("cos-lite", trust=True, constraints={"arch": platform})
+    juju.deploy("cos-lite", trust=True)
 
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
     juju.wait(lambda status: jubilant.all_blocked(status, COS_AGENT_APP_NAME), delay=10)
