@@ -30,7 +30,7 @@ jobs:
       - name: Run linters
         run: tox run -e lint
 
-  unit-test:
+  unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -94,7 +94,7 @@ jobs:
     name: ${{ matrix.tox-environments }} (${{ matrix.system.arch }})
     needs:
       - lint
-      - unit-test
+      - unit-tests
       - build
     runs-on: ${{ matrix.system.os }}
     timeout-minutes: 120
@@ -203,26 +203,18 @@ jobs:
           kubectl events -A
           echo "Done"
 
-  test-refresh:
-    strategy:
-      fail-fast: false
-      matrix:
-        multi: ["--refresh-multi-units", ""]
-        tls: ["--refresh-tls", ""]
-        image: ["--refresh-image", ""]
-        metastore: ["--refresh-metastore", ""]
-    name: Refresh ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
+  integration-gpu-amd:
+    name: GPU tests (amd64)
     needs:
       - lint
-      - unit-test
+      - unit-tests
       - build
     uses: ./.github/workflows/integration-gpu.yaml
     with:
       arch: amd64
     secrets: inherit
 
-  integration-gpu-amd:
-    if: false
+  integration-gpu-arm:
     name: GPU tests (arm64)
     needs:
       - lint

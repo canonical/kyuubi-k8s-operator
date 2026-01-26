@@ -1,0 +1,42 @@
+juju:
+  channel: 3.6/stable
+  agent-version: "3.6.9"
+  model-defaults:
+    logging-config: <root>=INFO; unit=DEBUG
+
+providers:
+  k8s:
+    enable: true
+    bootstrap: false
+    channel: 1.32-classic/stable
+    features:
+      local-storage:
+      load-balancer:
+        enabled: true
+        l2-mode: true
+        cidrs: 10.64.0.0/16
+    bootstrap-constraints:
+      root-disk: 4G
+
+  lxd:
+    enable: true
+    bootstrap: false
+
+host:
+  packages:
+    - git
+    - make
+    - pipx
+    - libpq-dev
+    - python3-dev
+  snaps:
+    microceph:
+      channel: squid/stable
+    helm:
+      channel: latest/stable
+    kubectl:
+      channel: latest/stable
+    yq:
+      channel: latest/stable
+    aws-cli:
+      channel: latest/stable
