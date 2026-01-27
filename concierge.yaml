@@ -5,18 +5,15 @@ juju:
     logging-config: <root>=INFO; unit=DEBUG
 
 providers:
-  k8s:
+  microk8s:
     enable: true
+    channel: 1.32/stable
     bootstrap: false
-    channel: 1.32-classic/stable
-    features:
-      local-storage:
-      load-balancer:
-        enabled: true
-        l2-mode: true
-        cidrs: 10.64.0.0/16
-    bootstrap-constraints:
-      root-disk: 4G
+    addons:
+      - dns
+      - hostpath-storage
+      - metallb:10.64.140.43-10.64.140.49
+      - nvidia
 
   lxd:
     enable: true

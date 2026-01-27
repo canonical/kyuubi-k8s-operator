@@ -58,26 +58,8 @@ jobs:
 
           mkdir -p /home/ubuntu/.kube
           sudo chown -f -R ubuntu /home/ubuntu/.kube
-          sudo k8s config | tee /home/ubuntu/.kube/config
+          sudo microk8s config | tee /home/ubuntu/.kube/config
           sudo chown ubuntu /home/ubuntu/.kube/config
-
-      - name: Deploy gpu operator
-        timeout-minutes: 10
-        env:
-          KUBECONFIG: "/home/ubuntu/.kube/config"
-        run: |
-          helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-          helm repo update
-          helm install --generate-name -n gpu-operator-resources --create-namespace nvidia/gpu-operator
-          # Wait for gpu operator components to be ready
-          while ! sudo kubectl logs -n gpu-operator-resources -l app=nvidia-operator-validator | grep "all validations are successful"
-          do
-              echo "--------------------------------------------------------------------------------------------------------------------"
-              echo "waiting for validations"
-              sudo kubectl get pods -n gpu-operator-resources
-              sleep 60
-              echo "--------------------------------------------------------------------------------------------------------------------"
-          done
 
       - name: Setup object storage
         run: |
