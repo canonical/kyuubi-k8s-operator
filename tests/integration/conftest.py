@@ -58,19 +58,40 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope="module")
-def charm_versions() -> IntegrationTestsCharms:
+def charm_versions(platform: str) -> IntegrationTestsCharms:
+    revisions = {
+        "amd64": {
+            "s3": 145,
+            "metastore": 495,
+            "auth": 495,
+            "hub": 94,
+            "zk": 78,
+            "tls": 317,
+            "data": 180,
+        },
+        "arm64": {
+            "s3": 146,
+            "metastore": 494,
+            "auth": 494,
+            "hub": 93,
+            "zk": 0,  # no support yet
+            "tls": 262,
+            "data": 181,
+        },
+    }[platform]
+
     return IntegrationTestsCharms(
         s3=TestCharm(
             name="s3-integrator",
             channel="1/stable",
-            revision=145,
+            revision=revisions["s3"],
             base="ubuntu@22.04",
             alias="s3",
         ),
         metastore_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=495,
+            revision=revisions["metastore"],
             base="ubuntu@22.04",
             alias="metastore",
             trust=True,
@@ -78,15 +99,15 @@ def charm_versions() -> IntegrationTestsCharms:
         auth_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=495,
+            revision=revisions["auth"],
             base="ubuntu@22.04",
             alias="auth-db",
             trust=True,
         ),
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",
-            channel="3/stable",
-            revision=67,
+            channel="3/edge",
+            revision=revisions["hub"],
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
@@ -94,22 +115,22 @@ def charm_versions() -> IntegrationTestsCharms:
         zookeeper=TestCharm(
             name="zookeeper-k8s",
             channel="3/stable",
-            revision=78,
+            revision=revisions["zk"],
             base="ubuntu@22.04",
             alias="zookeeper",
         ),
         tls=TestCharm(
             name="self-signed-certificates",
             channel="1/stable",
-            revision=317,
+            revision=revisions["tls"],
             base="ubuntu@24.04",
             alias="self-signed-certificates",
         ),
         data_integrator=TestCharm(
             name="data-integrator",
             channel="latest/stable",
-            revision=161,
-            base="ubuntu@22.04",
+            revision=revisions["data"],
+            base="ubuntu@24.04",
             alias="data-integrator",
         ),
     )
