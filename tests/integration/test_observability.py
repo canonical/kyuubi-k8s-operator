@@ -34,7 +34,6 @@ def test_build_and_deploy(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
-    platform: str,
 ) -> None:
     """Deploy minimal Kyuubi deployments."""
     """Test the status of default managed K8s service when Kyuubi is deployed."""
@@ -43,7 +42,6 @@ def test_build_and_deploy(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
         num_units=1,
         integrate_zookeeper=False,
@@ -60,7 +58,7 @@ def test_run_some_sql_queries(juju: jubilant.Juju, charm_versions: IntegrationTe
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
-def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju, platform: str) -> None:
+def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju) -> None:
     """Setting up COS relations.
 
     This is important to happen before worker log files start to be generated.
@@ -71,13 +69,7 @@ def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju, platform: str) -> None
 
     # Deploying and relating to grafana-agent
     logger.info("Deploying grafana-agent-k8s charm...")
-    juju.deploy(
-        COS_AGENT_APP_NAME,
-        channel="1/stable",
-        num_units=1,
-        base="ubuntu@22.04",
-        constraints={"arch": platform},
-    )
+    juju.deploy(COS_AGENT_APP_NAME, num_units=1, base="ubuntu@22.04")
 
     logger.info("Waiting for test charm to be idle...")
     juju.wait(lambda status: jubilant.all_blocked(status, COS_AGENT_APP_NAME), delay=5)

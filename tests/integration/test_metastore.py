@@ -35,7 +35,6 @@ def test_deploy_minimal_kyuubi_setup(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
-    platform: str,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
     deploy_minimal_kyuubi_setup(
@@ -43,7 +42,6 @@ def test_deploy_minimal_kyuubi_setup(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
     )
 
@@ -64,12 +62,12 @@ def test_sql_queries_local_metastore(
 
 
 def test_integrate_external_metastore(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the Kyuuubi charm by integrating it with external metastore."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying postgresql-k8s charm...")
-    juju.deploy(**charm_versions.metastore_db.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.metastore_db.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
@@ -170,7 +168,7 @@ def test_run_sql_queries_again_with_local_metastore(
 
 
 def test_prepare_metastore_with_invalid_schema(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Prepare an external metastore with invalid schema."""
     # Deploy the charm and wait for waiting status
@@ -178,7 +176,7 @@ def test_prepare_metastore_with_invalid_schema(
         f"Deploying a new instance of postgresql-k8s charm with alias {INVALID_METASTORE_APP_NAME}..."
     )
     deploy_dict = charm_versions.metastore_db.deploy_dict()
-    deploy_dict.update({"app": INVALID_METASTORE_APP_NAME, "constraints": {"arch": platform}})
+    deploy_dict.update({"app": INVALID_METASTORE_APP_NAME})
     juju.deploy(**deploy_dict)
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
@@ -297,11 +295,11 @@ def test_remove_relations(juju: jubilant.Juju, charm_versions: IntegrationTestsC
 
 
 def test_metastore_initialization_with_blocked_kyuubi(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test that metastore initialization happens even when Kyuubi is in blocked state."""
     deploy_dict = charm_versions.metastore_db.deploy_dict()
-    deploy_dict.update({"app": ALT_METASTORE_APP_NAME, "constraints": {"arch": platform}})
+    deploy_dict.update({"app": ALT_METASTORE_APP_NAME})
     logger.info("Deploying new postgresql-k8s charm for metastore...")
     juju.deploy(**deploy_dict)
     juju.wait(lambda status: jubilant.all_active(status, ALT_METASTORE_APP_NAME), delay=5)

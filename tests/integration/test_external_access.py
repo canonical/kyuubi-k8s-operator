@@ -31,7 +31,6 @@ def test_default_deploy(
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
     test_pod: str,
-    platform: str,
 ) -> None:
     """Test the status of default managed K8s service when Kyuubi is deployed."""
     deploy_minimal_kyuubi_setup(
@@ -39,7 +38,6 @@ def test_default_deploy(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
         num_units=3,
         integrate_zookeeper=True,

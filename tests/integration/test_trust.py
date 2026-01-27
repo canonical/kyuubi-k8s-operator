@@ -22,14 +22,12 @@ def test_build_and_deploy(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
-    platform: str,
 ) -> None:
     deploy_minimal_kyuubi_setup(
         juju=juju,
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
     )
 

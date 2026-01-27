@@ -27,7 +27,10 @@ APP_NAME = METADATA["name"]
 
 
 def test_deploy_minimal_kyuubi_setup(
-    juju: jubilant.Juju, kyuubi_charm: Path, charm_versions, s3_bucket_and_creds, platform: str
+    juju: jubilant.Juju,
+    kyuubi_charm: Path,
+    charm_versions,
+    s3_bucket_and_creds,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
     deploy_minimal_kyuubi_setup(
@@ -35,7 +38,6 @@ def test_deploy_minimal_kyuubi_setup(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
     )
 

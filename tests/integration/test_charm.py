@@ -23,7 +23,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
-def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path, platform: str) -> None:
+def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path) -> None:
     """Test building and deploying the charm without relation with any other charm."""
     image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
     resources = {"kyuubi-image": image_version}
@@ -38,7 +38,6 @@ def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path, platfo
         num_units=1,
         base="ubuntu@22.04",
         trust=True,
-        constraints={"arch": platform},
     )
 
     logger.info("Setting configuration for kyuubi-k8s charm...")
@@ -56,15 +55,12 @@ def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path, platfo
 
 
 def test_deploy_s3_integrator(
-    juju: jubilant.Juju,
-    charm_versions: IntegrationTestsCharms,
-    s3_bucket_and_creds: S3Info,
-    platform,
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, s3_bucket_and_creds: S3Info
 ) -> None:
     """Test deploying the s3-integrator charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying s3-integrator charm...")
-    juju.deploy(**charm_versions.s3.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.s3.deploy_dict())
 
     # Receive S3 params from fixture
     endpoint_url = s3_bucket_and_creds["endpoint"]
@@ -97,12 +93,12 @@ def test_deploy_s3_integrator(
 
 
 def test_deploy_integration_hub(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test deploying the integration hub charm and configuring it."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying integration-hub charm...")
-    juju.deploy(**charm_versions.integration_hub.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.integration_hub.deploy_dict())
 
     logger.info("Waiting for integration_hub app to be idle and active...")
     juju.wait(
@@ -137,11 +133,11 @@ def test_integration_with_integration_hub(
 
 
 def test_enable_authentication(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Enable authentication for Kyuubi."""
     logger.info("Deploying postgresql-k8s charm...")
-    juju.deploy(**charm_versions.auth_db.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.auth_db.deploy_dict())
 
     logger.info("Waiting for postgresql-k8s and kyuubi-k8s apps to be idle and active...")
     juju.wait(
@@ -206,13 +202,9 @@ def test_integration_hub_realtime_updates(
 
 
 def test_relate_data_integrator(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
-    juju.deploy(
-        **charm_versions.data_integrator.deploy_dict(),
-        config={"database-name": "test"},
-        constraints={"arch": platform},
-    )
+    juju.deploy(**charm_versions.data_integrator.deploy_dict(), config={"database-name": "test"})
     logger.info("Waiting for data-integrator charm to be idle...")
     juju.wait(lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app))
     logger.info("Integrating kyuubi charm with zookeeper charm...")
@@ -222,12 +214,12 @@ def test_relate_data_integrator(
 
 # TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
 def test_integration_with_zookeeper(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the charm by integrating it with Zookeeper."""
     # Deploy the charm and wait for waiting status
     logger.info("Deploying zookeeper-k8s charm...")
-    juju.deploy(**charm_versions.zookeeper.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.zookeeper.deploy_dict())
 
     logger.info("Waiting for zookeeper app to be active and idle...")
     juju.wait(jubilant.all_active, delay=5)

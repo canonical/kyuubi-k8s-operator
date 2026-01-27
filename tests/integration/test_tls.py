@@ -69,7 +69,6 @@ def test_build_and_deploy(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
-    platform: str,
 ) -> None:
     """Deploy minimal Kyuubi deployments."""
     deploy_minimal_kyuubi_setup(
@@ -77,7 +76,6 @@ def test_build_and_deploy(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
         num_units=1,
         integrate_zookeeper=False,

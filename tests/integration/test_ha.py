@@ -37,14 +37,12 @@ def test_build_and_deploy_cluster_with_no_zookeeper(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
-    platform: str,
 ) -> None:
     deploy_minimal_kyuubi_setup(
         juju=juju,
         kyuubi_charm=str(kyuubi_charm),
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        platform=platform,
         trust=True,
     )
 
@@ -76,11 +74,11 @@ def test_scale_up_kyuubi_to_three_units_without_zookeeper(juju: jubilant.Juju) -
 
 
 def test_zookeeper_relation_with_three_units_of_kyuubi(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str, platform: str
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
 ) -> None:
     """Test relating Zookeeper with Kyuubi with multiple units."""
     # Deploy Zookeeper and wait
-    juju.deploy(**charm_versions.zookeeper.deploy_dict(), constraints={"arch": platform})
+    juju.deploy(**charm_versions.zookeeper.deploy_dict())
     logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
     juju.wait(lambda status: jubilant.all_active(status, charm_versions.zookeeper.app), delay=5)
 
