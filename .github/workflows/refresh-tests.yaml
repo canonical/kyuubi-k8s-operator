@@ -1,0 +1,107 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: Inplace refresh tests
+
+on:
+  workflow_call:
+
+jobs:
+  test-refresh:
+    strategy:
+      fail-fast: false
+      matrix:
+        multi: ["--refresh-multi-units", ""]
+        tls: ["--refresh-tls", ""]
+        image: ["--refresh-image", ""]
+        metastore: ["--refresh-metastore", ""]
+    name: Refresh ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: (GitHub hosted) Free up disk space
+        shell: bash
+        run: |
+          printf '\nDisk usage before cleanup\n'
+          df --human-readable
+          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
+          rm -r /usr/share/dotnet
+          rm -r /opt/hostedtoolcache/
+          printf '\nDisk usage after cleanup\n'
+          df --human-readable
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup operator environment
+        # TODO: Replace with custom image on self-hosted runner
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          juju-channel: 3.6/stable
+          bootstrap-options: "--agent-version 3.6.9"
+          provider: microk8s
+          channel: 1.32-strict/stable
+          microk8s-group: snap_microk8s
+          microk8s-addons: "rbac hostpath-storage dns"
+
+      - name: Setup microceph
+        id: microceph
+        run: |
+          sudo snap install microceph
+          sudo microceph cluster bootstrap
+          sudo microceph disk add loop,1G,3
+          sudo microceph enable rgw
+          sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
+          echo -e "S3_SERVER_URL=http://$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc'):80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
+
+      - name: Download packed charm(s)
+        uses: actions/download-artifact@v7
+        with:
+          artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+          merge-multiple: true
+
+      - id: cache-images
+        name: Cache Images Locally
+        run: |
+          # Download images for avoiding time out
+          IMAGES=(
+           $(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)
+           $(python3 -c "from src.constants import JOB_OCI_IMAGE;print(JOB_OCI_IMAGE, end='')")
+           "ghcr.io/canonical/charmed-spark-kyuubi@sha256:e2029c6976fc5b9ee2865eced632ca42ce554039d9832af20dfa3e63113e00f7" # rev 112 charm OCI resource
+           "ghcr.io/canonical/charmed-spark@sha256:f1f944369108c0b0112212fb0242f3c314dfad362926c234857029f13c5de2c0" # rev 112 job OCI resource
+          )
+
+          for IMAGE in "${IMAGES[@]}"; do
+            docker pull $IMAGE
+            docker save $IMAGE -o image.tar
+            sudo microk8s ctr images import --base-name $IMAGE image.tar
+            docker rmi $IMAGE
+            rm image.tar
+          done
+
+      - name: Run inplace upgrade tests
+        run: tox run -e integration-refresh -- ${{ matrix.multi }} ${{ matrix.tls }} ${{ matrix.image }} ${{ matrix.metastore }} --keep-models
+        env:
+          CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+
+      - name: Collect logs if job failed
+        if: ${{ failure() }}
+        run: |
+          juju-crashdump
+
+          # get pods
+          kubectl get pods -A
+
+          # replay juju-debug logs
+          sudo snap install yq
+          for model in $(juju models --format yaml | yq '.models[] | .name');
+          do
+            echo "Model: $model"
+            if [[ ${model} != *"controller"* ]];then
+              juju debug-log --model $model --replay
+            fi
+          done
+
+          # events
+          kubectl events -A
+          echo "Done"
