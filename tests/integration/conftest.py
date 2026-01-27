@@ -34,12 +34,13 @@ TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
 
 
 @pytest.fixture(scope="module")
-def juju(request: pytest.FixtureRequest):
+def juju(request: pytest.FixtureRequest, platform: str):
     keep_models = bool(request.config.getoption("--keep-models"))
 
     with jubilant.temp_model(keep=keep_models) as juju:
         juju.wait_timeout = 10 * 60
         juju.model_config({"update-status-hook-interval": "60s"})
+        juju.cli("set-model-constraints", f"arch={platform}")
 
         yield juju  # run the test
 
