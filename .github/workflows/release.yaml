@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           VERSION=$(grep "\w*# spark-" metadata.yaml | sed "s/.*spark-\([0-9.]*\).*/\1/g")
-          BASE=$(yq '.platforms' charmcraft.yaml | sed -n "s/ubuntu\@\([0-9\.]*\)\:.*/\1/p")
+          BASE=$(yq '.platforms' charmcraft.yaml | sed -n "s/ubuntu\@\([0-9\.]*\)\:.*/\1/p" | tail -n1)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "base=${BASE}" >> $GITHUB_OUTPUT
         id: charm_metadata
