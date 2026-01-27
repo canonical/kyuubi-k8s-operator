@@ -69,7 +69,7 @@ def test_kyuubi_cos_monitoring_setup(juju: jubilant.Juju) -> None:
 
     # Deploying and relating to grafana-agent
     logger.info("Deploying grafana-agent-k8s charm...")
-    juju.deploy(COS_AGENT_APP_NAME, num_units=1, base="ubuntu@22.04")
+    juju.deploy(COS_AGENT_APP_NAME, num_units=1, channel="1/stable", base="ubuntu@22.04")
 
     logger.info("Waiting for test charm to be idle...")
     juju.wait(lambda status: jubilant.all_blocked(status, COS_AGENT_APP_NAME), delay=5)
