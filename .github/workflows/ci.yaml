@@ -216,6 +216,7 @@ jobs:
 
   integration-gpu-arm:
     name: GPU tests (arm64)
+    if: false # no ARM support for ZK
     needs:
       - lint
       - unit-tests

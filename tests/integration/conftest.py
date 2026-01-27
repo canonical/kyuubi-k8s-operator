@@ -130,7 +130,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             name="data-integrator",
             channel="latest/stable",
             revision=revisions["data"],
-            base="ubuntu@24.04",
+            base="ubuntu@24.04" if platform == "amd64" else "ubuntu@22.04",
             alias="data-integrator",
         ),
     )
