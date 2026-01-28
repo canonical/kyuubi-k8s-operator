@@ -71,7 +71,7 @@ jobs:
           - integration-trust
 
         exclude:
-          - tox-environments: integration-charm # No ARM build for zk
+          - tox-environments: integration-charm # TODO(zk-arm): Remove exclusion
             system:
               os: ubuntu-22.04-arm
               arch: arm64
@@ -81,12 +81,12 @@ jobs:
               os: ubuntu-22.04-arm
               arch: arm64
 
-          - tox-environments: integration-ha # No ARM build for zk
+          - tox-environments: integration-ha # TODO(zk-arm): Remove exclusion
             system:
               os: ubuntu-22.04-arm
               arch: arm64
 
-          - tox-environments: integration-external-access # No ARM build for zk
+          - tox-environments: integration-external-access # TODO(zk-arm): Remove exclusion
             system:
               os: ubuntu-22.04-arm
               arch: arm64
@@ -140,7 +140,8 @@ jobs:
           sudo microceph disk add loop,1G,3
           sudo microceph enable rgw
           sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
-          echo -e "S3_SERVER_URL=http://$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc'):80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
+          export IP=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+          echo -e "S3_SERVER_URL=http://$IP:80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
 
       - name: Download packed charm(s)
         uses: actions/download-artifact@v7
@@ -216,7 +217,9 @@ jobs:
 
   integration-gpu-arm:
     name: GPU tests (arm64)
-    if: false # no ARM support for ZK
+    # TODO(zk-arm): Missing arm64 support for ZK
+    # TODO(GH#165): Convert to Canonical K8s
+    if: false
     needs:
       - lint
       - unit-tests

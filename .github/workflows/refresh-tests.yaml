@@ -52,7 +52,8 @@ jobs:
           sudo microceph disk add loop,1G,3
           sudo microceph enable rgw
           sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
-          echo -e "S3_SERVER_URL=http://$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc'):80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
+          export IP=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+          echo -e "S3_SERVER_URL=http://$IP:80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
 
       - name: Download packed charm(s)
         uses: actions/download-artifact@v7

@@ -75,7 +75,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "metastore": 494,
             "auth": 494,
             "hub": 93,
-            "zk": 0,  # no support yet
+            "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 262,
             "data": 181,
         },
