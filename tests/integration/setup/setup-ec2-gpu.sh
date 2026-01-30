@@ -4,12 +4,6 @@ set -x
 
 pipx install tox
 pipx ensurepath
-sudo microk8s status --wait-ready
-mkdir ~/.kube
-mkdir ~/workdir
-sudo microk8s config > ~/.kube/config
-sudo microk8s enable hostpath-storage dns rbac nvidia
-sudo microk8s status --wait-ready
 
 while ! sudo microk8s.kubectl logs -n gpu-operator-resources -l app=nvidia-operator-validator | grep "all validations are successful"
 do
@@ -22,7 +16,6 @@ do
   sleep 60
   echo "------------------------------------------------------------------------------------------"
 done
-
 
 mkdir -p ~/.local/share/juju
 juju add-k8s mk8s --client
