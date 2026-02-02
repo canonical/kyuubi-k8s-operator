@@ -6,6 +6,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
+from platform import machine
 from string import Template
 from typing import Iterable, cast
 
@@ -33,12 +34,13 @@ TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
 
 
 @pytest.fixture(scope="module")
-def juju(request: pytest.FixtureRequest):
+def juju(request: pytest.FixtureRequest, platform: str):
     keep_models = bool(request.config.getoption("--keep-models"))
 
     with jubilant.temp_model(keep=keep_models) as juju:
         juju.wait_timeout = 10 * 60
         juju.model_config({"update-status-hook-interval": "60s"})
+        juju.cli("set-model-constraints", f"arch={platform}")
 
         yield juju  # run the test
 
@@ -57,19 +59,40 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope="module")
-def charm_versions() -> IntegrationTestsCharms:
+def charm_versions(platform: str) -> IntegrationTestsCharms:
+    revisions = {
+        "amd64": {
+            "s3": 145,
+            "metastore": 495,
+            "auth": 495,
+            "hub": 94,
+            "zk": 78,
+            "tls": 317,
+            "data": 180,
+        },
+        "arm64": {
+            "s3": 146,
+            "metastore": 494,
+            "auth": 494,
+            "hub": 93,
+            "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
+            "tls": 262,
+            "data": 178,
+        },
+    }[platform]
+
     return IntegrationTestsCharms(
         s3=TestCharm(
             name="s3-integrator",
             channel="1/stable",
-            revision=145,
+            revision=revisions["s3"],
             base="ubuntu@22.04",
             alias="s3",
         ),
         metastore_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=495,
+            revision=revisions["metastore"],
             base="ubuntu@22.04",
             alias="metastore",
             trust=True,
@@ -77,15 +100,15 @@ def charm_versions() -> IntegrationTestsCharms:
         auth_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=495,
+            revision=revisions["auth"],
             base="ubuntu@22.04",
             alias="auth-db",
             trust=True,
         ),
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",
-            channel="3/stable",
-            revision=67,
+            channel="3/edge",
+            revision=revisions["hub"],
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
@@ -93,22 +116,22 @@ def charm_versions() -> IntegrationTestsCharms:
         zookeeper=TestCharm(
             name="zookeeper-k8s",
             channel="3/stable",
-            revision=78,
+            revision=revisions["zk"],
             base="ubuntu@22.04",
             alias="zookeeper",
         ),
         tls=TestCharm(
             name="self-signed-certificates",
             channel="1/stable",
-            revision=317,
+            revision=revisions["tls"],
             base="ubuntu@24.04",
             alias="self-signed-certificates",
         ),
         data_integrator=TestCharm(
             name="data-integrator",
             channel="latest/stable",
-            revision=161,
-            base="ubuntu@22.04",
+            revision=revisions["data"],
+            base="ubuntu@24.04",
             alias="data-integrator",
         ),
     )
@@ -118,26 +141,9 @@ def charm_versions() -> IntegrationTestsCharms:
 def s3_bucket_and_creds(request: pytest.FixtureRequest) -> Iterable[S3Info]:
     keep_models = bool(request.config.getoption("--keep-models"))
 
-    if any(
-        (
-            (access_key := os.environ.get("S3_ACCESS_KEY", None)) is None,
-            (secret_key := os.environ.get("S3_SECRET_KEY", None)) is None,
-            (endpoint_url := os.environ.get("S3_SERVER_URL", None)) is None,
-        )
-    ):
-        logger.info("Fetching S3 credentials from minio.....")
-        fetch_s3_output = (
-            subprocess.check_output(
-                "./tests/integration/setup/fetch_s3_credentials.sh | tail -n 3",
-                shell=True,
-                stderr=None,
-            )
-            .decode("utf-8")
-            .strip()
-        )
-
-        logger.info(f"fetch_s3_credentials output:\n{fetch_s3_output}")
-        endpoint_url, access_key, secret_key = fetch_s3_output.strip().splitlines()
+    access_key = os.environ["S3_ACCESS_KEY"]
+    secret_key = os.environ["S3_SECRET_KEY"]
+    endpoint_url = os.environ["S3_SERVER_URL"]
 
     session = boto3.session.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     s3 = session.resource(
@@ -230,9 +236,19 @@ def test_pod(juju: jubilant.Juju) -> Iterable[str]:
 
 
 @pytest.fixture(scope="module")
-def kyuubi_charm() -> Path:
+def platform() -> str:
+    """Fixture to provide the platform architecture for testing."""
+    platforms = {
+        "x86_64": "amd64",
+        "aarch64": "arm64",
+    }
+    return platforms.get(machine(), "amd64")
+
+
+@pytest.fixture(scope="module")
+def kyuubi_charm(platform: str) -> Path:
     """Path to the packed kyuubi charm."""
-    if not (path := next(iter(Path.cwd().glob("*.charm")), None)):
+    if not (path := next(iter(Path.cwd().glob(f"*-{platform}.charm")), None)):
         raise FileNotFoundError("Could not find packed kyuubi charm.")
 
     return path

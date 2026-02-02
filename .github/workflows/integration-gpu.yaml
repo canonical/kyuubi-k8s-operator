@@ -3,53 +3,17 @@
 
 name: GPU Tests
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
-  pull_request:
-  schedule:
-    - cron: "53 0 * * *" # Daily at 00:53 UTC
+  workflow_call:
+    inputs:
+      arch:
+        type: string
+        default: "amd64"
+        required: true
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Install tox
-        run: pipx install tox
-      - name: Run linters
-        run: tox run -e lint
-
-  unit-test:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Install tox
-        run: pipx install tox
-      - name: Run tests
-        run: tox run -e unit
-
-  build:
-    strategy:
-      matrix:
-        path:
-          - .
-    name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
-    with:
-      path-to-charm-directory: ${{ matrix.path }}
-
   start-runner:
     name: Start self-hosted EC2 runner
-    needs: [build]
     runs-on: ubuntu-22.04
     outputs:
       label: ${{ steps.start-ec2-runner.outputs.label }}
@@ -61,63 +25,60 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Start EC2 runner
         id: start-ec2-runner
         uses: machulav/ec2-github-runner@v2.4.1
         with:
           mode: start
           github-token: ${{ secrets.WELPAOLO_GITHUB_TOKEN }}
-          ec2-image-id: ${{ vars.AWS_EC2_IMAGE_ID }}
-          ec2-instance-type: ${{ vars.AWS_EC2_INSTANCE_TYPE }}
+          ec2-image-id: ${{ inputs.arch == 'amd64' && vars.AWS_EC2_IMAGE_ID_AMD || vars.AWS_EC2_IMAGE_ID_ARM }}
+          ec2-instance-type: ${{ inputs.arch == 'amd64' && vars.AWS_EC2_INSTANCE_TYPE_AMD || vars.AWS_EC2_INSTANCE_TYPE_ARM }}
           subnet-id: ${{ vars.AWS_DEFAULT_SUBNET_ID }}
           security-group-id: ${{ vars.AWS_SECURITY_GROUP_ID }}
 
-  integration-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        tox-environments:
-          - integration-charm
-    name: ${{ matrix.tox-environments }}
-    needs:
-      - lint
-      - unit-test
-      - build
-      - start-runner
+  integration-tests:
+    name: Run integration tests
+    needs: [start-runner]
     runs-on: ${{ needs.start-runner.outputs.label }}
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Install required packages/snaps
+      - name: Setup environment
         run: |
-          systemctl disable unattended-upgrades
-          systemctl stop unattended-upgrades
-          apt purge unattended-upgrades -y
-          apt update
-          apt install build-essential python3-dev libpq-dev -yqq pipx
-          snap install yq
-          snap install juju --channel 3.6/stable
-          snap install microk8s --channel 1.32/stable --classic
-          snap alias microk8s.kubectl kubectl
-          usermod -aG microk8s ubuntu
+          sudo systemctl disable --now unattended-upgrades.service
+          sudo apt autoremove unattended-upgrades -y
+          sudo apt update
+          sudo apt install build-essential -yqq
 
-      - name: Setup microceph
+          sudo snap install concierge --classic
+          sudo concierge prepare
+
+          mkdir -p /home/ubuntu/.kube
+          sudo chown -f -R ubuntu /home/ubuntu/.kube
+          sudo microk8s config | tee /home/ubuntu/.kube/config
+          sudo chown ubuntu /home/ubuntu/.kube/config
+
+      - name: Setup object storage
         run: |
-          sudo snap install microceph
           sudo microceph cluster bootstrap
           sudo microceph disk add loop,1G,3
           sudo microceph enable rgw
           sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
+          aws configure set aws_access_key_id foo
+          aws configure set aws_secret_access_key bar
+          aws configure set endpoint_url "http://$(ip -4 -j route get 2.2.2.2 | yq -r '.[] | .prefsrc'):80"
+          aws s3 ls
 
-      - name: Configure user, microk8s and juju
+      - name: Bootstrap juju model
         run: |
           su ubuntu -c "/bin/bash ./tests/integration/setup/setup-ec2-gpu.sh"
         timeout-minutes: 20
 
       - name: Download packed charm(s)
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
@@ -136,7 +97,7 @@ jobs:
     name: Stop self-hosted EC2 runner
     needs:
       - start-runner
-      - integration-test
+      - integration-tests
     runs-on: ubuntu-22.04
     if: ${{ always() }}
     steps:
@@ -146,6 +107,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Stop EC2 runner
         uses: machulav/ec2-github-runner@v2.4.1
         with:
