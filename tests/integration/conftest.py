@@ -65,7 +65,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "s3": 145,
             "metastore": 495,
             "auth": 495,
-            "hub": 94,
+            "hub": 107,
             "zk": 78,
             "tls": 317,
             "data": 180,
@@ -74,7 +74,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "s3": 146,
             "metastore": 494,
             "auth": 494,
-            "hub": 93,
+            "hub": 108,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 262,
             "data": 178,
