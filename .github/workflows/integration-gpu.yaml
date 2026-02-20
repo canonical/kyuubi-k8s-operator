@@ -54,7 +54,7 @@ jobs:
           sudo apt install build-essential -yqq
 
           sudo snap install concierge --classic
-          sudo concierge prepare
+          sudo concierge prepare -c tests/integration/setup/concierge_gpu.yaml
 
           mkdir -p /home/ubuntu/.kube
           sudo chown -f -R ubuntu /home/ubuntu/.kube
