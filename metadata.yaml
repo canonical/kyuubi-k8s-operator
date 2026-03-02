@@ -12,7 +12,7 @@ description: |
 
   Apache Kyuubi is a free, open source software project by the Apache Software Foundation.
   Users can find out more at the [Kyuubi project page](https://kyuubi.apache.org/).
-docs: https://discourse.charmhub.io/t/charmed-apache-kyuubi-k8s-documentation/16755
+docs: https://canonical-charmed-spark.readthedocs-hosted.com/main/how-to/apache-kyuubi
 source: https://github.com/canonical/kyuubi-k8s-operator
 issues: https://github.com/canonical/kyuubi-k8s-operator/issues
 website:
