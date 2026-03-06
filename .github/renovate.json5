@@ -16,6 +16,6 @@
   },
   "ignoreDeps": ["ubuntu"],
   "baseBranchPatterns": [
-    '/^*\\/edge$/',
+    "/^3\\..*\\/edge$/",
   ]
 }
