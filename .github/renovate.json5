@@ -8,13 +8,14 @@
     "theoctober19th",
     "batalex",
   ],
-  "schedule": ["* 3 * * 5"],
+  // Between 1AM and 6:59AM, first Friday of the month
+  "schedule": ["* 1-6 1-7 * 5"],
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["* 3 * * 5"]
+    "schedule": ["* 1-6 1-7 * 5"]
   },
   "ignoreDeps": ["ubuntu"],
   "baseBranchPatterns": [
-    '/^*\\/edge$/',
-  ],
+    "/^3\\..*\\/edge$/",
+  ]
 }
