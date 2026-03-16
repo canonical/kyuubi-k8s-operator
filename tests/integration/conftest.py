@@ -91,7 +91,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         ),
         metastore_db=TestCharm(
             name="postgresql-k8s",
-            channel="14/stable",
+            channel="14/edge/juju4",
             revision=revisions["metastore"],
             base="ubuntu@22.04",
             alias="metastore",
@@ -99,7 +99,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         ),
         auth_db=TestCharm(
             name="postgresql-k8s",
-            channel="14/stable",
+            channel="14/edge/juju4",
             revision=revisions["auth"],
             base="ubuntu@22.04",
             alias="auth-db",
