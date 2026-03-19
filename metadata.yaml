@@ -34,8 +34,8 @@ resources:
   kyuubi-image:
     type: oci-image
     description: OCI image for kyuubi
-    # spark-3.5.7, kyuubi 1.10.3 release date 2026-02-27
-    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:cdde52a4f72112ea09de11c6d21f901323619cf41015db89cb9d5742c57da303
+    # spark-3.5.7, kyuubi 1.10.3 release date 16/03/2026
+    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:21beea406001d161538b552cef2b47b86423bd899139ada263c1ef665fd89fff
 
 peers:
   kyuubi-peers:
