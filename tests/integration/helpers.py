@@ -538,7 +538,7 @@ def deploy_minimal_kyuubi_setup(
             charm_versions.s3.app,
             charm_versions.integration_hub.app,
         ),
-        delay=5,
+        delay=15,
     )
 
     logger.info("Integrating kyuubi charm with integration-hub charm...")
@@ -551,7 +551,7 @@ def deploy_minimal_kyuubi_setup(
             charm_versions.s3.app,
             charm_versions.integration_hub.app,
         ),
-        delay=5,
+        delay=15,
     )
 
     logger.info("Waiting for auth-db charm to be idle and active...")
@@ -560,7 +560,7 @@ def deploy_minimal_kyuubi_setup(
             status,
             charm_versions.auth_db.app,
         ),
-        delay=10,
+        delay=15,
         timeout=2000,
     )
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
