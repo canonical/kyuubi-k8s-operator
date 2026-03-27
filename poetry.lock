@@ -801,7 +801,7 @@ version = "1.10.211231"
 description = "Simple YAML configuration file parser with easy access for structured data"
 optional = false
 python-versions = ">=2.7"
-groups = ["main", "integration"]
+groups = ["integration"]
 files = [
     {file = "envyaml-1.10.211231-py2.py3-none-any.whl", hash = "sha256:8d7a7a6be12587cc5da32a587067506b47b849f4643981099ad148015a72de52"},
     {file = "envyaml-1.10.211231.tar.gz", hash = "sha256:88f8a076159e3c317d3450a5f404132b6ac91aecee4934ea72eac65f911f1244"},
@@ -842,6 +842,34 @@ files = [
 ]
 
 [[package]]
+name = "h2"
+version = "4.3.0"
+description = "Pure-Python HTTP/2 protocol implementation"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "charm-libs", "integration"]
+files = [
+    {file = "h2-4.3.0-py3-none-any.whl", hash = "sha256:c438f029a25f7945c69e0ccf0fb951dc3f73a5f6412981daee861431b70e2bdd"},
+    {file = "h2-4.3.0.tar.gz", hash = "sha256:6c59efe4323fa18b47a632221a1888bd7fde6249819beda254aeca909f221bf1"},
+]
+
+[package.dependencies]
+hpack = ">=4.1,<5"
+hyperframe = ">=6.1,<7"
+
+[[package]]
+name = "hpack"
+version = "4.1.0"
+description = "Pure-Python HPACK header encoding"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "charm-libs", "integration"]
+files = [
+    {file = "hpack-4.1.0-py3-none-any.whl", hash = "sha256:157ac792668d995c657d93111f46b4535ed114f0c9c8d672271bbec7eae1b496"},
+    {file = "hpack-4.1.0.tar.gz", hash = "sha256:ec5eca154f7056aa06f196a557655c5b009b382873ac8d1e66e79e87535f1dca"},
+]
+
+[[package]]
 name = "httpcore"
 version = "1.0.9"
 description = "A minimal low-level HTTP client."
@@ -878,6 +906,7 @@ files = [
 [package.dependencies]
 anyio = "*"
 certifi = "*"
+h2 = {version = ">=3,<5", optional = true, markers = "extra == \"http2\""}
 httpcore = "==1.*"
 idna = "*"
 
@@ -887,6 +916,18 @@ cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "hyperframe"
+version = "6.1.0"
+description = "Pure-Python HTTP/2 framing"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "charm-libs", "integration"]
+files = [
+    {file = "hyperframe-6.1.0-py3-none-any.whl", hash = "sha256:b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5"},
+    {file = "hyperframe-6.1.0.tar.gz", hash = "sha256:f630908a00854a7adeabd6382b43923a4c4cd4b821fcb527e6ab9e15382a3b08"},
+]
 
 [[package]]
 name = "idna"
@@ -978,7 +1019,7 @@ version = "3.1.6"
 description = "A very fast and expressive template engine."
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "integration"]
+groups = ["integration"]
 files = [
     {file = "jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"},
     {file = "jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d"},
@@ -1041,14 +1082,14 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "jubilant"
-version = "1.4.0"
-description = "Juju CLI wrapper for charm integration testing"
+version = "1.7.0"
+description = "Juju CLI wrapper, primarily for charm integration testing"
 optional = false
 python-versions = ">=3.8"
 groups = ["integration"]
 files = [
-    {file = "jubilant-1.4.0-py3-none-any.whl", hash = "sha256:1df7eaf125fad8d0d3d35e6d83eca43bfbb7884debcd6c7f4b0822600e2a485c"},
-    {file = "jubilant-1.4.0.tar.gz", hash = "sha256:aa377699a8811fea29bfe0febb6b552d4593c02e666f5ba8c3fba24258700199"},
+    {file = "jubilant-1.7.0-py3-none-any.whl", hash = "sha256:1dcd70eb10299a95ae9fab405a3ce5f01a15513776b7f8eb4cf7b02808c93cdf"},
+    {file = "jubilant-1.7.0.tar.gz", hash = "sha256:46b7c29a4f3336ab16d77d88418dbf8c9d0746e3f80ef42ee4c2d103eff79650"},
 ]
 
 [package.dependencies]
@@ -1056,23 +1097,23 @@ PyYAML = "==6.*"
 
 [[package]]
 name = "lightkube"
-version = "0.17.2"
+version = "0.19.1"
 description = "Lightweight kubernetes client library"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 groups = ["main", "charm-libs", "integration"]
 files = [
-    {file = "lightkube-0.17.2-py3-none-any.whl", hash = "sha256:df36b228c8ed66c6c5aaeb0cc0c65f908e8aba731c65490a139442c5b55e0334"},
-    {file = "lightkube-0.17.2.tar.gz", hash = "sha256:7b2ed3ce4be75e3a9f602e07bfb1692bbea34a207bfe930e44bc54c3a8ac55ed"},
+    {file = "lightkube-0.19.1-py3-none-any.whl", hash = "sha256:49fef08a1c7aa42082820111ffd5dbbaf78f54c99385810690fc9d94eef5c80d"},
+    {file = "lightkube-0.19.1.tar.gz", hash = "sha256:4c8526068024c194c02fbc0ca6021922feb4b1b9d741d330129f873b27e0fe97"},
 ]
 
 [package.dependencies]
-httpx = ">=0.28.1,<1.0.0"
+httpx = {version = ">=0.28.1,<1.0.0", extras = ["http2"]}
 lightkube-models = ">=1.15.12.0"
-PyYAML = "*"
+pyyaml = "*"
 
 [package.extras]
-dev = ["pytest", "pytest-asyncio", "respx"]
+jinja-templates = ["jinja2"]
 
 [[package]]
 name = "lightkube-models"
@@ -1092,7 +1133,7 @@ version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "integration"]
+groups = ["integration"]
 files = [
     {file = "MarkupSafe-3.0.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7e94c425039cde14257288fd61dcfb01963e658efbc0ff54f5306b06054700f8"},
     {file = "MarkupSafe-3.0.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:9e2d922824181480953426608b81967de705c3cef4d1af983af849d7bd619158"},
@@ -1248,41 +1289,42 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "ops"
-version = "3.2.0"
+version = "3.6.0"
 description = "The Python library behind great charms"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "charm-libs", "unit"]
 files = [
-    {file = "ops-3.2.0-py3-none-any.whl", hash = "sha256:2227acceef8f60432b17287f1130135690dd0f6b44edcd025c413ee25f5de010"},
-    {file = "ops-3.2.0.tar.gz", hash = "sha256:1974a002a64e88665f4b23187fb2b1534be15507c2cb6523a5acb5d933b45815"},
+    {file = "ops-3.6.0-py3-none-any.whl", hash = "sha256:341c6688684446cc4b42860738898683feb271175bb9c4775ae68c81e4e0976a"},
+    {file = "ops-3.6.0.tar.gz", hash = "sha256:a1c3361049c66759840a436143b07c74c2a46dcc44cbfd1177a9051f849c7971"},
 ]
 
 [package.dependencies]
 opentelemetry-api = ">=1.0,<2.0"
-ops-scenario = {version = "8.2.0", optional = true, markers = "extra == \"testing\""}
+ops-scenario = {version = "8.6.0", optional = true, markers = "extra == \"testing\""}
 PyYAML = "==6.*"
 websocket-client = "==1.*"
 
 [package.extras]
-testing = ["ops-scenario (==8.2.0)"]
-tracing = ["ops-tracing (==3.2.0)"]
+testing = ["ops-scenario (==8.6.0)"]
+tracing = ["ops-tracing (==3.6.0)"]
 
 [[package]]
 name = "ops-scenario"
-version = "8.2.0"
+version = "8.6.0"
 description = "Python library providing a state-transition testing API for Operator Framework charms."
 optional = false
 python-versions = ">=3.10"
 groups = ["unit"]
 files = [
-    {file = "ops_scenario-8.2.0-py3-none-any.whl", hash = "sha256:35e0786b50f8ddd2067c78dbaff2d9219ef701cbebbbace50f8330aaa1fa91f0"},
-    {file = "ops_scenario-8.2.0.tar.gz", hash = "sha256:33eb2ad46f6ee916747a2a0c5d6691454f23c9a7dc03dce24d0be4370c54d45a"},
+    {file = "ops_scenario-8.6.0-py3-none-any.whl", hash = "sha256:469490a042dc45eca24eef7aa1b9214704d97d67503ad8465414ab68dc989d30"},
+    {file = "ops_scenario-8.6.0.tar.gz", hash = "sha256:5a40a91fd5e9b6c8249933944dfc6e807ad2ddbd36a68c800746b9bb8a0eabfb"},
 ]
 
 [package.dependencies]
-ops = "3.2.0"
+ops = "3.6.0"
 PyYAML = ">=6.0.1"
+typing_extensions = ">=4.9.0"
 
 [[package]]
 name = "packaging"
@@ -1880,21 +1922,21 @@ spark8t = ">=0.0.10"
 
 [[package]]
 name = "spark8t"
-version = "1.1.0"
+version = "1.4.0"
 description = "This project provides some utilities function and CLI commands to run Spark on K8s."
 optional = false
 python-versions = "<4.0,>=3.10"
-groups = ["main", "integration"]
+groups = ["integration"]
 files = [
-    {file = "spark8t-1.1.0-py3-none-any.whl", hash = "sha256:99dcfa46afed9cccf7c7a3c07fc43f805ff4c9fd41b48de79950e3565534ee3f"},
-    {file = "spark8t-1.1.0.tar.gz", hash = "sha256:2f61232f3c4b328b05affab5872fedc28ae5b7a0fe225aadab3cec24f590fc42"},
+    {file = "spark8t-1.4.0-py3-none-any.whl", hash = "sha256:8489c6d0123cbfc550af0d2e4c9d8ffece6afe56bb4d4c1eb11eec5516bab012"},
+    {file = "spark8t-1.4.0.tar.gz", hash = "sha256:fac0cd2f077c15c4b89302d69cead2d5631473d0522805310395a3ff59971ae4"},
 ]
 
 [package.dependencies]
 envyaml = ">=1.10.211231"
-jinja2 = ">=3.1.2"
-lightkube = ">=0.11"
-typing-extensions = ">=4.14.1,<5.0.0"
+jinja2 = ">=3.1.6"
+lightkube = ">=0.19.1"
+typing-extensions = ">=4.15.0,<5.0.0"
 
 [[package]]
 name = "tenacity"
@@ -2583,4 +2625,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "3ccf2bb92db6e7dbcd730d28fca7b39a9f64fe323b006639971a82f01a9270f4"
+content-hash = "255190b35166f205beb663248eca95942f704acfc144e91b7062c6a6281c1e74"
