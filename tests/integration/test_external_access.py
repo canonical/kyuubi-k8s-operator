@@ -161,9 +161,11 @@ def test_invalid_service_type(
     juju.config(APP_NAME, {"expose-external": "invalid"})
 
     juju.wait(
-        lambda status: {
-            status.apps[APP_NAME].units[unit].workload_status.current
-            for unit in status.apps[APP_NAME].units
-        }
-        == {"error"}
+        lambda status: (
+            {
+                status.apps[APP_NAME].units[unit].workload_status.current
+                for unit in status.apps[APP_NAME].units
+            }
+            == {"error"}
+        )
     )
