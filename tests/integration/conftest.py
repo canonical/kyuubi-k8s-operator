@@ -67,7 +67,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "auth": 774,
             "hub": 119,
             "zk": 78,
-            "tls": 588,
+            "tls": 586,
             "data": 362,
         },
         "arm64": {
