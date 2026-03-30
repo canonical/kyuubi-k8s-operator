@@ -222,18 +222,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.42.77"
+version = "1.42.78"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "integration"]
 files = [
-    {file = "boto3-1.42.77-py3-none-any.whl", hash = "sha256:95eb3ef693068586f70ca3f29c43701c34a9a73d0df413ea7eaff138efa4a6b9"},
-    {file = "boto3-1.42.77.tar.gz", hash = "sha256:c6d9b05e5b86767d4c6ef762f155c891366e5951162f71d030e109fe531f4fd9"},
+    {file = "boto3-1.42.78-py3-none-any.whl", hash = "sha256:480a34a077484a5ca60124dfd150ba3ea6517fc89963a679e45b30c6db614d26"},
+    {file = "boto3-1.42.78.tar.gz", hash = "sha256:cef2ebdb9be5c0e96822f8d3941ac4b816c90a5737a7ffb901d664c808964b63"},
 ]
 
 [package.dependencies]
-botocore = ">=1.42.77,<1.43.0"
+botocore = ">=1.42.78,<1.43.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.16.0,<0.17.0"
 
@@ -242,14 +242,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.42.77"
+version = "1.42.78"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "integration"]
 files = [
-    {file = "botocore-1.42.77-py3-none-any.whl", hash = "sha256:807bc2c3825bec6f025506ceeba5f7f111a00de8d58f35c679ee16c8ff6e7b10"},
-    {file = "botocore-1.42.77.tar.gz", hash = "sha256:cbb0ac410fab4aa0839a521329f970b271ec298d67465ed7fa7d095c0dad9f48"},
+    {file = "botocore-1.42.78-py3-none-any.whl", hash = "sha256:038ab63c7f898e8b5db58cb6a45e4da56c31dd984e7e995839a3540c735564ea"},
+    {file = "botocore-1.42.78.tar.gz", hash = "sha256:61cbd49728e23f68cfd945406ab40044d49abed143362f7ffa4a4f4bd4311791"},
 ]
 
 [package.dependencies]
@@ -1140,14 +1140,14 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "jubilant"
-version = "1.7.0"
+version = "1.8.0"
 description = "Juju CLI wrapper, primarily for charm integration testing"
 optional = false
 python-versions = ">=3.8"
 groups = ["integration"]
 files = [
-    {file = "jubilant-1.7.0-py3-none-any.whl", hash = "sha256:1dcd70eb10299a95ae9fab405a3ce5f01a15513776b7f8eb4cf7b02808c93cdf"},
-    {file = "jubilant-1.7.0.tar.gz", hash = "sha256:46b7c29a4f3336ab16d77d88418dbf8c9d0746e3f80ef42ee4c2d103eff79650"},
+    {file = "jubilant-1.8.0-py3-none-any.whl", hash = "sha256:e0495ee645de5f2df81d044a3b6e2827b5a6277de02c6d30935b9632bd868a98"},
+    {file = "jubilant-1.8.0.tar.gz", hash = "sha256:a7cea68299dca94fac3e121a8c8ed92021d20aa2f4461e16822abbcd134d0b8b"},
 ]
 
 [package.dependencies]
@@ -1477,40 +1477,40 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "ops"
-version = "3.6.0"
+version = "3.7.0"
 description = "The Python library behind great charms"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "charm-libs", "unit"]
 files = [
-    {file = "ops-3.6.0-py3-none-any.whl", hash = "sha256:341c6688684446cc4b42860738898683feb271175bb9c4775ae68c81e4e0976a"},
-    {file = "ops-3.6.0.tar.gz", hash = "sha256:a1c3361049c66759840a436143b07c74c2a46dcc44cbfd1177a9051f849c7971"},
+    {file = "ops-3.7.0-py3-none-any.whl", hash = "sha256:7050d5e629ac17de9d443e64f4ad09857e8012c9012c8ba66c9e765899d50bd1"},
+    {file = "ops-3.7.0.tar.gz", hash = "sha256:15f04b2fcf1d8bc966cd4405b68a2c71fa24c06f234d5003e89cc4f18ee51a45"},
 ]
 
 [package.dependencies]
 opentelemetry-api = ">=1.0,<2.0"
-ops-scenario = {version = "8.6.0", optional = true, markers = "extra == \"testing\""}
+ops-scenario = {version = "8.7.0", optional = true, markers = "extra == \"testing\""}
 PyYAML = "==6.*"
 websocket-client = "==1.*"
 
 [package.extras]
-testing = ["ops-scenario (==8.6.0)"]
-tracing = ["ops-tracing (==3.6.0)"]
+testing = ["ops-scenario (==8.7.0)"]
+tracing = ["ops-tracing (==3.7.0)"]
 
 [[package]]
 name = "ops-scenario"
-version = "8.6.0"
+version = "8.7.0"
 description = "Python library providing a state-transition testing API for Operator Framework charms."
 optional = false
 python-versions = ">=3.10"
 groups = ["unit"]
 files = [
-    {file = "ops_scenario-8.6.0-py3-none-any.whl", hash = "sha256:469490a042dc45eca24eef7aa1b9214704d97d67503ad8465414ab68dc989d30"},
-    {file = "ops_scenario-8.6.0.tar.gz", hash = "sha256:5a40a91fd5e9b6c8249933944dfc6e807ad2ddbd36a68c800746b9bb8a0eabfb"},
+    {file = "ops_scenario-8.7.0-py3-none-any.whl", hash = "sha256:2245bf9127e2f455d05ee0e75345a86fa83cbd44aaa253320aeb0d68433e34de"},
+    {file = "ops_scenario-8.7.0.tar.gz", hash = "sha256:0f17bbcac19e31cd0a408542c517fb22cf532bda1dc4f6133e50bafae0901e41"},
 ]
 
 [package.dependencies]
-ops = "3.6.0"
+ops = "3.7.0"
 PyYAML = ">=6.0.1"
 typing_extensions = ">=4.9.0"
 
@@ -1562,14 +1562,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "poetry-core"
-version = "2.3.1"
+version = "2.3.2"
 description = "Poetry PEP 517 Build Backend"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["charm-libs"]
 files = [
-    {file = "poetry_core-2.3.1-py3-none-any.whl", hash = "sha256:db1cf63b782570deb38bfba61e2304a553eef0740dc17959a50cc0f5115ee634"},
-    {file = "poetry_core-2.3.1.tar.gz", hash = "sha256:96f791d5d7d4e040f3983d76779425cf9532690e2756a24fd5ca0f86af19ef82"},
+    {file = "poetry_core-2.3.2-py3-none-any.whl", hash = "sha256:23df641b64f87fbb4ce1873c1915a4d4bb1b7d808c596e4307edc073e68d7234"},
+    {file = "poetry_core-2.3.2.tar.gz", hash = "sha256:20cb71be27b774628da9f384effd9183dfceb53bcef84063248a8672aa47031f"},
 ]
 
 [[package]]
@@ -1673,14 +1673,14 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pygments"
-version = "2.19.2"
+version = "2.20.0"
 description = "Pygments is a syntax highlighting package written in Python."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["integration", "unit"]
 files = [
-    {file = "pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b"},
-    {file = "pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887"},
+    {file = "pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176"},
+    {file = "pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f"},
 ]
 
 [package.extras]
@@ -2231,14 +2231,14 @@ files = [
 
 [[package]]
 name = "types-boto3"
-version = "1.42.77"
-description = "Type annotations for boto3 1.42.77 generated with mypy-boto3-builder 8.12.0"
+version = "1.42.78"
+description = "Type annotations for boto3 1.42.78 generated with mypy-boto3-builder 8.12.0"
 optional = false
 python-versions = ">=3.9"
 groups = ["lint"]
 files = [
-    {file = "types_boto3-1.42.77-py3-none-any.whl", hash = "sha256:08a643498ad29f46ded88572af5797427cbcec086c28313f21e7fc4a1f48a292"},
-    {file = "types_boto3-1.42.77.tar.gz", hash = "sha256:0a006f575b063c809c5258ae6228f9bb11703818baab9c01085139f37592654e"},
+    {file = "types_boto3-1.42.78-py3-none-any.whl", hash = "sha256:fe1576d3a518422534ff8372cf0fcaf9856eec3fa096d31a72d2d6ca62e0b956"},
+    {file = "types_boto3-1.42.78.tar.gz", hash = "sha256:132e0dc52a718f858f8a79436422848c4efe1c89e87d748784aecef3d1f69965"},
 ]
 
 [package.dependencies]
@@ -2299,7 +2299,7 @@ bedrock-data-automation-runtime = ["types-boto3-bedrock-data-automation-runtime 
 bedrock-runtime = ["types-boto3-bedrock-runtime (>=1.42.0,<1.43.0)"]
 billing = ["types-boto3-billing (>=1.42.0,<1.43.0)"]
 billingconductor = ["types-boto3-billingconductor (>=1.42.0,<1.43.0)"]
-boto3 = ["boto3 (==1.42.77)"]
+boto3 = ["boto3 (==1.42.78)"]
 braket = ["types-boto3-braket (>=1.42.0,<1.43.0)"]
 budgets = ["types-boto3-budgets (>=1.42.0,<1.43.0)"]
 ce = ["types-boto3-ce (>=1.42.0,<1.43.0)"]
