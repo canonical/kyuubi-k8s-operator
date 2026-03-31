@@ -194,8 +194,9 @@ def test_run_inplace_upgrade(
 
     logger.info("Waiting for refresh to complete")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME)
-        and jubilant.all_agents_idle(status, APP_NAME),
+        lambda status: (
+            jubilant.all_active(status, APP_NAME) and jubilant.all_agents_idle(status, APP_NAME)
+        ),
         delay=10,
     )
 
@@ -216,8 +217,9 @@ def test_create_new_data(
     juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME)
-        and jubilant.all_agents_idle(status, APP_NAME),
+        lambda status: (
+            jubilant.all_active(status, APP_NAME) and jubilant.all_agents_idle(status, APP_NAME)
+        ),
         delay=10,
     )
     """Test that the upgraded deployment is valid (can connect with auth, and write)."""
