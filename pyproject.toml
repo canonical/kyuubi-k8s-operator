@@ -9,12 +9,11 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-ops = "^3.2.0"
+ops = "^3.6.0"
 boto3 = ">=1.40.23"
 lightkube = ">=0.17.2"
 psycopg2 = "^2.9.10"
 tenacity = ">=9.1.2"
-spark8t = "^1.0.0"
 charm-refresh = "^3.1.0.0"
 httpx = "^0.28.1"
 
@@ -65,8 +64,9 @@ optional = true
 pytest = ">=7.4.4"
 boto3 = ">=1.40.23"
 tenacity = "^9.1.2"
+spark8t = "^1.4.0"
 spark-k8s-test = "^0.0.4"
-jubilant = "^1.4.0"
+jubilant = "^1.7.0"
 tomli = "^2.2.1"
 tomli-w = "^1.2.0"
 python-dotenv = "^1.2.1"

@@ -40,7 +40,7 @@ def juju(request: pytest.FixtureRequest, platform: str):
     with jubilant.temp_model(keep=keep_models) as juju:
         juju.wait_timeout = 10 * 60
         juju.model_config({"update-status-hook-interval": "60s"})
-        juju.cli("set-model-constraints", f"arch={platform}")
+        juju.model_constraints({"arch": platform})
 
         yield juju  # run the test
 
@@ -62,22 +62,22 @@ def pytest_addoption(parser):
 def charm_versions(platform: str) -> IntegrationTestsCharms:
     revisions = {
         "amd64": {
-            "s3": 145,
-            "metastore": 495,
-            "auth": 495,
-            "hub": 107,
+            "s3": 330,
+            "metastore": 774,
+            "auth": 774,
+            "hub": 119,
             "zk": 78,
-            "tls": 317,
-            "data": 180,
+            "tls": 586,
+            "data": 362,
         },
         "arm64": {
-            "s3": 146,
-            "metastore": 494,
-            "auth": 494,
-            "hub": 108,
+            "s3": 332,
+            "metastore": 775,
+            "auth": 775,
+            "hub": 120,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
-            "tls": 262,
-            "data": 178,
+            "tls": 585,
+            "data": 359,
         },
     }[platform]
 
