@@ -44,7 +44,7 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v41.1.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v48.0.2
 
   integration-test:
     strategy:
@@ -141,7 +141,7 @@ jobs:
           echo -e "S3_SERVER_URL=http://$IP:80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
 
       - name: Download packed charm(s)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
           merge-multiple: true
