@@ -52,7 +52,8 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
-LATEST_STABLE_REV = 112
+# TODO: Replace this with newer revision when we have releases for branch 4.0/edge
+KYUUBI_REVISION_TO_REFRESH_FROM = 112
 
 
 def get_random_name():
@@ -451,7 +452,7 @@ def deploy_minimal_kyuubi_setup(
         "channel": "4.0/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
-        "revision": LATEST_STABLE_REV,
+        "revision": KYUUBI_REVISION_TO_REFRESH_FROM,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]

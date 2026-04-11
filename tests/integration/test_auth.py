@@ -149,7 +149,7 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
     juju.cli("update-secret", secret_name, f"{username}={password}")
     status = juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
-        delay=5,
+        delay=10,
     )
     assert (
         status.apps[APP_NAME].app_status.message
