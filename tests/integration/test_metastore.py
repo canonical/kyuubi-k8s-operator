@@ -267,6 +267,12 @@ def test_read_write_with_valid_schema_metastore_again(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test whether previously written data can be read as well as new data can be written."""
+    logger.info(
+        "Waiting for extra 30 seconds as cool-down period for metastore to fully initialize "
+        "after reintegration..."
+    )
+    time.sleep(30)
+
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
