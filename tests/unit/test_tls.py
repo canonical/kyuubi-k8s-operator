@@ -319,7 +319,7 @@ def test_certificate_available(
         patch("core.workload.kyuubi.KyuubiWorkload.exists", return_value=True),
         patch(
             "core.workload.kyuubi.KyuubiWorkload.kyuubi_version",
-            return_value="1.10.0",
+            return_value="1.11.0",
             new_callable=PropertyMock,
         ),
         patch(
@@ -398,7 +398,7 @@ def test_certificate_available(
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch(
     "core.workload.kyuubi.KyuubiWorkload.kyuubi_version",
-    return_value="1.10.0",
+    return_value="1.11.0",
     new_callable=PropertyMock,
 )
 @patch(

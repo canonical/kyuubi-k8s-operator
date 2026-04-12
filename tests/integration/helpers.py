@@ -139,7 +139,7 @@ def get_active_kyuubi_servers_list(
         "--namespace",
         HA_ZNODE_NAME,
         "--version",
-        "1.10.2",
+        "1.11.0",
     ]
     kubectl_command = [
         "kubectl",
