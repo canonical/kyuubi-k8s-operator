@@ -226,11 +226,12 @@ jobs:
       arch: arm64
     secrets: inherit
 
-  refresh-tests:
-    name: Inplace upgrades
-    needs:
-      - lint
-      - unit-tests
-      - build
-    uses: ./.github/workflows/refresh-tests.yaml
-    secrets: inherit
+# TODO: Re-enable refresh tests when we have revisions to refresh from in channel 4.0/edge
+  # refresh-tests:
+  #   name: Inplace upgrades
+  #   needs:
+  #     - lint
+  #     - unit-tests
+  #     - build
+  #   uses: ./.github/workflows/refresh-tests.yaml
+  #   secrets: inherit
