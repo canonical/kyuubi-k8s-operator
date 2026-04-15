@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 from __future__ import annotations
 
+import base64
 import contextlib
 import datetime
 import json
@@ -52,7 +53,8 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
-LATEST_STABLE_REV = 112
+# TODO: Replace this with newer revision when we have releases for branch 4.0/edge
+KYUUBI_REVISION_TO_REFRESH_FROM = 112
 
 
 def get_random_name():
@@ -138,7 +140,7 @@ def get_active_kyuubi_servers_list(
         "--namespace",
         HA_ZNODE_NAME,
         "--version",
-        "1.10.2",
+        "1.11.0",
     ]
     kubectl_command = [
         "kubectl",
@@ -448,10 +450,10 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "3.5/edge",
+        "channel": "4.0/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
-        "revision": LATEST_STABLE_REV,
+        "revision": KYUUBI_REVISION_TO_REFRESH_FROM,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
@@ -500,6 +502,12 @@ def deploy_minimal_kyuubi_setup(
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
+    region = s3_bucket_and_creds["region"]
+    ca_bundle_path = s3_bucket_and_creds["ca_bundle_path"]
+    tls_ca_chain = ""
+    if ca_bundle_path:
+        with open(ca_bundle_path, "r") as f:
+            tls_ca_chain = base64.b64encode(f.read().encode()).decode()
     logger.info("Setting up s3 credentials in s3-integrator charm")
     task = juju.run(
         f"{charm_versions.s3.app}/0",
@@ -513,7 +521,9 @@ def deploy_minimal_kyuubi_setup(
         {
             "bucket": bucket_name,
             "path": path,
+            "region": region,
             "endpoint": endpoint_url,
+            "tls-ca-chain": tls_ca_chain,
         },
     )
     logger.info("Waiting for s3-integrator app to be idle and active...")
