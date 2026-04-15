@@ -54,9 +54,39 @@ class AbstractWorkload(ABC):
         ...
 
     @abstractmethod
+    def write_bytes(self, content: bytes, path: str) -> None:
+        """Writes bytes content to a workload file.
+
+        Args:
+            content: bytes content to write
+            path: the full filepath to write to
+        """
+        ...
+
+    @abstractmethod
+    def delete(self, path: str, recursive: bool = False) -> None:
+        """Deletes a file or directory from the workload.
+
+        Args:
+            path: the full filepath to delete
+            recursive: whether to delete directories recursively
+        """
+        ...
+
+    @abstractmethod
+    def list(self, path: str) -> list[str]:
+        """Lists file paths in a directory on the workload.
+
+        Args:
+            path: the directory path to list
+        """
+        ...
+
+    @abstractmethod
     def exists(self, path: str) -> bool:
         """Check for file existence.
 
         Args:
             path: the full filepath to be checked for
         """
+        ...

@@ -11,13 +11,16 @@ from typing import TYPE_CHECKING
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
+from constants import TRUSTSTORE_SECRET_PREFIX
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
+from managers.integration_hub import IntegrationHubManager
 from managers.k8s import K8sManager
 from utils.logging import WithLogging
 
 if TYPE_CHECKING:
     from charm import KyuubiCharm
+    from core.domain import SparkServiceAccountInfo
 
 
 class KyuubiManager(WithLogging):
@@ -54,6 +57,33 @@ class KyuubiManager(WithLogging):
 
         return False
 
+    def _sync_hub_truststore(self, service_account_info: SparkServiceAccountInfo | None) -> None:
+        """Write S3 truststore from integration-hub manifest into the Kyuubi container.
+
+        In client deploy mode, Kyuubi itself runs the Spark driver process, so the truststore
+        must exist in the Kyuubi pod filesystem.
+        """
+        if not service_account_info:
+            return
+
+        # Always clean previously managed truststores so stale files do not survive
+        # when integration hub removes or rotates truststore secrets.
+        for path in self.workload.list("/"):
+            if path.startswith(f"/{TRUSTSTORE_SECRET_PREFIX}"):
+                self.workload.delete(path, recursive=True)
+                self.logger.info("Removed stale S3 truststore path %s", path)
+
+        hub_manager = IntegrationHubManager(service_account_info=service_account_info)
+        truststore = hub_manager.get_hub_truststore()
+        if not truststore:
+            self.logger.debug(
+                "No truststore found in the integration hub manifest, skipping truststore sync."
+            )
+            return
+
+        self.workload.write_bytes(truststore.content, truststore.path)
+        self.logger.info("Synced S3 truststore file at %s", truststore.path)
+
     def update(
         self,
         set_metastore_db_none: bool = False,
@@ -69,6 +99,8 @@ class KyuubiManager(WithLogging):
         service_account_info = None if set_service_account_none else self.context.service_account
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
         tls_info = None if set_tls_none else self.context.tls
+
+        self._sync_hub_truststore(service_account_info)
 
         if self.context.config.gpu_enable and self.context.service_account:
             k8s_manager = K8sManager(

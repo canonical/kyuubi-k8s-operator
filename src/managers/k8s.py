@@ -24,6 +24,7 @@ class K8sManager(WithLogging):
     ):
         self.namespace, self.service_account = service_account_info.service_account.split(":")
         self.spark_properties = service_account_info.spark_properties
+        self.resource_manifest = service_account_info.resource_manifest
         self.workload = workload
 
     def is_namespace_valid(self):

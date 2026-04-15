@@ -147,6 +147,11 @@ class SparkServiceAccountInfo(RelationState):
         props = dict(json.loads(self.relation_data.get("spark-properties", "{}")))
         return dict(sorted(props.items()))
 
+    @property
+    def resource_manifest(self) -> str:
+        """K8s resource manifest tied up with the service account."""
+        return self.relation_data.get("resource-manifest", "")
+
 
 class ZookeeperInfo(RelationState):
     """State collection metadata for a the Zookeeper relation."""
@@ -466,3 +471,17 @@ class Secret(WithLogging):
         if not self.has_permission():
             return {}
         return self.model.get_secret(id=self.secret_id).get_content(refresh=True)
+
+
+@dataclass
+class IntegrationHubTrustStore(WithLogging):
+    """Class representing the truststore file created by Integration Hub."""
+
+    secret_name: str
+    file_name: str
+    content: bytes
+
+    @property
+    def path(self) -> str:
+        """The path where the truststore file should be synced to."""
+        return f"/{self.secret_name}/{self.file_name}"

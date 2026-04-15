@@ -62,6 +62,21 @@ class K8sWorkload(AbstractWorkload, ABC):
         self.container.push(path, content, make_dirs=True)
 
     @override
+    def write_bytes(self, content: bytes, path: str) -> None:
+        """Writes bytes content to a workload file."""
+        self.container.push(path, content, make_dirs=True)
+
+    @override
+    def delete(self, path: str, recursive: bool = False) -> None:
+        """Delete a file or directory from the workload."""
+        self.container.remove_path(path, recursive=recursive)
+
+    @override
+    def list(self, path: str) -> list[str]:
+        """List file paths in a workload directory."""
+        return [entry.path for entry in self.container.list_files(path)]
+
+    @override
     def exec(
         self, command: str, env: dict[str, str] | None = None, working_dir: str | None = None
     ) -> str:
