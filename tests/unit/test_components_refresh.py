@@ -39,10 +39,8 @@ def test_images_same_spark_version(skopeo: str) -> None:
     [
         ("1.9", "1.9", True),
         ("1.9", "1.10", True),
-        ("1.10", "1.11", True),
         ("1.9", "1.10.1", True),  # Patch version do not mess with the major.minor logic
         ("1.10", "1.9", False),  # No minor downgrade allowed
-        ("1.11", "1.10", False),  # No minor downgrade allowed
         ("1.9", "2.0", False),  # No major bump allowed
     ],
 )

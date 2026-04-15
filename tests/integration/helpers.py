@@ -53,8 +53,7 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
-# TODO: Replace this with newer revision when we have releases for branch 4.0/edge
-KYUUBI_REVISION_TO_REFRESH_FROM = 112
+LATEST_STABLE_REV = 112
 
 
 def get_random_name():
@@ -140,7 +139,7 @@ def get_active_kyuubi_servers_list(
         "--namespace",
         HA_ZNODE_NAME,
         "--version",
-        "1.11.0",
+        "1.10.2",
     ]
     kubectl_command = [
         "kubectl",
@@ -450,10 +449,10 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "4.0/edge",
+        "channel": "3.5/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
-        "revision": KYUUBI_REVISION_TO_REFRESH_FROM,
+        "revision": LATEST_STABLE_REV,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]

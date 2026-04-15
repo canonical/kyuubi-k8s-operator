@@ -43,8 +43,6 @@ class HiveConfig(WithLogging):
             "datanucleus.autoCreateTables": "true",
             "hive.server2.enable.doAs": "false",
             "hive.metastore.schema.verification": "false",
-            # Needed to override the default value "BoneCP", which has been removed from Spark 4.0
-            "datanucleus.connectionPoolingType": "HikariCP",
         }
 
     def to_dict(self) -> dict[str, str]:
