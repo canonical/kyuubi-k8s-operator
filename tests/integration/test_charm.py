@@ -2,6 +2,7 @@
 # Copyright 2024 Canonical Limited
 # See LICENSE file for licensing details.
 
+import base64
 import logging
 from pathlib import Path
 from typing import cast
@@ -68,6 +69,11 @@ def test_deploy_s3_integrator(
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
+    ca_bundle_path = s3_bucket_and_creds["ca_bundle_path"]
+    tls_ca_chain = ""
+    if ca_bundle_path:
+        with open(ca_bundle_path, "r") as f:
+            tls_ca_chain = base64.b64encode(f.read().encode()).decode()
 
     juju.config(
         charm_versions.s3.app,
@@ -75,6 +81,7 @@ def test_deploy_s3_integrator(
             "bucket": bucket_name,
             "path": path,
             "endpoint": endpoint_url,
+            "tls-ca-chain": tls_ca_chain,
         },
     )
     juju.wait(jubilant.all_blocked)

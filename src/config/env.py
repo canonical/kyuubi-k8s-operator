@@ -3,14 +3,14 @@
 # Copyright 2026 Canonical Limited
 # See LICENSE file for licensing details.
 
-"""Kyuubi environment configurations."""
+"""Kyuubi environment variables."""
 
 from core.domain import SparkServiceAccountInfo
 from utils.logging import WithLogging
 
 
-class EnvironConfig(WithLogging):
-    """Kyuubi Environment Configurations."""
+class KyuubiEnvironConfig(WithLogging):
+    """Kyuubi Environment Variables."""
 
     def __init__(
         self,
@@ -27,6 +27,11 @@ class EnvironConfig(WithLogging):
         )
         if not spark_extra_java_options:
             return {}
+
+        # SPARK_SUBMIT_OPTS should have truststore properties for Kyuubi to be able to
+        # upload the Kyuubi engine JAR to Object Storage
+        # We currently reuse the spark.driver.extraJavaOptions for this purpose.
+        # TODO: Consider finding better alternatives to do this, if any.
         return {"SPARK_SUBMIT_OPTS": spark_extra_java_options}
 
     def to_dict(self) -> dict[str, str]:

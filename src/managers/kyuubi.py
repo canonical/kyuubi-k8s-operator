@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from config.env import EnvironConfig
+from config.env import KyuubiEnvironConfig
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
@@ -142,7 +142,7 @@ class KyuubiManager(WithLogging):
                     self.workload.paths.kyuubi_properties,
                 ),
                 self._compare_and_update_file(
-                    EnvironConfig(service_account_info=service_account_info).contents,
+                    KyuubiEnvironConfig(service_account_info=service_account_info).contents,
                     self.workload.paths.kyuubi_env,
                 ),
                 not self.workload.active(),
