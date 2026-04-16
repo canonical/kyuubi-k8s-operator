@@ -10,11 +10,9 @@ import re
 
 import yaml
 
+from constants import TRUSTSTORE_SECRET_PREFIX
 from core.domain import IntegrationHubTrustStore, SparkServiceAccountInfo
 from utils.logging import WithLogging
-
-TRUSTSTORE_SECRET_PREFIX = "integration-hub-truststore"
-TRUSTSTORE_SECRET_NAME_KEY = "truststore_secret_name"
 
 
 class IntegrationHubManager(WithLogging):

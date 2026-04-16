@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from config.env import EnvironConfig
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
@@ -105,7 +106,6 @@ class KyuubiManager(WithLogging):
         if self.context.config.gpu_enable and self.context.service_account:
             k8s_manager = K8sManager(
                 service_account_info=self.context.service_account,
-                workload=self.workload,
             )
             gpu_capacity = k8s_manager.get_number_of_gpus()
         else:
@@ -140,6 +140,10 @@ class KyuubiManager(WithLogging):
                         ),
                     ).contents,
                     self.workload.paths.kyuubi_properties,
+                ),
+                self._compare_and_update_file(
+                    EnvironConfig(service_account_info=service_account_info).contents,
+                    self.workload.paths.kyuubi_env,
                 ),
                 not self.workload.active(),
                 force_restart,
