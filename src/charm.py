@@ -43,6 +43,7 @@ from events.refresh import KyuubiRefresh
 from events.tls import TLSEvents
 from events.zookeeper import ZookeeperEvents
 from managers.hive_metastore import HiveMetastoreManager
+from managers.integration_hub import IntegrationHubManager
 from managers.k8s import K8sManager
 from managers.service import ServiceManager
 
@@ -192,13 +193,13 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         k8s_manager = K8sManager(
             service_account_info=self.context.service_account,
-            workload=self.workload,
         )
+        hub_manager = IntegrationHubManager(service_account_info=self.context.service_account)
 
         # Check whether any one of object storage backend has been configured
         # Currently, we do this check on the basis of presence of Spark properties
         # TODO: Rethink on this approach with a more sturdy solution
-        if not k8s_manager.is_s3_configured() and not k8s_manager.is_azure_storage_configured():
+        if not hub_manager.is_s3_configured() and not hub_manager.is_azure_storage_configured():
             statuses.append(Status.MISSING_OBJECT_STORAGE_BACKEND.value)
 
         if not k8s_manager.is_namespace_valid():
@@ -212,7 +213,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         if (
             self.config.gpu_enable
-            and k8s_manager.is_executor_pod_template_configured()
+            and hub_manager.is_executor_pod_template_configured()
             and not self.config.executor_pod_template
         ):
             # Executor pod template defined in integration hub
