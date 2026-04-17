@@ -44,3 +44,6 @@ HA_ZNODE_NAME = "/kyuubi"
 HIVE_SCHEMA_VERSION = "2.3.0"
 
 SECRETS_APP: list[str] = [ADMIN_PASSWORD_KEY]
+
+TRUSTSTORE_SECRET_PREFIX = "integrator-hub-conf-truststore"
+TRUSTSTORE_SECRET_NAME_KEY = "truststore_secret_name"

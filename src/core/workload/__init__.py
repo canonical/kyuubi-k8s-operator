@@ -72,6 +72,11 @@ class KyuubiPaths:
         return f"{self.conf_path}/kyuubi-defaults.conf"
 
     @property
+    def kyuubi_env(self) -> str:
+        """The file where kyuubi environment variables are stored."""
+        return f"{self.conf_path}/kyuubi-env.sh"
+
+    @property
     def kyuubi_logs_folder(self) -> str:
         """The folder of the Kyuubi logs."""
         return f"{self.kyuubi_root}/logs"

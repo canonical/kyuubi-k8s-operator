@@ -49,17 +49,27 @@ class K8sWorkload(AbstractWorkload, ABC):
             return f.read()
 
     @override
-    def write(self, content: str, path: str, mode: str = "w") -> None:
+    def write(self, content: str | bytes, path: str, mode: str = "w") -> None:
         """Writes content to a workload file.
 
         Args:
-            content: string of content to write
+            content: string or bytes content to write
             path: the full filepath to write to
             mode: the write mode. Usually "w" for write, or "a" for append. Default "w"
         """
-        if mode == "a" and (current := self.read(path)):
+        if isinstance(content, str) and mode == "a" and (current := self.read(path)):
             content = current + "\n" + content
         self.container.push(path, content, make_dirs=True)
+
+    @override
+    def delete(self, path: str, recursive: bool = False) -> None:
+        """Delete a file or directory from the workload."""
+        self.container.remove_path(path, recursive=recursive)
+
+    @override
+    def list(self, path: str) -> list[str]:
+        """List file paths in a workload directory."""
+        return [entry.path for entry in self.container.list_files(path)]
 
     @override
     def exec(
