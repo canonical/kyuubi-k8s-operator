@@ -3,11 +3,7 @@
   "extends": [
     "github>canonical/data-platform//renovate_presets/charm.json5",
   ],
-  "reviewers": [
-    "welpaolo",
-    "theoctober19th",
-    "batalex",
-  ],
+  "reviewers": ["team:processing"],
   // Between 1AM and 6:59AM, first Friday of the month
   "schedule": ["* 1-6 1-7 * 5"],
   "lockFileMaintenance": {
