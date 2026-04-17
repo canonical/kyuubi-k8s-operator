@@ -15,7 +15,6 @@ from config.spark import SparkConfig
 from constants import TRUSTSTORE_SECRET_PREFIX
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
-from managers.integration_hub import IntegrationHubManager
 from managers.k8s import K8sManager
 from utils.logging import WithLogging
 
@@ -74,15 +73,14 @@ class KyuubiManager(WithLogging):
                 self.workload.delete(path, recursive=True)
                 self.logger.info("Removed stale S3 truststore path %s", path)
 
-        hub_manager = IntegrationHubManager(service_account_info=service_account_info)
-        truststore = hub_manager.get_hub_truststore()
+        truststore = service_account_info.hub_truststore
         if not truststore:
             self.logger.debug(
                 "No truststore found in the integration hub manifest, skipping truststore sync."
             )
             return
 
-        self.workload.write_bytes(truststore.content, truststore.path)
+        self.workload.write(truststore.content, truststore.path)
         self.logger.info("Synced S3 truststore file at %s", truststore.path)
 
     def update(

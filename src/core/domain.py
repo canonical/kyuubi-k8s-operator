@@ -5,6 +5,7 @@
 
 """Definition of various model classes."""
 
+import base64
 import json
 import logging
 from dataclasses import dataclass
@@ -13,13 +14,14 @@ from functools import cached_property
 from typing import MutableMapping
 
 import ops
+import yaml
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
 
 from common.relation.domain import RelationState
-from constants import ADMIN_PASSWORD_KEY
+from constants import ADMIN_PASSWORD_KEY, TRUSTSTORE_SECRET_PREFIX
 from managers.service import Endpoint, ServiceManager
 from utils.logging import WithLogging
 
@@ -119,6 +121,20 @@ class DatabaseConnectionInfo:
     dbname: str
 
 
+@dataclass
+class IntegrationHubTrustStore(WithLogging):
+    """Class representing the truststore file created by Integration Hub."""
+
+    secret_name: str
+    file_name: str
+    content: bytes
+
+    @property
+    def path(self) -> str:
+        """The path where the truststore file should be synced to."""
+        return f"/{self.secret_name}/{self.file_name}"
+
+
 class SparkServiceAccountInfo(RelationState):
     """Requirer-side of the Integration Hub relation."""
 
@@ -151,6 +167,64 @@ class SparkServiceAccountInfo(RelationState):
     def resource_manifest(self) -> str:
         """K8s resource manifest tied up with the service account."""
         return self.relation_data.get("resource-manifest", "")
+
+    @property
+    def hub_truststore(self) -> IntegrationHubTrustStore | None:
+        """Extract truststore content from the integration hub resource manifest, if available."""
+        if not self.resource_manifest:
+            logger.debug("No resource manifest provided for extracting truststore")
+            return None
+        try:
+            manifests = yaml.safe_load_all(self.resource_manifest)
+        except yaml.YAMLError:
+            logger.warning(
+                "Invalid resource-manifest YAML from integration hub, cannot extract truststore."
+            )
+            return None
+
+        truststore_secret = next(
+            (
+                m
+                for m in manifests
+                if isinstance(m, dict)
+                and m.get("kind") == "Secret"
+                and isinstance(m.get("metadata"), dict)
+                and isinstance(m["metadata"].get("name"), str)
+                and m["metadata"]["name"].startswith(TRUSTSTORE_SECRET_PREFIX)
+            ),
+            None,
+        )
+        if not truststore_secret:
+            logger.debug("No truststore secret found in resource manifest.")
+            return None
+
+        secret_data = truststore_secret.get("data")
+        if not isinstance(secret_data, dict) or not secret_data:
+            logger.warning(
+                "Truststore secret found in resource-manifest but has no data",
+            )
+            return None
+
+        truststore_filename = next(iter(secret_data.keys()), None)
+        if not isinstance(truststore_filename, str):
+            logger.warning(
+                "Truststore secret found in resource-manifest but has no valid filename",
+            )
+            return None
+
+        truststore_b64 = next(iter(secret_data.values()), None)
+        if not isinstance(truststore_b64, str):
+            logger.warning(
+                "Truststore secret found in resource-manifest but has no valid base64 data",
+            )
+            return None
+
+        truststore_content = base64.b64decode(truststore_b64, validate=True)
+        return IntegrationHubTrustStore(
+            secret_name=truststore_secret["metadata"]["name"],
+            file_name=truststore_filename,
+            content=truststore_content,
+        )
 
 
 class ZookeeperInfo(RelationState):
@@ -471,17 +545,3 @@ class Secret(WithLogging):
         if not self.has_permission():
             return {}
         return self.model.get_secret(id=self.secret_id).get_content(refresh=True)
-
-
-@dataclass
-class IntegrationHubTrustStore(WithLogging):
-    """Class representing the truststore file created by Integration Hub."""
-
-    secret_name: str
-    file_name: str
-    content: bytes
-
-    @property
-    def path(self) -> str:
-        """The path where the truststore file should be synced to."""
-        return f"/{self.secret_name}/{self.file_name}"

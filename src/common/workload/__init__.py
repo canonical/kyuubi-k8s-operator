@@ -43,23 +43,13 @@ class AbstractWorkload(ABC):
         ...
 
     @abstractmethod
-    def write(self, content: str, path: str, mode: str = "w") -> None:
+    def write(self, content: str | bytes, path: str, mode: str = "w") -> None:
         """Writes content to a workload file.
 
         Args:
-            content: string of content to write
+            content: string or bytes content to write
             path: the full filepath to write to
             mode: the write mode. Usually "w" for write, or "a" for append. Default "w"
-        """
-        ...
-
-    @abstractmethod
-    def write_bytes(self, content: bytes, path: str) -> None:
-        """Writes bytes content to a workload file.
-
-        Args:
-            content: bytes content to write
-            path: the full filepath to write to
         """
         ...
 
