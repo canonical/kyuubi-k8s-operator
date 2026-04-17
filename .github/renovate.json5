@@ -3,11 +3,7 @@
   "extends": [
     "github>canonical/data-platform//renovate_presets/charm.json5",
   ],
-  "reviewers": [
-    "welpaolo",
-    "theoctober19th",
-    "batalex",
-  ],
+  "reviewers": ["team:processing"],
   // Between 1AM and 6:59AM, first Friday of the month
   "schedule": ["* 1-6 1-7 * 5"],
   "lockFileMaintenance": {
@@ -17,5 +13,36 @@
   "ignoreDeps": ["ubuntu"],
   "baseBranchPatterns": [
     "/^3\\..*\\/edge$/",
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)metadata\\.yaml$"],
+      "matchStrings": [
+        "upstream-source:\\s*(?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^src/constants\\.py$"],
+      "matchStrings": [
+        "(?<variableName>JOB_OCI_IMAGE|GPU_JOB_OCI_IMAGE)\\s*=\\s*\"(?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "ghcr.io/canonical/charmed-spark",
+        "ghcr.io/canonical/charmed-spark-gpu"
+        "ghcr.io/canonical/charmed-spark-kyuubi",
+      ],
+      "pinDigests": true,
+      "allowedVersions": "/^3\\.5-/",
+      "groupName": "OCI resources"
+    }
   ]
 }
