@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 from __future__ import annotations
 
-import base64
 import contextlib
 import datetime
 import json
@@ -502,11 +501,7 @@ def deploy_minimal_kyuubi_setup(
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
     region = s3_bucket_and_creds["region"]
-    ca_bundle_path = s3_bucket_and_creds["ca_bundle_path"]
-    tls_ca_chain = ""
-    if ca_bundle_path:
-        with open(ca_bundle_path, "r") as f:
-            tls_ca_chain = base64.b64encode(f.read().encode()).decode()
+    tls_ca_chain = s3_bucket_and_creds["tls_ca_chain"]
     logger.info("Setting up s3 credentials in s3-integrator charm")
     task = juju.run(
         f"{charm_versions.s3.app}/0",

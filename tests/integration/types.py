@@ -14,7 +14,7 @@ S3Info = TypedDict(
         "bucket": str,
         "path": str,
         "region": str,
-        "ca_bundle_path": str,
+        "tls_ca_chain": str,
     },
 )
 

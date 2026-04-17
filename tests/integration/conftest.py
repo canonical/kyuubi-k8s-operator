@@ -2,6 +2,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import base64
 import logging
 import os
 import subprocess
@@ -182,7 +183,9 @@ def s3_bucket_and_creds(request: pytest.FixtureRequest) -> Iterable[S3Info]:
         "bucket": TEST_BUCKET_NAME,
         "path": TEST_PATH_NAME,
         "region": region,
-        "ca_bundle_path": ca_bundle_path,
+        "tls_ca_chain": (
+            base64.b64encode(Path(ca_bundle_path).read_bytes()).decode() if ca_bundle_path else ""
+        ),
     }
 
     if not keep_models:
