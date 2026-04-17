@@ -9,6 +9,9 @@ on:
       - 3.4/edge
       - 3.5/edge
 
+permissions:
+  contents: read
+
 jobs:
 
   release-checks:
