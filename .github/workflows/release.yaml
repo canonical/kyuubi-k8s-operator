@@ -63,6 +63,7 @@ jobs:
     with:
       track: ${{ needs.release-checks.outputs.track }}
     permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tag
 
   ci-tests:
@@ -83,4 +84,5 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tags

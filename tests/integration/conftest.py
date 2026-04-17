@@ -2,6 +2,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import base64
 import logging
 import os
 import subprocess
@@ -144,12 +145,16 @@ def s3_bucket_and_creds(request: pytest.FixtureRequest) -> Iterable[S3Info]:
     access_key = os.environ["S3_ACCESS_KEY"]
     secret_key = os.environ["S3_SECRET_KEY"]
     endpoint_url = os.environ["S3_SERVER_URL"]
+    region = os.environ.get("S3_REGION", "us-east-1")
+    ca_bundle_path = os.environ.get("S3_CA_BUNDLE_PATH", "")
 
-    session = boto3.session.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+    session = boto3.session.Session(
+        aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region
+    )
     s3 = session.resource(
         service_name="s3",
         endpoint_url=endpoint_url,
-        verify=False,
+        verify=ca_bundle_path if ca_bundle_path else False,
         config=Config(
             connect_timeout=60,
             retries={"max_attempts": 4},
@@ -177,7 +182,10 @@ def s3_bucket_and_creds(request: pytest.FixtureRequest) -> Iterable[S3Info]:
         "secret_key": str(secret_key),
         "bucket": TEST_BUCKET_NAME,
         "path": TEST_PATH_NAME,
-        "ca_bundle_path": os.environ.get("S3_CA_BUNDLE_PATH", ""),
+        "region": region,
+        "tls_ca_chain": (
+            base64.b64encode(Path(ca_bundle_path).read_bytes()).decode() if ca_bundle_path else ""
+        ),
     }
 
     if not keep_models:

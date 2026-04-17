@@ -43,13 +43,32 @@ class AbstractWorkload(ABC):
         ...
 
     @abstractmethod
-    def write(self, content: str, path: str, mode: str = "w") -> None:
+    def write(self, content: str | bytes, path: str, mode: str = "w") -> None:
         """Writes content to a workload file.
 
         Args:
-            content: string of content to write
+            content: string or bytes content to write
             path: the full filepath to write to
             mode: the write mode. Usually "w" for write, or "a" for append. Default "w"
+        """
+        ...
+
+    @abstractmethod
+    def delete(self, path: str, recursive: bool = False) -> None:
+        """Deletes a file or directory from the workload.
+
+        Args:
+            path: the full filepath to delete
+            recursive: whether to delete directories recursively
+        """
+        ...
+
+    @abstractmethod
+    def list(self, path: str) -> list[str]:
+        """Lists file paths in a directory on the workload.
+
+        Args:
+            path: the directory path to list
         """
         ...
 
@@ -60,3 +79,4 @@ class AbstractWorkload(ABC):
         Args:
             path: the full filepath to be checked for
         """
+        ...

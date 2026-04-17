@@ -135,7 +135,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        self.logger.error(
+        self.logger.info(
             "Managed K8s service is available; completed handling config-changed event."
         )
         if self.charm.unit.is_leader():
