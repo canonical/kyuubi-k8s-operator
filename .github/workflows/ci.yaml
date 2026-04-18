@@ -17,6 +17,9 @@ on:
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -45,6 +48,9 @@ jobs:
   build:
     name: Build charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v48.1.1
+    permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
+      contents: read
 
   integration-test:
     strategy:

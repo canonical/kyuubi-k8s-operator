@@ -9,6 +9,9 @@ on:
       - 3.4/edge
       - 3.5/edge
 
+permissions:
+  contents: read
+
 jobs:
 
   release-checks:
@@ -63,7 +66,8 @@ jobs:
     with:
       track: ${{ needs.release-checks.outputs.track }}
     permissions:
-      contents: write # Needed to create git tag
+      actions: read  # Needed for GitHub API call to get workflow version
+      contents: write  # Needed to create git tags
 
   ci-tests:
     uses: ./.github/workflows/ci.yaml
@@ -83,4 +87,5 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      contents: write # Needed to create git tags
+      actions: read  # Needed for GitHub API call to get workflow version
+      contents: write  # Needed to create git tags
