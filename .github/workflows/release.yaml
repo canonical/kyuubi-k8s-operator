@@ -74,6 +74,9 @@ jobs:
     needs:
       - tag
     secrets: inherit
+    permissions:
+      actions: read
+      contents: read
 
   release:
     name: Release charm
