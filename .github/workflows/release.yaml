@@ -30,10 +30,13 @@ jobs:
           echo "track=${BRANCH%*\/*}" >> $GITHUB_OUTPUT
         id: branch_metadata
 
+      - name: Install yq
+        run: sudo snap install yq
+
       - name: Extract metadata
         shell: bash
         run: |
-          VERSION=$(grep "\w*# spark-" metadata.yaml | sed "s/.*spark-\([0-9.]*\).*/\1/g")
+          VERSION=$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml | sed -n "s/.*:\([0-9]*\.[0-9]*\)-.*/\1/p")
           BASE=$(yq '.platforms' charmcraft.yaml | sed -n "s/ubuntu\@\([0-9\.]*\)\:.*/\1/p" | tail -n1)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "base=${BASE}" >> $GITHUB_OUTPUT
