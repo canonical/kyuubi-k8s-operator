@@ -19,7 +19,7 @@
       "customType": "regex",
       "fileMatch": ["(^|/)metadata\\.yaml$"],
       "matchStrings": [
-        "upstream-source:\\s*(?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+        "#\\s*oci-tag=(?<currentValue>[^\\s]+)\\r?\\n\\s*upstream-source:\\s*(?<depName>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
       ],
       "datasourceTemplate": "docker"
     },
