@@ -27,8 +27,6 @@ def test_images_same_spark_version(skopeo: str) -> None:
     gpu_job_image = GPU_JOB_OCI_IMAGE
 
     # we need to strip the tag, as skopeo does not support having both a tag and a digest
-    image, _, digest = charm_workload_image.split(":")
-    charm_workload_image = f"{image}@sha256:{digest}"
     image, _, digest = job_image.split(":")
     job_image = f"{image}@sha256:{digest}"
     image, _, digest = gpu_job_image.split(":")
