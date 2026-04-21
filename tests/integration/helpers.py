@@ -500,6 +500,8 @@ def deploy_minimal_kyuubi_setup(
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
+    region = s3_bucket_and_creds["region"]
+    tls_ca_chain = s3_bucket_and_creds["tls_ca_chain"]
     logger.info("Setting up s3 credentials in s3-integrator charm")
     task = juju.run(
         f"{charm_versions.s3.app}/0",
@@ -513,7 +515,9 @@ def deploy_minimal_kyuubi_setup(
         {
             "bucket": bucket_name,
             "path": path,
+            "region": region,
             "endpoint": endpoint_url,
+            "tls-ca-chain": tls_ca_chain,
         },
     )
     logger.info("Waiting for s3-integrator app to be idle and active...")

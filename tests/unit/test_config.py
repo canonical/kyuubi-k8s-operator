@@ -68,7 +68,7 @@ def charm_configuration():
     return_value=True,
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch(
     "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
 )
@@ -130,7 +130,7 @@ def test_profile_config_option(
     return_value=True,
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch(
     "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
 )
@@ -200,7 +200,7 @@ def test_k8s_node_selectors_config_option(
     return_value=True,
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch(
     "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
 )

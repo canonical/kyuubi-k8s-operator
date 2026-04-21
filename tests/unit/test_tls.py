@@ -180,7 +180,7 @@ def test_relation_created_enables_tls(
     "managers.service.ServiceManager.get_service_endpoint",
     return_value=[Endpoint(host="10.10.10.10", port=10009)],
 )
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 def test_tls_enabled_but_not_ready(
