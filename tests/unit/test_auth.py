@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_system_users_config_secret_doesnot_exist(
     mock_sa_conf,
@@ -44,7 +44,7 @@ def test_system_users_config_secret_doesnot_exist(
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
 def test_system_users_config_secret_invalid(
     mock_sa_conf,
@@ -86,7 +86,7 @@ def test_system_users_config_secret_invalid(
     return_value=True,
 )
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
-@patch("managers.k8s.K8sManager.is_s3_configured", return_value=True)
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch(
     "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
 )

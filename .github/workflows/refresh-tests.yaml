@@ -6,6 +6,9 @@ name: Inplace refresh tests
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   test-refresh:
     strategy:

@@ -17,6 +17,9 @@ on:
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -44,7 +47,10 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v41.1.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v48.1.1
+    permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
+      contents: read
 
   integration-test:
     strategy:
@@ -132,13 +138,53 @@ jobs:
       - name: Setup microceph
         id: microceph
         run: |
+          export IP=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+
+          # Generate self-signed CA and server certificate
+          mkdir -p /tmp/certs
+          openssl genrsa -out /tmp/certs/ca.key 2048
+          openssl req -x509 -new -nodes -key /tmp/certs/ca.key \
+            -days 1024 -out /tmp/certs/ca.crt -outform PEM \
+            -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$IP"
+          openssl genrsa -out /tmp/certs/server.key 2048
+          openssl req -new -key /tmp/certs/server.key \
+            -out /tmp/certs/server.csr \
+            -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$IP"
+          echo "subjectAltName = DNS:$IP, IP:$IP" > /tmp/certs/extfile.cnf
+          openssl x509 -req -in /tmp/certs/server.csr \
+            -CA /tmp/certs/ca.crt -CAkey /tmp/certs/ca.key \
+            -CAcreateserial -out /tmp/certs/server.crt \
+            -days 365 -extfile /tmp/certs/extfile.cnf
+
+          # Install and configure microceph with TLS
           sudo snap install microceph
           sudo microceph cluster bootstrap
           sudo microceph disk add loop,1G,3
-          sudo microceph enable rgw
+
+          SERVER_CRT_B64=$(sudo base64 -w0 /tmp/certs/server.crt)
+          SERVER_KEY_B64=$(sudo base64 -w0 /tmp/certs/server.key)
+          sudo microceph enable rgw \
+            --ssl-certificate "$SERVER_CRT_B64" \
+            --ssl-private-key "$SERVER_KEY_B64"
+
+          # Wait for RGW to be ready
+          for i in $(seq 1 30); do
+            if curl -sk "https://$IP/" > /dev/null 2>&1; then
+              echo "RGW is ready"
+              break
+            fi
+            echo "Waiting for RGW... ($i/30)"
+            sleep 5
+          done
+
           sudo microceph.radosgw-admin user create --uid test --display-name test --access-key=foo --secret-key=bar
-          export IP=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
-          echo -e "S3_SERVER_URL=http://$IP:80/\nS3_ACCESS_KEY=foo\nS3_SECRET_KEY=bar" > .env
+
+          {
+            echo "S3_SERVER_URL=https://$IP"
+            echo "S3_ACCESS_KEY=foo"
+            echo "S3_SECRET_KEY=bar"
+            echo "S3_CA_BUNDLE_PATH=/tmp/certs/ca.crt"
+          } > .env
 
       - name: Download packed charm(s)
         uses: actions/download-artifact@v7
