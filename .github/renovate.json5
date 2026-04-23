@@ -37,7 +37,7 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": [
         "ghcr.io/canonical/charmed-spark",
-        "ghcr.io/canonical/charmed-spark-gpu"
+        "ghcr.io/canonical/charmed-spark-gpu",
         "ghcr.io/canonical/charmed-spark-kyuubi",
       ],
       "pinDigests": true,
