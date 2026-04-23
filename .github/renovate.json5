@@ -41,7 +41,7 @@
         "ghcr.io/canonical/charmed-spark-kyuubi",
       ],
       "pinDigests": true,
-      "allowedVersions": "/^3\\.5-/",
+      "allowedVersions": "/^3\\.4-/",
       "groupName": "OCI resources"
     }
   ]

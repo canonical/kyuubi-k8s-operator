@@ -19,7 +19,7 @@ def inspect_image(skopeo: str, image: str) -> dict:
     return json.loads(out)
 
 
-@pytest.mark.skopeo
+@pytest.mark.slow
 def test_images_same_spark_version(skopeo: str) -> None:
     # Given
     charm_workload_image = METADATA["resources"]["kyuubi-image"]["upstream-source"]

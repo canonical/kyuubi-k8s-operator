@@ -30,8 +30,8 @@ JDBC_PORT = 10009
 REST_PORT = 10099
 SPARK_DEFAULT_CATALOG_NAME = "spark_catalog"
 
-JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.5-22.04_edge@sha256:f7f387a76ba2f3b6cfc34a35f36c0f4ae85bfa78c8c9d4bfa06ba86401b95d70"
-GPU_JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-gpu:3.5-22.04_edge@sha256:3df6336efcb1fed300fa25b3725d0ccdaa985ca2a64e686403ad9964ab7a8ed9"
+JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark:3.4-22.04_edge@sha256:ce0faa3028aa201110732065beedbcfd9f016ba7a7ed758538475bba77fb650a"
+GPU_JOB_OCI_IMAGE = "ghcr.io/canonical/charmed-spark-gpu:3.4-22.04_edge@sha256:e36e72bfd30ac19983faa290fa60fe4c0d9853e5c5bbc73cd18aec1e8e0ccca4"
 
 DEFAULT_ADMIN_USERNAME = "admin"
 PASSWORD_SUFFIX = "-password"

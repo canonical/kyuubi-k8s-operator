@@ -52,7 +52,7 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
-LATEST_STABLE_REV = 112
+LATEST_STABLE_REV = 113
 
 
 def get_random_name():
@@ -448,7 +448,7 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "3.5/edge",
+        "channel": "3.4/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
         "revision": LATEST_STABLE_REV,
