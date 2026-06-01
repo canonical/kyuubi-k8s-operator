@@ -1,0 +1,160 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+project: kyuubi-k8s-operator
+
+backends:
+  lxd-vm:
+    # TODO: remove after https://github.com/canonical/spread/pull/185 merged & in charmcraft
+    type: adhoc
+    allocate: |
+      hash=$(python3 -c "import hashlib; print(hashlib.sha256('$SPREAD_PASSWORD'.encode()).hexdigest()[:6])")
+      VM_NAME="${VM_NAME:-${SPREAD_SYSTEM//./-}-${hash}}"
+      DISK="${DISK:-20}"
+      CPU="${CPU:-4}"
+      MEM="${MEM:-8}"
+
+      cloud_config="#cloud-config
+      ssh_pwauth: true
+      users:
+        - default
+        - name: runner
+          plain_text_passwd: $SPREAD_PASSWORD
+          lock_passwd: false
+          sudo: ALL=(ALL) NOPASSWD:ALL
+      "
+
+      lxc launch --vm \
+        "${SPREAD_SYSTEM//-/:}" \
+        "${VM_NAME}" \
+        -c user.user-data="${cloud_config}" \
+        -c limits.cpu="${CPU}" \
+        -c limits.memory="${MEM}GiB" \
+        -d root,size="${DISK}GiB"
+
+      # Wait for the runner user
+      while ! lxc exec "${VM_NAME}" -- id -u runner &>/dev/null; do sleep 0.5; done
+
+      # Set the instance address for spread
+      ADDRESS "$(lxc ls -f csv | grep "${VM_NAME}" | cut -d"," -f3 | cut -d" " -f1)"
+    discard: |
+      hash=$(python3 -c "import hashlib; print(hashlib.sha256('$SPREAD_PASSWORD'.encode()).hexdigest()[:6])")
+      VM_NAME="${VM_NAME:-${SPREAD_SYSTEM//./-}-${hash}}"
+      lxc delete --force "${VM_NAME}"
+    systems:
+      - ubuntu-22.04:
+          username: runner
+    prepare: |
+      systemctl disable --now unattended-upgrades.service
+      systemctl mask unattended-upgrades.service
+
+  github-ci:
+    type: adhoc
+    # Only run on CI
+    manual: true
+    # HACK: spread requires runners to be accessible via SSH
+    # Configure local sshd & instruct spread to connect to the same machine spread is running on
+    # (spread cannot provision GitHub Actions runners, so we provision a GitHub Actions runner for
+    # each spread job & select a single job when running spread)
+    allocate: |
+      sudo tee /etc/ssh/sshd_config.d/10-spread-github-ci.conf << 'EOF'
+      PasswordAuthentication yes
+      PermitEmptyPasswords yes
+      EOF
+
+      sudo systemctl daemon-reload
+      sudo systemctl restart ssh
+
+      sudo passwd --delete "$USER"
+
+      ADDRESS "127.0.0.1"
+    # HACK: spread does not pass environment variables set on runner
+    # Manually pass specific environment variables
+    environment:
+      CI: "$(HOST: echo $CI)"
+      MARK_EXPRESSION: "$(HOST: echo $MARK_EXPRESSION)"
+    systems:
+      - ubuntu-22.04:
+          username: runner
+      - ubuntu-22.04-arm:
+          username: runner
+
+suites:
+  spread/:
+    summary: Integration tests for kyuubi-k8s-operator
+
+path: /root/spread_project
+
+kill-timeout: 3h
+
+environment:
+  PATH: $PATH:/root/.local/bin:/opt/pipx_bin
+  MARK_EXPRESSION: not unstable
+
+prepare: |
+  sleep 5
+  snap refresh --hold
+  chown -R root:root "$SPREAD_PATH"
+  cd "$SPREAD_PATH"
+
+  snap install --classic concierge
+  concierge prepare --trace -c tests/integration/setup/concierge.yaml
+  mkdir -p "$HOME/.kube"
+  microk8s config > "$HOME/.kube/config"
+
+  # Generate TLS certificates for MicroCeph RGW
+  IP=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+  mkdir -p /tmp/certs
+  openssl genrsa -out /tmp/certs/ca.key 2048
+  openssl req -x509 -new -nodes -key /tmp/certs/ca.key \
+    -days 1024 -out /tmp/certs/ca.crt -outform PEM \
+    -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$IP"
+  openssl genrsa -out /tmp/certs/server.key 2048
+  openssl req -new -key /tmp/certs/server.key \
+    -out /tmp/certs/server.csr \
+    -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$IP"
+  echo "subjectAltName = DNS:$IP, IP:$IP" > /tmp/certs/extfile.cnf
+  openssl x509 -req -in /tmp/certs/server.csr \
+    -CA /tmp/certs/ca.crt -CAkey /tmp/certs/ca.key \
+    -CAcreateserial -out /tmp/certs/server.crt \
+    -days 365 -extfile /tmp/certs/extfile.cnf
+
+  # Bootstrap MicroCeph with TLS-enabled RGW
+  microceph cluster bootstrap
+  microceph disk add loop,1G,3
+  SERVER_CRT_B64=$(base64 -w0 /tmp/certs/server.crt)
+  SERVER_KEY_B64=$(base64 -w0 /tmp/certs/server.key)
+  microceph enable rgw \
+    --ssl-certificate "$SERVER_CRT_B64" \
+    --ssl-private-key "$SERVER_KEY_B64"
+  for i in $(seq 1 30); do
+    if curl -sk "https://$IP/" > /dev/null 2>&1; then
+      echo "RGW is ready"
+      break
+    fi
+    echo "Waiting for RGW ($i/30)..."
+    sleep 5
+  done
+  microceph.radosgw-admin user create \
+    --uid test --display-name test \
+    --access-key=foo --secret-key=bar
+
+  # Write S3 credentials consumed by load_dotenv() in conftest.py
+  {
+    echo "S3_SERVER_URL=https://$IP"
+    echo "S3_ACCESS_KEY=foo"
+    echo "S3_SECRET_KEY=bar"
+    echo "S3_CA_BUNDLE_PATH=/tmp/certs/ca.crt"
+  } > .env
+
+  # Pre-pull OCI images into MicroK8s to avoid timeouts
+  IMAGES=(
+    "$(yq '.resources.kyuubi-image.upstream-source' metadata.yaml)"
+    "$(python3 -c 'from src.constants import JOB_OCI_IMAGE; print(JOB_OCI_IMAGE, end="")')"
+  )
+  for IMAGE in "${IMAGES[@]}"; do
+    microk8s ctr images pull "$IMAGE"
+  done
+
+  pipx install tox
+  pipx install poetry
