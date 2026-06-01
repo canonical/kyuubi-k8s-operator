@@ -60,6 +60,7 @@ jobs:
       - build
     uses: ./.github/workflows/integration-test.yaml
     with:
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       mark-expression: ${{ github.event_name != 'schedule' && 'not unstable' || '' }}
     secrets: inherit
 
@@ -71,6 +72,7 @@ jobs:
       - build
     uses: ./.github/workflows/integration-gpu.yaml
     with:
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       arch: amd64
     secrets: inherit
 
@@ -85,6 +87,7 @@ jobs:
       - build
     uses: ./.github/workflows/integration-gpu.yaml
     with:
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       arch: arm64
     secrets: inherit
 
@@ -95,4 +98,6 @@ jobs:
       - unit-tests
       - build
     uses: ./.github/workflows/refresh-tests.yaml
+    with:
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
     secrets: inherit
