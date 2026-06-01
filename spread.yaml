@@ -10,7 +10,7 @@ backends:
     allocate: |
       hash=$(python3 -c "import hashlib; print(hashlib.sha256('$SPREAD_PASSWORD'.encode()).hexdigest()[:6])")
       VM_NAME="${VM_NAME:-${SPREAD_SYSTEM//./-}-${hash}}"
-      DISK="${DISK:-20}"
+      DISK="${DISK:-30}"
       CPU="${CPU:-4}"
       MEM="${MEM:-8}"
 
