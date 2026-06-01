@@ -63,8 +63,12 @@ jobs:
           jobs = []
           for job in spread_jobs:
               # Example: "github-ci:ubuntu-22.04:spread/integration-charm"
-              _, runner, task = job.split(":")
+              _, runner, task, *_ = job.split(":")
               task_name = task.removeprefix("spread/")
+
+              # Refresh tests are handled separately by refresh-tests.yaml
+              if task_name == "integration-refresh":
+                  continue
 
               if runner == "ubuntu-22.04-arm" and task_name in AMD64_ONLY_TASKS:
                   continue

@@ -1,0 +1,36 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+summary: Run integration-refresh tests
+
+environment:
+  REFRESH_ARGS/base:                      ""
+  REFRESH_ARGS/multi:                     "--refresh-multi-units"
+  REFRESH_ARGS/tls:                       "--refresh-tls"
+  REFRESH_ARGS/image:                     "--refresh-image"
+  REFRESH_ARGS/metastore:                 "--refresh-metastore"
+  REFRESH_ARGS/multi_tls:                 "--refresh-multi-units --refresh-tls"
+  REFRESH_ARGS/multi_image:               "--refresh-multi-units --refresh-image"
+  REFRESH_ARGS/multi_metastore:           "--refresh-multi-units --refresh-metastore"
+  REFRESH_ARGS/tls_image:                 "--refresh-tls --refresh-image"
+  REFRESH_ARGS/tls_metastore:             "--refresh-tls --refresh-metastore"
+  REFRESH_ARGS/image_metastore:           "--refresh-image --refresh-metastore"
+  REFRESH_ARGS/multi_tls_image:           "--refresh-multi-units --refresh-tls --refresh-image"
+  REFRESH_ARGS/multi_tls_metastore:       "--refresh-multi-units --refresh-tls --refresh-metastore"
+  REFRESH_ARGS/multi_image_metastore:     "--refresh-multi-units --refresh-image --refresh-metastore"
+  REFRESH_ARGS/tls_image_metastore:       "--refresh-tls --refresh-image --refresh-metastore"
+  REFRESH_ARGS/all:                       "--refresh-multi-units --refresh-tls --refresh-image --refresh-metastore"
+
+prepare: |
+  # Pre-pull old revision OCI images needed as the starting point for refresh tests
+  OLD_IMAGES=(
+    "ghcr.io/canonical/charmed-spark-kyuubi@sha256:e2029c6976fc5b9ee2865eced632ca42ce554039d9832af20dfa3e63113e00f7" # rev 112 charm OCI resource
+    "ghcr.io/canonical/charmed-spark@sha256:f1f944369108c0b0112212fb0242f3c314dfad362926c234857029f13c5de2c0" # rev 112 job OCI resource
+  )
+  for IMAGE in "${OLD_IMAGES[@]}"; do
+    microk8s ctr images pull "$IMAGE"
+  done
+
+execute: |
+  cd "$SPREAD_PATH"
+  tox run -e integration-refresh -- $REFRESH_ARGS --model testing --keep-models
