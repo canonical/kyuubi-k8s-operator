@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-name: Inplace refresh tests
+name: Integration tests
 
 on:
   workflow_call:
@@ -10,13 +10,17 @@ on:
         description: "Artifact prefix output from the build job"
         type: string
         required: true
+      mark-expression:
+        description: "pytest -m expression passed to spread tasks (empty = run all tests)"
+        type: string
+        default: "not unstable"
 
 permissions:
   contents: read
 
 jobs:
-  collect-refresh-test:
-    name: Collect refresh test spread jobs
+  collect-integration-test:
+    name: Collect integration test spread jobs
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -48,24 +52,34 @@ jobs:
               .split("\n")
           )
 
+          # Tests excluded on arm64
+          # - integration-charm:           TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          # - integration-observability:   No arm64 builds for observability charms
+          # - integration-ha:              TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          # - integration-external-access: TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          AMD64_ONLY_TASKS = {
+              "integration-charm",
+              "integration-observability",
+              "integration-ha",
+              "integration-external-access",
+          }
+
           jobs = []
           for job in spread_jobs:
-              parts = job.split(":")
-              # Refresh tasks have variants: "github-ci:system:spread/integration-refresh:variant"
-              if len(parts) != 4:
-                  continue
-              _, runner, task, variant = parts
+              # Example: "github-ci:ubuntu-22.04:spread/integration-charm"
+              _, runner, task, *_ = job.split(":")
               task_name = task.removeprefix("spread/")
 
-              if task_name != "integration-refresh":
+              # Refresh tests are handled separately by refresh-tests.yaml
+              if task_name == "integration-refresh":
                   continue
 
-              # Refresh tests only run on amd64 for now
-              if runner != "ubuntu-22.04":
+              if runner == "ubuntu-22.04-arm" and task_name in AMD64_ONLY_TASKS:
                   continue
 
-              name = f"{task_name}:{variant}"
-              name_in_artifact = f"{task_name}-{variant}"
+              architecture = "arm64" if runner.endswith("-arm") else "amd64"
+              name = f"{task_name} | {architecture} ({runner})"
+              name_in_artifact = f"{task_name}-{architecture}-{runner}"
               jobs.append({
                   "spread_job": job,
                   "name": name,
@@ -78,14 +92,14 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as file:
               file.write(output)
 
-  refresh-test:
+  integration-test:
     strategy:
       fail-fast: false
       matrix:
-        job: ${{ fromJSON(needs.collect-refresh-test.outputs.jobs) }}
+        job: ${{ fromJSON(needs.collect-integration-test.outputs.jobs) }}
     name: ${{ matrix.job.name }}
     needs:
-      - collect-refresh-test
+      - collect-integration-test
     runs-on: ${{ matrix.job.runner }}
     timeout-minutes: 120
     steps:
@@ -131,6 +145,8 @@ jobs:
         timeout-minutes: 110
         id: spread
         run: ~/go/bin/spread -vv '${{ matrix.job.spread_job }}'
+        env:
+          MARK_EXPRESSION: ${{ inputs.mark-expression }}
 
       - name: snap list
         timeout-minutes: 1

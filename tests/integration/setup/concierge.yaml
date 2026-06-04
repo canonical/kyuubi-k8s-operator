@@ -1,0 +1,35 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+juju:
+  channel: 3.6/stable
+  model-defaults:
+    logging-config: <root>=INFO; unit=DEBUG
+
+providers:
+  microk8s:
+    enable: true
+    channel: 1.32-strict/stable
+    bootstrap: true
+    addons:
+      - rbac
+      - hostpath-storage
+      - dns
+      - metallb:10.64.140.43-10.64.140.49
+
+host:
+  packages:
+    - build-essential
+    - git
+    - jq
+    - libpq-dev
+    - make
+    - pipx
+    - python3-dev
+  snaps:
+    microceph:
+      channel: squid/stable
+    kubectl:
+      channel: latest/stable
+    yq:
+      channel: latest/stable

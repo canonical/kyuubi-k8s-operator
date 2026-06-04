@@ -1,0 +1,8 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+summary: Run integration-ha tests
+
+execute: |
+  cd "$SPREAD_PATH"
+  tox run -e integration-ha -- --model testing --keep-models -m "$MARK_EXPRESSION"
