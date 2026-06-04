@@ -6,6 +6,10 @@ name: GPU Tests
 on:
   workflow_call:
     inputs:
+      artifact-prefix:
+        description: "Artifact prefix output from the build job"
+        type: string
+        required: true
       arch:
         type: string
         default: "amd64"
@@ -83,7 +87,7 @@ jobs:
       - name: Download packed charm(s)
         uses: actions/download-artifact@v8
         with:
-          artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+          pattern: ${{ inputs.artifact-prefix }}-*
           merge-multiple: true
           path: /home/ubuntu/workdir
 
