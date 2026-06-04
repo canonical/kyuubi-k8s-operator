@@ -1,0 +1,59 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+summary: Run integration-refresh tests
+
+environment:
+  REFRESH_ARGS/base: ""
+  REFRESH_ARGS/multi: "--refresh-multi-units"
+  REFRESH_ARGS/tls: "--refresh-tls"
+  REFRESH_ARGS/image: "--refresh-image"
+  REFRESH_ARGS/metastore: "--refresh-metastore"
+  REFRESH_ARGS/multi_tls: "--refresh-multi-units --refresh-tls"
+  REFRESH_ARGS/multi_image: "--refresh-multi-units --refresh-image"
+  REFRESH_ARGS/multi_metastore: "--refresh-multi-units --refresh-metastore"
+  REFRESH_ARGS/tls_image: "--refresh-tls --refresh-image"
+  REFRESH_ARGS/tls_metastore: "--refresh-tls --refresh-metastore"
+  REFRESH_ARGS/image_metastore: "--refresh-image --refresh-metastore"
+  REFRESH_ARGS/multi_tls_image: "--refresh-multi-units --refresh-tls --refresh-image"
+  REFRESH_ARGS/multi_tls_metastore: "--refresh-multi-units --refresh-tls --refresh-metastore"
+  REFRESH_ARGS/multi_image_metastore: "--refresh-multi-units --refresh-image --refresh-metastore"
+  REFRESH_ARGS/tls_image_metastore: "--refresh-tls --refresh-image --refresh-metastore"
+  REFRESH_ARGS/all: "--refresh-multi-units --refresh-tls --refresh-image --refresh-metastore"
+
+prepare: |
+  # Pre-pull old revision OCI images needed as the starting point for refresh tests
+  OLD_IMAGES=(
+    # TODO: Use first 4.0 stable revisions
+    # "ghcr.io/canonical/charmed-spark-kyuubi@sha256:e2029c6976fc5b9ee2865eced632ca42ce554039d9832af20dfa3e63113e00f7" # rev 112 charm OCI resource
+    # "ghcr.io/canonical/charmed-spark@sha256:f1f944369108c0b0112212fb0242f3c314dfad362926c234857029f13c5de2c0" # rev 112 job OCI resource
+  )
+  for IMAGE in "${OLD_IMAGES[@]}"; do
+    microk8s ctr images pull "$IMAGE"
+  done
+
+  # The old charm revision deployed by these tests does not handle the self-signed
+  # CA used by the TLS-enabled RGW configured in the global prepare. Reconfigure
+  # MicroCeph to serve RGW over plain HTTP instead.
+  IP=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+  microceph disable rgw
+  microceph enable rgw
+  for i in $(seq 1 30); do
+    if curl -sf "http://$IP/" > /dev/null 2>&1; then
+      echo "HTTP RGW is ready"
+      break
+    fi
+    echo "Waiting for HTTP RGW ($i/30)..."
+    sleep 5
+  done
+
+  # Overwrite the .env written by the global prepare with the plain HTTP endpoint
+  {
+    echo "S3_SERVER_URL=http://$IP"
+    echo "S3_ACCESS_KEY=foo"
+    echo "S3_SECRET_KEY=bar"
+  } > "$SPREAD_PATH/.env"
+
+execute: |
+  cd "$SPREAD_PATH"
+  tox run -e integration-refresh -- $REFRESH_ARGS --model testing --keep-models
