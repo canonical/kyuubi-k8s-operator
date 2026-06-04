@@ -1,0 +1,8 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+summary: Run integration-charm tests
+
+execute: |
+  cd "$SPREAD_PATH"
+  tox run -e integration-charm -- --model testing --keep-models -m "$MARK_EXPRESSION"
