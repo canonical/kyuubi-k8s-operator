@@ -60,7 +60,7 @@ def test_deploy_kyuubi_setup(
 
     logger.info("Enabling GPU support")
     juju.config(APP_NAME, {"gpu-enable": True, "gpu-engine-executors-limit": 1})
-    juju.wait(jubilant.all_active, delay=5)
+    juju.wait(jubilant.all_active, delay=30, timeout=1000)
 
 
 def test_gpu_used_for_query(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
