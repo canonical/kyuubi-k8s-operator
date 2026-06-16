@@ -121,7 +121,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             base="ubuntu@24.04",
             alias="metastore",
             trust=True,
-            force=True
+            force=True,
         ),
         auth_db=TestCharm(
             name="postgresql-k8s",
@@ -130,7 +130,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             base="ubuntu@24.04",
             alias="auth-db",
             trust=True,
-            force=True
+            force=True,
         ),
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",

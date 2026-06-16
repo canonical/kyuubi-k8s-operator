@@ -59,7 +59,7 @@ class TestCharm(BaseModel):
             "num_units": self.num_units,
             "app": self.application_name,
             "trust": self.trust,
-            "force": self.force
+            "force": self.force,
         }
 
 
