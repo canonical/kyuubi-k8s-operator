@@ -13,6 +13,8 @@ S3Info = TypedDict(
         "secret_key": str,
         "bucket": str,
         "path": str,
+        "region": str,
+        "tls_ca_chain": str,
     },
 )
 

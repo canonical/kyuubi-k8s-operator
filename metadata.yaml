@@ -12,7 +12,7 @@ description: |
 
   Apache Kyuubi is a free, open source software project by the Apache Software Foundation.
   Users can find out more at the [Kyuubi project page](https://kyuubi.apache.org/).
-docs: https://discourse.charmhub.io/t/charmed-apache-kyuubi-k8s-documentation/16755
+docs: https://canonical-charmed-spark.readthedocs-hosted.com/main/how-to/apache-kyuubi
 source: https://github.com/canonical/kyuubi-k8s-operator
 issues: https://github.com/canonical/kyuubi-k8s-operator/issues
 website:
@@ -20,7 +20,7 @@ website:
   - https://canonical.com/data/docs/spark/k8s
   - https://charmhub.io/kyuubi-k8s
   - https://github.com/canonical/kyuubi-k8s-operator
-  - https://matrix.to/#/%23charmhub-data-platform%3Aubuntu.com
+  - https://matrix.to/#/%23charmhub-analytics%3Aubuntu.com
 maintainers:
   - Canonical Data Platform <data-platform@lists.launchpad.net>
 assumes:
@@ -34,8 +34,8 @@ resources:
   kyuubi-image:
     type: oci-image
     description: OCI image for kyuubi
-    # spark-3.5.5, kyuubi 1.10.2 release date 12/09/25
-    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:73d2c499680e4f55c5f65930774ce8ae7eb85d7019754944d82ca2183d716b15
+    # oci-tag=3.5-22.04_edge
+    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:252630d980d857e845cba401afc7e4af68799c2d96b411dd8366f00e132e7454
 
 peers:
   kyuubi-peers:

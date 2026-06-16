@@ -157,8 +157,10 @@ def test_kyuubi_client_relation_removed(
 
     logger.info("Waiting for data-integrator and kyuubi charm to be idle and active...")
     status = juju.wait(
-        lambda status: jubilant.all_blocked(status, charm_versions.data_integrator.app)
-        and jubilant.all_active(status, APP_NAME),
+        lambda status: (
+            jubilant.all_blocked(status, charm_versions.data_integrator.app)
+            and jubilant.all_active(status, APP_NAME)
+        ),
         delay=3,
     )
 

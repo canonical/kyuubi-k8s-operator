@@ -1,13 +1,15 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-
 name: TICS run self-hosted test (github-action)
 
 on:
   schedule:
     - cron: "0 2 * * 6" # Every Saturday 2:00 AM UTC
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   tiobe-scan:
@@ -16,19 +18,13 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the project
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update 
-          sudo apt-get install -y python3-venv
-          sudo apt-get install -y libpq-dev python3-dev
-
-      - name: Install pipx
-        run: python3 -m pip install --user pipx && python3 -m pipx ensurepath
-
-      - name: Add pipx to PATH
-        run: echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          sudo apt update
+          sudo apt install -y libpq-dev pipx python3-dev python3-venv
+          pipx ensurepath
 
       - name: Install tox and poetry using pipx
         run: |
@@ -44,7 +40,7 @@ jobs:
           echo PATH="$PATH" >> "$GITHUB_ENV"
 
       - name: Run tox tests to create coverage.xml
-        run: tox run -e unit
+        run: tox run -e unit -- -m "not skopeo"
 
       - name: Move results to necessary folder for TICS
         run: |

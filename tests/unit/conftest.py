@@ -131,9 +131,9 @@ def mock_lightkube_client():
 
 
 @pytest.fixture(autouse=True)
-def mock_socket_connect():
+def mock_workload_running():
     """A fixture to run unit tests even in non K8s environment."""
-    with patch("core.workload.kyuubi.KyuubiWorkload.serving_requests") as patched:
+    with patch("core.workload.kyuubi.KyuubiWorkload.is_serving_requests") as patched:
         yield patched
 
 

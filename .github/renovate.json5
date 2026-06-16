@@ -1,0 +1,63 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>canonical/data-platform//renovate_presets/charm.json5",
+  ],
+  "reviewers": ["team:processing"],
+  // Between 1AM and 6:59AM, first Friday of the month
+  "schedule": ["* 1-6 1-7 * 5"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 1-6 1-7 * 5"]
+  },
+  "ignoreDeps": ["ubuntu"],
+  "baseBranchPatterns": ["/^[0-9]+\\.[0-9]+\\/edge$/"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)metadata\\.yaml$"],
+      "matchStrings": [
+        "#\\s*oci-tag=(?<currentValue>[^\\s]+)\\r?\\n\\s*upstream-source:\\s*(?<depName>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^src/constants\\.py$"],
+      "matchStrings": [
+        "(?<variableName>JOB_OCI_IMAGE|GPU_JOB_OCI_IMAGE)\\s*=\\s*\"(?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)\""
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "ghcr.io/canonical/charmed-spark",
+        "ghcr.io/canonical/charmed-spark-gpu",
+        "ghcr.io/canonical/charmed-spark-kyuubi"
+      ],
+      "pinDigests": true,
+      "groupName": "OCI resources",
+      "description": "Only allow digest updates for the current track. Block all version bumps.",
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "ghcr.io/canonical/charmed-spark",
+        "ghcr.io/canonical/charmed-spark-gpu",
+        "ghcr.io/canonical/charmed-spark-kyuubi"
+      ],
+      "pinDigests": true,
+      "groupName": "OCI resources",
+      "description": "Only allow digest updates for the current track. Block all version bumps.",
+      "matchUpdateTypes": ["digest"],
+      "enabled": true
+    }
+  ]
+}

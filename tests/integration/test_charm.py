@@ -68,13 +68,14 @@ def test_deploy_s3_integrator(
     secret_key = s3_bucket_and_creds["secret_key"]
     bucket_name = s3_bucket_and_creds["bucket"]
     path = s3_bucket_and_creds["path"]
-
+    tls_ca_chain = s3_bucket_and_creds["tls_ca_chain"]
     juju.config(
         charm_versions.s3.app,
         {
             "bucket": bucket_name,
             "path": path,
             "endpoint": endpoint_url,
+            "tls-ca-chain": tls_ca_chain,
         },
     )
     juju.wait(jubilant.all_blocked)

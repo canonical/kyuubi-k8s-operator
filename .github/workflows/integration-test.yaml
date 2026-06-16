@@ -1,0 +1,187 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: Integration tests
+
+on:
+  workflow_call:
+    inputs:
+      artifact-prefix:
+        description: "Artifact prefix output from the build job"
+        type: string
+        required: true
+      mark-expression:
+        description: "pytest -m expression passed to spread tasks (empty = run all tests)"
+        type: string
+        default: "not unstable"
+
+permissions:
+  contents: read
+
+jobs:
+  collect-integration-test:
+    name: Collect integration test spread jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      jobs: ${{ steps.collect-jobs.outputs.jobs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up spread
+        run: |
+          sudo snap install go --classic
+          go install github.com/canonical/spread/cmd/spread@latest
+      - name: Collect spread jobs
+        id: collect-jobs
+        shell: python
+        run: |
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          spread_jobs = (
+              subprocess.run(
+                  [pathlib.Path.home() / "go/bin/spread", "-list", "github-ci"],
+                  capture_output=True,
+                  check=True,
+                  text=True,
+              )
+              .stdout.strip()
+              .split("\n")
+          )
+
+          # Tests excluded on arm64
+          # - integration-charm:           TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          # - integration-observability:   No arm64 builds for observability charms
+          # - integration-ha:              TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          # - integration-external-access: TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          AMD64_ONLY_TASKS = {
+              "integration-charm",
+              "integration-observability",
+              "integration-ha",
+              "integration-external-access",
+          }
+
+          jobs = []
+          for job in spread_jobs:
+              # Example: "github-ci:ubuntu-22.04:spread/integration-charm"
+              _, runner, task, *_ = job.split(":")
+              task_name = task.removeprefix("spread/")
+
+              # Refresh tests are handled separately by refresh-tests.yaml
+              if task_name == "integration-refresh":
+                  continue
+
+              if runner == "ubuntu-22.04-arm" and task_name in AMD64_ONLY_TASKS:
+                  continue
+
+              architecture = "arm64" if runner.endswith("-arm") else "amd64"
+              name = f"{task_name} | {architecture} ({runner})"
+              name_in_artifact = f"{task_name}-{architecture}-{runner}"
+              jobs.append({
+                  "spread_job": job,
+                  "name": name,
+                  "name_in_artifact": name_in_artifact,
+                  "runner": runner,
+              })
+
+          output = f"jobs={json.dumps(jobs)}"
+          print(output)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as file:
+              file.write(output)
+
+  integration-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON(needs.collect-integration-test.outputs.jobs) }}
+    name: ${{ matrix.job.name }}
+    needs:
+      - collect-integration-test
+    runs-on: ${{ matrix.job.runner }}
+    timeout-minutes: 120
+    steps:
+      - name: Free up disk space
+        timeout-minutes: 10
+        run: |
+          sudo rm -rf \
+            /opt/google \
+            /opt/hostedtoolcache \
+            /opt/microsoft/powershell \
+            /opt/microsoft/msedge \
+            "$AGENT_TOOLSDIRECTORY" \
+            /usr/lib/firefox \
+            /usr/lib/mono \
+            /usr/local/julia* \
+            /usr/local/lib/android \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet \
+            /usr/share/gradle* \
+            /usr/share/miniconda \
+            /usr/share/sbt \
+            /usr/share/swift \
+            /home/linuxbrew
+          printf '\nDisk usage\n'
+          df --human-readable
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up spread
+        run: |
+          sudo snap install go --classic
+          go install github.com/canonical/spread/cmd/spread@latest
+
+      - name: Download packed charm(s)
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.artifact-prefix }}-*
+          merge-multiple: true
+
+      - name: Run spread job
+        timeout-minutes: 110
+        id: spread
+        run: ~/go/bin/spread -vv '${{ matrix.job.spread_job }}'
+        env:
+          MARK_EXPRESSION: ${{ inputs.mark-expression }}
+
+      - name: snap list
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: snap list
+
+      - name: Select model
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        id: juju-switch
+        run: |
+          # sudo needed since spread runs scripts as root
+          # "testing" is the default model created by concierge
+          sudo juju switch testing
+          mkdir ~/logs/
+
+      - name: juju status
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo juju status --color --relations | tee ~/logs/juju-status.txt
+
+      - name: juju debug-log
+        timeout-minutes: 3
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo juju debug-log --color --replay --no-tail | tee ~/logs/juju-debug-log.txt
+
+      - name: Disk usage
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: df --human-readable
+
+      - name: Upload logs
+        timeout-minutes: 2
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.job.name_in_artifact }}
+          path: ~/logs/

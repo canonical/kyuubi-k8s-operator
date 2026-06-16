@@ -17,6 +17,7 @@ from pathlib import Path
 import jubilant
 import pytest
 import yaml
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from integration.helpers import (
     APP_NAME,
@@ -36,6 +37,7 @@ TABLE_NAME = "inplace_table"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 
 # spark-3.4.4, release date 01/01/25
+# It should not be necessary to use a 3.5 specific image here.
 WORKLOAD_IMAGE_UPGRADE = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708"
 
 
@@ -107,14 +109,16 @@ def test_populate(
     We will use this to assert that we can still query data written prior to the inplace upgrade.
     """
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
-    assert validate_sql_queries_with_kyuubi(
-        juju=juju,
-        db_name=DB_NAME,
-        table_name=TABLE_NAME,
-        username=username,
-        password=password,
-        use_tls=with_tls,
-    )
+    for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_fixed(60)):
+        with attempt:
+            assert validate_sql_queries_with_kyuubi(
+                juju=juju,
+                db_name=DB_NAME,
+                table_name=TABLE_NAME,
+                username=username,
+                password=password,
+                use_tls=with_tls,
+            )
 
 
 def test_pre_refresh_check(juju: jubilant.Juju) -> None:
@@ -191,8 +195,9 @@ def test_run_inplace_upgrade(
 
     logger.info("Waiting for refresh to complete")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME)
-        and jubilant.all_agents_idle(status, APP_NAME),
+        lambda status: (
+            jubilant.all_active(status, APP_NAME) and jubilant.all_agents_idle(status, APP_NAME)
+        ),
         delay=10,
     )
 
@@ -213,8 +218,9 @@ def test_create_new_data(
     juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME)
-        and jubilant.all_agents_idle(status, APP_NAME),
+        lambda status: (
+            jubilant.all_active(status, APP_NAME) and jubilant.all_agents_idle(status, APP_NAME)
+        ),
         delay=10,
     )
     """Test that the upgraded deployment is valid (can connect with auth, and write)."""

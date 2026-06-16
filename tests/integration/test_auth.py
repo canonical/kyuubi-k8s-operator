@@ -63,7 +63,6 @@ def test_kyuubi_valid_credentials(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the JDBC connection when valid credentials are provided."""
-    logger.info("Running action 'get-password' on kyuubi unit")
     _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
@@ -147,12 +146,18 @@ def test_update_admin_password_to_invalid_and_valid_secret_again(juju: jubilant.
     password = "new-password"
     secret_name = "kyuubi-users"
     juju.cli("update-secret", secret_name, f"{username}={password}")
+
+    # TODO: Revert back to `jubilant.all_blocked` when the following bug is fixed in Juju:
+    # https://github.com/juju/juju/issues/22092
     status = juju.wait(
-        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
-        delay=5,
+        lambda status: (
+            jubilant.all_agents_idle(status)
+            and status.apps[APP_NAME].units[f"{APP_NAME}/0"].workload_status.current == "blocked"
+        ),
+        delay=10,
     )
     assert (
-        status.apps[APP_NAME].app_status.message
+        status.apps[APP_NAME].units[f"{APP_NAME}/0"].workload_status.message
         == Status.SYSTEM_USERS_SECRET_INVALID.value.message
     )
     with pytest.raises(TTransportException):

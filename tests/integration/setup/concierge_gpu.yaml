@@ -1,0 +1,38 @@
+juju:
+  channel: 3.6/stable
+  model-defaults:
+    logging-config: <root>=INFO; unit=DEBUG
+
+providers:
+  microk8s:
+    enable: true
+    channel: 1.32/stable
+    bootstrap: false
+    addons:
+      - dns
+      - hostpath-storage
+      - metallb:10.64.140.43-10.64.140.49
+      - nvidia
+
+  lxd:
+    enable: true
+    bootstrap: false
+
+host:
+  packages:
+    - git
+    - make
+    - pipx
+    - libpq-dev
+    - python3-dev
+  snaps:
+    microceph:
+      channel: squid/stable
+    helm:
+      channel: latest/stable
+    kubectl:
+      channel: latest/stable
+    yq:
+      channel: latest/stable
+    aws-cli:
+      channel: latest/stable
