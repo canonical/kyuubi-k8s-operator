@@ -88,8 +88,8 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
     revisions = {
         "amd64": {
             "s3": 330,
-            "metastore": 774,
-            "auth": 774,
+            "metastore": 901,
+            "auth": 901,
             "hub": 119,
             "zk": 78,
             "tls": 586,
@@ -97,8 +97,8 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         },
         "arm64": {
             "s3": 332,
-            "metastore": 775,
-            "auth": 775,
+            "metastore": 902,
+            "auth": 902,
             "hub": 120,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 585,
@@ -116,17 +116,17 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         ),
         metastore_db=TestCharm(
             name="postgresql-k8s",
-            channel="14/stable",
+            channel="16/stable",
             revision=revisions["metastore"],
-            base="ubuntu@22.04",
+            base="ubuntu@24.04",
             alias="metastore",
             trust=True,
         ),
         auth_db=TestCharm(
             name="postgresql-k8s",
-            channel="14/stable",
+            channel="16/stable",
             revision=revisions["auth"],
-            base="ubuntu@22.04",
+            base="ubuntu@24.04",
             alias="auth-db",
             trust=True,
         ),
