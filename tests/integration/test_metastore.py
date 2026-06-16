@@ -86,16 +86,16 @@ def test_integrate_external_metastore(
 
     postgres_leader = f"{charm_versions.metastore_db.app}/0"
     postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+    
+    username = "operator"
+    password = get_postgres_password(juju, charm_versions.metastore_db.app, username=username)
 
     # Connect to PostgreSQL metastore database
     with (
         psycopg2.connect(
             host=postgres_host,
             database=METASTORE_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,
@@ -133,16 +133,16 @@ def test_remove_external_metastore(
 
     postgres_leader = f"{charm_versions.metastore_db.app}/0"
     postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+    
+    username = "operator"
+    password = get_postgres_password(juju, charm_versions.metastore_db.app, username=username)
 
     # Connect to PostgreSQL metastore database
     with (
         psycopg2.connect(
             host=postgres_host,
             database=METASTORE_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,
@@ -209,16 +209,15 @@ def test_prepare_metastore_with_invalid_schema(
     postgres_leader = f"{INVALID_METASTORE_APP_NAME}/0"
     postgres_host = status.apps[INVALID_METASTORE_APP_NAME].units[postgres_leader].address
 
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+    username = "operator"
+    password = get_postgres_password(juju, INVALID_METASTORE_APP_NAME, username=username)
 
     # Connect to PostgreSQL metastore database
     with (
         psycopg2.connect(
             host=postgres_host,
             database=METASTORE_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,
@@ -319,16 +318,16 @@ def test_metastore_initialization_with_blocked_kyuubi(
 
     postgres_leader = f"{ALT_METASTORE_APP_NAME}/0"
     postgres_host = status.apps[ALT_METASTORE_APP_NAME].units[postgres_leader].address
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+
+    username = "operator"
+    password = get_postgres_password(juju, ALT_METASTORE_APP_NAME, username=username)
 
     # Connect to PostgreSQL metastore database
     with (
         psycopg2.connect(
             host=postgres_host,
             database=METASTORE_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,

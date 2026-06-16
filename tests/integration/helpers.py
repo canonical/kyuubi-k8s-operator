@@ -824,3 +824,12 @@ def verify_certificate_matches_public_key(certificate: bytes, public_key: bytes)
     )
 
     return cert_pubkey_bytes == given_pubkey_bytes
+
+
+def get_postgres_password(
+    juju: jubilant.Juju, app_name: str,
+    username: str = "operator",
+) -> str:
+    """Retrieve a user password from the secret."""
+    secret = juju.show_secret(f"{PEER}.{app_name}.app", reveal=True)
+    return secret.content[f"{username}-password"]
