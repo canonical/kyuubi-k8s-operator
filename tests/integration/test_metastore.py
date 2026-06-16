@@ -16,6 +16,7 @@ from core.domain import Status
 from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
+    get_postgres_password,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -86,7 +87,7 @@ def test_integrate_external_metastore(
 
     postgres_leader = f"{charm_versions.metastore_db.app}/0"
     postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
-    
+
     username = "operator"
     password = get_postgres_password(juju, charm_versions.metastore_db.app, username=username)
 
@@ -133,7 +134,7 @@ def test_remove_external_metastore(
 
     postgres_leader = f"{charm_versions.metastore_db.app}/0"
     postgres_host = status.apps[charm_versions.metastore_db.app].units[postgres_leader].address
-    
+
     username = "operator"
     password = get_postgres_password(juju, charm_versions.metastore_db.app, username=username)
 

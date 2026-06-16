@@ -21,6 +21,7 @@ from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
     get_leader_unit,
+    get_postgres_password,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
