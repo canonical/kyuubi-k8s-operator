@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 
 juju:
-  channel: 3.6/stable
+  channel: 4.0/stable
   model-defaults:
     logging-config: <root>=INFO; unit=DEBUG
 
