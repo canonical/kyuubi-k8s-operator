@@ -63,6 +63,10 @@ class AuthenticationManager(WithLogging):
         query = f"INSERT INTO {AUTHENTICATION_TABLE_NAME} (username, passwd) VALUES (%s, crypt(%s, gen_salt('bf')) );"
         vars = (username, password)
         success, _ = self.database.execute(query=query, vars=vars)
+        if success:
+            self.logger.info(f"User {username} created successfully")
+        else:
+            self.logger.warning(f"User {username} could not be created")
         return success
 
     def user_exists(self, username: str) -> bool:
@@ -105,6 +109,10 @@ class AuthenticationManager(WithLogging):
             username,
         )
         success, _ = self.database.execute(query=query, vars=vars)
+        if success:
+            self.logger.info(f"Password for user {username} updated successfully")
+        else:
+            self.logger.warning(f"Password for user {username} could not be updated")
         return success
 
     def prepare_auth_db(self, admin_password: str) -> bool:
