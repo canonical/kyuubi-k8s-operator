@@ -843,7 +843,7 @@ def generate_container_securitycontext_map(
             runAsUser=v["uid"],
             runAsGroup=v["gid"],
         )
-    c_uid_map["charm"] = {"runAsUser": juju_user_id, "runAsGroup": juju_user_id}
+    c_uid_map["charm"] = ContainerSecurityContext(runAsUser=juju_user_id, runAsGroup=juju_user_id)
     return c_uid_map
 
 
@@ -874,8 +874,14 @@ def assert_security_context(
     model_name: str,
 ) -> None:
     """Assert that a container's security context matches expected UID/GID settings."""
-    containers: list = lightkube_client.get(Pod, pod_name, namespace=model_name).spec.containers
+    pod = lightkube_client.get(Pod, pod_name, namespace=model_name)
+    assert pod.spec is not None
+    containers: list = pod.spec.containers
     container = next((c for c in containers if c.name == container_name), None)
+    assert container is not None
     security_context = container.securityContext
-    for key, value in container_securitycontext_map.get(container_name).items():
+    assert security_context is not None
+    expected = container_securitycontext_map.get(container_name)
+    assert expected is not None
+    for key, value in expected.items():
         assert getattr(security_context, key) == value
