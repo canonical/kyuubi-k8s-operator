@@ -26,9 +26,13 @@ maintainers:
 assumes:
   - k8s-api
 
+charm-user: non-root
+
 containers:
   kyuubi:
     resource: kyuubi-image
+    uid: 584792
+    gid: 584792
 
 resources:
   kyuubi-image:
