@@ -21,6 +21,7 @@ from .helpers import (
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
     get_leader_unit,
+    get_postgres_password,
     validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
@@ -69,16 +70,15 @@ def test_kyuubi_users_before_client_relation(
     status = juju.status()
     postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
 
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+    username = "operator"
+    password = get_postgres_password(juju, charm_versions.auth_db.app, username=username)
 
     # Connect to PostgreSQL metastore database
     with (
         psycopg2.connect(
             host=postgres_host,
             database=AUTHENTICATION_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,
@@ -107,15 +107,14 @@ def test_kyuubi_client_relation_joined(
     status = juju.status()
     postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
 
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+    username = "operator"
+    password = get_postgres_password(juju, charm_versions.auth_db.app, username=username)
 
     with (
         psycopg2.connect(
             host=postgres_host,
             database=AUTHENTICATION_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,
@@ -168,16 +167,15 @@ def test_kyuubi_client_relation_removed(
     postgres_leader = get_leader_unit(juju, charm_versions.auth_db.app)
     postgres_host = status.apps[charm_versions.auth_db.app].units[postgres_leader].address
 
-    task = juju.run(postgres_leader, "get-password")
-    assert task.return_code == 0
-    password = task.results["password"]
+    username = "operator"
+    password = get_postgres_password(juju, charm_versions.auth_db.app, username=username)
 
     # Fetch number of users excluding the default admin user
     with (
         psycopg2.connect(
             host=postgres_host,
             database=AUTHENTICATION_DATABASE_NAME,
-            user="operator",
+            user=username,
             password=password,
         ) as connection,
         connection.cursor() as cursor,
