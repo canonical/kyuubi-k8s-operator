@@ -3,6 +3,7 @@
 
 juju:
   channel: 4.0/stable
+  agent-version: 4.0.5
   model-defaults:
     logging-config: <root>=INFO; unit=DEBUG
 
