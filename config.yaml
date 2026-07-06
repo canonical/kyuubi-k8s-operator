@@ -152,3 +152,10 @@ options:
       A Juju secret URI of a secret containing the private key for client-to-server TLS certificates. This needs to be a Juju secret
       URI pointing to a secret that has the content { private-key: <key> }, where <key> is the key to be used by the charm to generate
       Certificate Signing Request (CSR). If this config option is not provided, the charm will generate a new private key and use it instead.
+
+  ldap-search-filter:
+    type: string
+    description: |
+      The LDAP search query filter to use for user authentication. This should be a valid LDAP search filter.
+      Example: "(uid=%s)" where %s will be replaced with the username provided by the user during login.
+    default: "(|(uid=%s)(cn=%s)(mail=%s))"

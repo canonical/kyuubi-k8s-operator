@@ -7,7 +7,7 @@
 
 from constants import AUTHENTICATION_TABLE_NAME
 from core.config import CharmConfig
-from core.domain import DatabaseConnectionInfo, TLSInfo, ZookeeperInfo
+from core.domain import DatabaseConnectionInfo, LDAPInfo, TLSInfo, ZookeeperInfo
 from utils.logging import WithLogging
 
 
@@ -20,12 +20,14 @@ class KyuubiConfig(WithLogging):
         db_info: DatabaseConnectionInfo | None,
         zookeeper_info: ZookeeperInfo | None,
         tls_info: TLSInfo | None,
+        ldap_info: LDAPInfo | None,
         keystore_path: str,
     ):
         self.charm_config = charm_config
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
         self.tls = tls_info
+        self.ldap = ldap_info
         self.keystore_path = keystore_path
 
     def _get_db_connection_url(self) -> str:
@@ -73,8 +75,31 @@ class KyuubiConfig(WithLogging):
             )
         return conf
 
+
     @property
     def _auth_conf(self) -> dict[str, str]:
+        """Return authentication configurations."""
+        if self.db_info and self.ldap:
+            self.logger.warning(
+                "Both JDBC and LDAP authentication are configured. "
+                "Kyuubi configurations are not generated, the charm will go to blocked state."
+            )
+            return {}
+        elif not (self.db_info or self.ldap):
+            self.logger.warning(
+                "Neither JDBC nor LDAP authentication is configured. "
+                "Kyuubi configurations are not generated, the charm will go to blocked state."
+            )
+            return {}
+        if self.db_info:
+            return self._jdbc_auth_conf
+        elif self.ldap:
+            return self._ldap_auth_conf
+        else:
+            return {}
+
+    @property
+    def _jdbc_auth_conf(self) -> dict[str, str]:
         if not self.db_info:
             return {}
         return {
@@ -85,6 +110,26 @@ class KyuubiConfig(WithLogging):
             "kyuubi.authentication.jdbc.password": self.db_info.password,
             "kyuubi.authentication.jdbc.query": self._get_authentication_query(),
         }
+
+    @property
+    def _ldap_auth_conf(self) -> dict[str, str]:
+        if not self.ldap:
+            return {}
+        urls = []
+        if self.ldap.ldaps_urls:
+            urls.extend(self.ldap.ldaps_urls)
+        if self.ldap.ldap_urls:
+            urls.extend(self.ldap.ldap_urls)
+        ldap_url_string = " ".join(urls)
+        return {
+            "kyuubi.authentication": "LDAP",
+            "kyuubi.authentication.ldap.baseDN": self.ldap.base_dn,
+            # "kyuubi.authentication.ldap.domain": "glauth.com",
+            "kyuubi.authentication.ldap.binddn": self.ldap.bind_dn,
+            "kyuubi.authentication.ldap.bindpw": self.ldap.bind_password,
+            "kyuubi.authentication.ldap.url": ldap_url_string,
+        }
+
 
     @property
     def _ha_conf(self) -> dict[str, str]:

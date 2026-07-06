@@ -345,7 +345,7 @@ def test_certificate_available(
         # Then
 
         # Ensure that the keystore and truststore passwords are generated
-        assert charm.context.unit_server.truststore_password is not None
+        assert charm.context.unit_server.kyuubi_truststore_password is not None
         assert charm.context.unit_server.keystore_password is not None
 
         # Ensure that the CA certificate, server certificate and the private key are in unit peer databag

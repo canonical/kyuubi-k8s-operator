@@ -42,7 +42,8 @@ class Status(Enum):
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
     MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
-    MISSING_AUTH_DB = BlockedStatus("Missing authentication database relation")
+    MISSING_AUTH_RELATION = BlockedStatus("Missing authentication relation. Please integrate to one of `ldap` or `postgresql_client` interface.")
+    MULTIPLE_AUTH_RELATIONS = BlockedStatus("Multiple authentication relations detected. Please integrate to only one of `ldap` or `postgresql_client` interface.")
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
@@ -341,6 +342,17 @@ class SANs:
     sans_ip: list[str]
     sans_dns: list[str]
 
+@dataclass
+class LDAPInfo:
+    """Class representing a information related to LDAP."""
+
+    auth_method: str
+    ldap_urls: list[str]
+    ldaps_urls: list[str]
+    base_dn: str
+    bind_dn: str
+    bind_password: str
+    start_tls: bool
 
 class KyuubiServer(RelationState):
     """State collection metadata for a charm unit."""
@@ -398,7 +410,7 @@ class KyuubiServer(RelationState):
         return self.relation_data.get("keystore-password", "")
 
     @property
-    def truststore_password(self) -> str:
+    def kyuubi_truststore_password(self) -> str:
         """The Java Truststore password for the unit to use for TLS."""
         return self.relation_data.get("truststore-password", "")
 

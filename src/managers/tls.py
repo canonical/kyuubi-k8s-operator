@@ -28,7 +28,7 @@ class TLSManager:
         self.context = context
         self.workload = workload
 
-    def get_subject(self) -> str:
+    def get_kyuubi_subject_name(self) -> str:
         """Get subject name for the unit."""
         if external_address := self.context.unit_server.external_address:
             subject_name = external_address.host
@@ -42,7 +42,7 @@ class TLSManager:
             subject_name = subject_name[: self.SUBJECT_NAME_MAX_LENGTH]
         return subject_name
 
-    def build_sans(self) -> SANs:
+    def build_kyuubi_sans(self) -> SANs:
         """Builds a SAN structure of DNS names and IPs for the unit."""
         sans_ip = [str(self.context.bind_address)]
         if node_ip := self.context.unit_server.node_ip:
@@ -169,7 +169,7 @@ class TLSManager:
             "-keystore",
             self.workload.paths.truststore,
             "-storepass",
-            self.context.unit_server.truststore_password,
+            self.context.unit_server.kyuubi_truststore_password,
             "-noprompt",
         ]
         self.workload.exec(" ".join(command))
@@ -185,7 +185,7 @@ class TLSManager:
             "-keystore",
             self.workload.paths.truststore,
             "-storepass",
-            self.context.unit_server.truststore_password,
+            self.context.unit_server.kyuubi_truststore_password,
         ]
         self.workload.exec(" ".join(command))
 
@@ -199,7 +199,7 @@ class TLSManager:
             "-keystore",
             self.workload.paths.truststore,
             "-storepass",
-            self.context.unit_server.truststore_password,
+            self.context.unit_server.kyuubi_truststore_password,
         ]
         self.workload.exec(
             " ".join(command),

@@ -34,7 +34,7 @@ from core.config import CharmConfig
 from core.context import Context
 from core.domain import Secret, Status
 from core.workload.kyuubi import KyuubiWorkload
-from events.auth import AuthenticationEvents
+from events.auth import JDBCAuthenticationEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
@@ -71,13 +71,13 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         )
 
         # Context
-        self.context = Context(model=self.model, config=self.config)
+        self.context = Context(charm=self, config=self.config)
 
         # Event handlers
         self.kyuubi_events = KyuubiEvents(self, self.context, self.workload)
         self.hub_events = SparkIntegrationHubEvents(self, self.context, self.workload)
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
-        self.auth_events = AuthenticationEvents(self, self.context, self.workload)
+        self.auth_events = JDBCAuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.tls_events = TLSEvents(self, self.context, self.workload)
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
@@ -225,8 +225,10 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         ):
             statuses.append(Status.NOT_ENOUGH_GPUS.value)
 
-        if not self.context.auth_db:
-            statuses.append(Status.MISSING_AUTH_DB.value)
+        if not (self.context.auth_db or self.context.ldap):
+            statuses.append(Status.MISSING_AUTH_RELATION.value)
+        elif self.context.auth_db and self.context.ldap:
+            statuses.append(Status.MULTIPLE_AUTH_RELATIONS.value)
 
         if status := self._collect_status_system_users():
             statuses.append(status.value)

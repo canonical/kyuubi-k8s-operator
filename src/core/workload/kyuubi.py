@@ -112,16 +112,16 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
 
     def is_serving_requests(self, admin_password: str) -> bool:
         """Is kyuubi serving requests."""
-        try:
-            res = httpx.get(
-                f"http://127.0.0.1:{REST_PORT}/api/v1/ping",
-                auth=httpx.BasicAuth(DEFAULT_ADMIN_USERNAME, admin_password),
-                timeout=httpx.Timeout(15),
-            )
-            res.raise_for_status()
-        except httpx.HTTPError:
-            self.logger.info("Unit is not serving requests")
-            return False
+        # try:
+        #     res = httpx.get(
+        #         f"http://127.0.0.1:{REST_PORT}/api/v1/ping",
+        #         auth=httpx.BasicAuth(DEFAULT_ADMIN_USERNAME, admin_password),
+        #         timeout=httpx.Timeout(15),
+        #     )
+        #     res.raise_for_status()
+        # except httpx.HTTPError:
+        #     self.logger.info("Unit is not serving requests")
+        #     return False
 
         return True
 

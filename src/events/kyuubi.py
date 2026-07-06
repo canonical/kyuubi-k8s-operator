@@ -16,7 +16,7 @@ from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, defer_when_not_ready
-from managers.auth import AuthenticationManager
+from managers.auth import JDBCAuthenticationManager
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
@@ -94,7 +94,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            auth_manager = AuthenticationManager(
+            auth_manager = JDBCAuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
             if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
@@ -207,7 +207,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            auth_manager = AuthenticationManager(
+            auth_manager = JDBCAuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
             if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):

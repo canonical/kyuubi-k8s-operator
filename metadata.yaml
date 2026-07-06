@@ -48,6 +48,10 @@ requires:
     interface: postgresql_client
     limit: 1
     optional: false
+  ldap-credentials:
+    interface: ldap
+    limit: 1
+    optional: false
   spark-service-account:
     interface: spark_service_account
     limit: 1
@@ -66,6 +70,10 @@ requires:
     optional: true
   certificates:
     interface: tls-certificates
+    limit: 1
+    optional: true
+  receive-ca-cert:
+    interface: certificate_transfer
     limit: 1
     optional: true
 

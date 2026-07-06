@@ -20,7 +20,7 @@ from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
-from managers.auth import AuthenticationManager
+from managers.auth import JDBCAuthenticationManager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
 
@@ -116,7 +116,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+        auth = JDBCAuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
         service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -183,7 +183,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             return
 
         if self.context.auth_db is not None:
-            auth = AuthenticationManager(self.context.auth_db)
+            auth = JDBCAuthenticationManager(self.context.auth_db)
             username = f"relation_id_{event.relation.id}"
 
             try:

@@ -90,6 +90,7 @@ class KyuubiManager(WithLogging):
         set_service_account_none: bool = False,
         set_zookeeper_none: bool = False,
         set_tls_none: bool = False,
+        set_ldap_none: bool = False,
         force_restart: bool = False,
     ) -> None:
         """Update Kyuubi service and restart it."""
@@ -98,6 +99,7 @@ class KyuubiManager(WithLogging):
         service_account_info = None if set_service_account_none else self.context.service_account
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
         tls_info = None if set_tls_none else self.context.tls
+        ldap_info = None if set_ldap_none else self.context.ldap
 
         self._sync_hub_truststore(service_account_info)
 
@@ -131,6 +133,7 @@ class KyuubiManager(WithLogging):
                         db_info=auth_db_info,
                         zookeeper_info=zookeeper_info,
                         tls_info=tls_info,
+                        ldap_info=ldap_info,
                         keystore_path=(
                             self.workload.paths.keystore
                             if self.workload.exists(self.workload.paths.keystore)
@@ -148,8 +151,8 @@ class KyuubiManager(WithLogging):
             ]
         )
 
-        if not auth_db_info:
-            self.logger.info("Workload stopped because auth db is missing.")
+        if not (auth_db_info or ldap_info):
+            self.logger.info("Workload stopped because authentication is missing.")
             try:
                 self.workload.stop()
             except Exception:

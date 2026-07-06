@@ -46,8 +46,8 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.tls_manager = TLSManager(context, workload)
 
-        common_name = self.tls_manager.get_subject()
-        sans = self.tls_manager.build_sans()
+        common_name = self.tls_manager.get_kyuubi_subject_name()
+        sans = self.tls_manager.build_kyuubi_sans()
         sans_ip = frozenset(sans.sans_ip)
         sans_dns = frozenset(sans.sans_dns)
         private_key = self.charm.validate_and_get_private_key()
@@ -100,7 +100,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
             {
                 "keystore-password": self.context.unit_server.keystore_password
                 or self.workload.generate_password(),  # type: ignore
-                "truststore-password": self.context.unit_server.truststore_password
+                "truststore-password": self.context.unit_server.kyuubi_truststore_password
                 or self.workload.generate_password(),  # type: ignore
             }
         )
