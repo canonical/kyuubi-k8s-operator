@@ -13,7 +13,6 @@ permissions:
   contents: read
 
 jobs:
-
   release-checks:
     runs-on: ubuntu-22.04
     steps:
@@ -61,7 +60,6 @@ jobs:
       base: ${{ steps.charm_metadata.outputs.base }}
       version: ${{ steps.charm_metadata.outputs.version }}
 
-
   tag:
     needs:
       - release-checks
@@ -70,17 +68,13 @@ jobs:
     with:
       track: ${{ needs.release-checks.outputs.track }}
     permissions:
-      actions: read  # Needed for GitHub API call to get workflow version
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
 
   ci-tests:
     uses: ./.github/workflows/ci.yaml
     needs:
       - tag
     secrets: inherit
-    permissions:
-      actions: read
-      contents: read
 
   release:
     name: Release charm
@@ -94,5 +88,4 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      actions: read  # Needed for GitHub API call to get workflow version
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
