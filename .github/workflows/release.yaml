@@ -13,12 +13,11 @@ permissions:
   contents: read
 
 jobs:
-
   release-checks:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Extract branch metadata
         shell: bash
@@ -61,38 +60,32 @@ jobs:
       base: ${{ steps.charm_metadata.outputs.base }}
       version: ${{ steps.charm_metadata.outputs.version }}
 
-
   tag:
     needs:
       - release-checks
     name: Create charm refresh compatibility version git tag
-    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v50.0.0
     with:
       track: ${{ needs.release-checks.outputs.track }}
     permissions:
-      actions: read  # Needed for GitHub API call to get workflow version
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
 
   ci-tests:
     uses: ./.github/workflows/ci.yaml
     needs:
       - tag
     secrets: inherit
-    permissions:
-      actions: read
-      contents: read
 
   release:
     name: Release charm
     needs:
       - ci-tests
       - release-checks
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v50.0.0
     with:
       track: ${{ needs.release-checks.outputs.track }}
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      actions: read  # Needed for GitHub API call to get workflow version
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
