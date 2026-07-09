@@ -9,8 +9,8 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-ops = "^3.7.0"
-boto3 = ">=1.43.11"
+ops = "^3.8.0"
+boto3 = ">=1.43.40"
 lightkube = ">=0.21.0"
 psycopg2 = "^2.9.12"
 tenacity = ">=9.1.4"
@@ -35,38 +35,38 @@ jsonschema = "*"
 optional = true
 
 [tool.poetry.group.format.dependencies]
-ruff = ">=0.15.13"
+ruff = ">=0.15.20"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = ">=0.15.13"
+ruff = ">=0.15.20"
 codespell = ">=2.4.2"
 mypy = "^1.20.2"
 types-psycopg2 = "^2.9.21.20250318"
 types-pyyaml = "^6.0.12.20250402"
 types-requests = "^2.32.0.20250328"
-types-boto3 = { extras = ["essentials"], version = ">=1.43.11" }
+types-boto3 = { extras = ["essentials"], version = ">=1.43.40" }
 
 [tool.poetry.group.unit]
 optional = true
 
 [tool.poetry.group.unit.dependencies]
-pytest = ">=9.0.3"
+pytest = ">=9.1.1"
 coverage = { extras = ["toml"], version = ">7.0" }
-ops = { version = "^3.7.0", extras = ["testing"] }
+ops = { version = "^3.8.0", extras = ["testing"] }
 
 [tool.poetry.group.integration]
 optional = true
 
 [tool.poetry.group.integration.dependencies]
-pytest = ">=9.0.3"
-boto3 = ">=1.43.11"
+pytest = ">=9.1.1"
+boto3 = ">=1.43.40"
 tenacity = "^9.1.4"
 spark8t = "^1.4.0"
 spark-k8s-test = "^0.0.4"
-jubilant = "^1.9.0"
+jubilant = "^1.11.0"
 tomli = "^2.4.1"
 tomli-w = "^1.2.0"
 python-dotenv = "^1.2.2"
