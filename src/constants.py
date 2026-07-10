@@ -20,6 +20,7 @@ SPARK_SERVICE_ACCOUNT_REL = "spark-service-account"
 ZOOKEEPER_REL = "zookeeper"
 TLS_REL = "certificates"
 LDAP_RELATION_NAME = "ldap-credentials"
+CERTIFICATES_TRANSFER_RELATION_NAME = "receive-ca-cert"
 KYUUBI_CLIENT_RELATION_NAME = "jdbc"
 
 COS_METRICS_PORT = 10019

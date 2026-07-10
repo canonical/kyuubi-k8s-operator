@@ -10,6 +10,8 @@ import socket
 import subprocess
 
 import ops.pebble
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
 
 from core.context import Context
 from core.domain import SANs
@@ -17,6 +19,8 @@ from core.workload import KyuubiWorkloadBase
 from managers.service import DNSEndpoint, IPEndpoint
 
 logger = logging.getLogger(__name__)
+
+KYUUBI_SERVER_CA_ALIAS = "kyuubi-server-ca"
 
 
 class TLSManager:
@@ -81,7 +85,7 @@ class TLSManager:
 
     def get_current_sans(self) -> SANs | None:
         """Gets the current SANs for the unit cert."""
-        if not self.context.unit_server.certificate:
+        if not self.context.unit_server.kyuubi_server_certificate:
             return None
 
         command = ["openssl", "x509", "-noout", "-ext", "subjectAltName", "-in", "server.pem"]
@@ -116,109 +120,106 @@ class TLSManager:
             content=self.context.unit_server.private_key, path=self.workload.paths.server_key
         )
 
-    def set_ca(self) -> None:
+    def set_kyuubi_server_ca(self) -> None:
         """Sets the unit CA."""
-        if not self.context.unit_server.ca_cert:
+        if not self.context.unit_server.kyuubi_server_ca_cert:
             logger.error("Can't set CA to unit, missing CA in relation data")
             return
 
-        self.workload.write(content=self.context.unit_server.ca_cert, path=self.workload.paths.ca)
+        self.workload.write(
+            content=self.context.unit_server.kyuubi_server_ca_cert,
+            path=self.workload.paths.kyuubi_server_ca,
+        )
 
-    def set_certificate(self) -> None:
+    def set_kyuubi_server_certificate(self) -> None:
         """Sets the unit certificate."""
-        if not self.context.unit_server.certificate:
+        if not self.context.unit_server.kyuubi_server_certificate:
             logger.error("Can't set certificate to unit, missing certificate in relation data")
             return
 
         self.workload.write(
-            content=self.context.unit_server.certificate, path=self.workload.paths.certificate
+            content=self.context.unit_server.kyuubi_server_certificate,
+            path=self.workload.paths.kyuubi_server_certificate,
         )
 
-    def set_truststore(self) -> None:
+    def set_transferred_certificates(self, relation_id: int) -> None:
+        """Sets the unit transferred certificates."""
+        if not self.context.unit_server.get_transferred_certificates_for_relation(
+            relation_id=relation_id
+        ):
+            logger.error(
+                "Can't set transferred certificates to unit, missing certificates in certificate_transfer relation data"
+            )
+            return
+
+        self.workload.write(
+            content=self.context.unit_server.get_transferred_certificates_for_relation(
+                relation_id=relation_id
+            ),
+            path=self.workload.paths.transferred_certificate_file(relation_id=relation_id),
+        )
+
+    def get_transferred_unit_certificates(self, relation_id: int) -> list[x509.Certificate]:
+        """Gets the unit transferred certificates."""
+        if not self.workload.exists(
+            self.workload.paths.transferred_certificate_file(relation_id=relation_id)
+        ):
+            logger.error(
+                "Can't get transferred certificates from unit, missing transferred certificates file"
+            )
+            return []
+
+        bundle_bytes = self.workload.read(
+            self.workload.paths.transferred_certificate_file(relation_id=relation_id)
+        ).encode()
+        certificates = x509.load_pem_x509_certificates(bundle_bytes)
+        return certificates
+
+    def generate_alias_for_certificate(self, certificate: x509.Certificate) -> str:
+        """Generates an alias for the given certificate based on its SHA256 fingerprint."""
+        fingerprint = certificate.fingerprint(hashes.SHA256()).hex()[:16]
+        return f"transferred-cert-{fingerprint}"
+
+    def set_transferred_certificates_truststore(self, relation_id: int) -> None:
+        """Creates the unit Java Truststore and adds the transferred certificates."""
+        for certificate in self.get_transferred_unit_certificates(relation_id=relation_id):
+            alias = self.generate_alias_for_certificate(certificate)
+            with self.workload.temporary_file(
+                content=certificate.public_bytes(encoding=serialization.Encoding.PEM).decode(
+                    "utf-8"
+                ),
+                mode="w",
+            ) as cert_path:
+                self.import_certificate(
+                    alias=alias,
+                    cert_path=cert_path,
+                    truststore_path=self.workload.paths.truststore,
+                    truststore_password=self.context.unit_server.truststore_password,
+                )
+
+    def set_kyuubi_server_truststore(self) -> None:
         """Creates the unit Java Truststore and adds the unit CA."""
-        try:
-            self._import_ca_in_truststore()
-        except (subprocess.CalledProcessError, ops.pebble.ExecError) as import_ca_err:
-            if "already exists" in str(import_ca_err.stdout):
-                # Replacement strategy:
-                # - We need to own the file, otherwise keytool throws a permission error upon removing an entry
-                # - We need to make sure that the keystore is not empty at any point, hence the three steps.
-                #  Otherwise, Kyuubi would pick up the file change when it's empty, and crash its internal watcher thread
-                try:
-                    self._rename_ca_in_truststore()
-                    self._import_ca_in_truststore()
-                    self._delete_ca_in_truststore()
-                except ops.pebble.ExecError as e:
-                    logger.error(str(e.stdout))
-                    raise e
-
-                return
-
-            logger.error(str(import_ca_err.stdout))
-            raise import_ca_err
-
-    def _import_ca_in_truststore(self, alias: str = "ca") -> None:
-        command = [
-            "keytool",
-            "-import",
-            "-v",
-            "-alias",
-            alias,
-            "-file",
-            self.workload.paths.ca,
-            "-keystore",
-            self.workload.paths.truststore,
-            "-storepass",
-            self.context.unit_server.kyuubi_truststore_password,
-            "-noprompt",
-        ]
-        self.workload.exec(" ".join(command))
-
-    def _rename_ca_in_truststore(self, from_alias: str = "ca", to_alias: str = "old-ca") -> None:
-        command = [
-            "keytool",
-            "-changealias",
-            "-alias",
-            from_alias,
-            "-destalias",
-            to_alias,
-            "-keystore",
-            self.workload.paths.truststore,
-            "-storepass",
-            self.context.unit_server.kyuubi_truststore_password,
-        ]
-        self.workload.exec(" ".join(command))
-
-    def _delete_ca_in_truststore(self, alias: str = "old-ca") -> None:
-        command = [
-            "keytool",
-            "-delete",
-            "-v",
-            "-alias",
-            alias,
-            "-keystore",
-            self.workload.paths.truststore,
-            "-storepass",
-            self.context.unit_server.kyuubi_truststore_password,
-        ]
-        self.workload.exec(
-            " ".join(command),
+        self.import_certificate(
+            alias=KYUUBI_SERVER_CA_ALIAS,
+            cert_path=self.workload.paths.kyuubi_server_ca,
+            truststore_path=self.workload.paths.truststore,
+            truststore_password=self.context.unit_server.truststore_password,
         )
 
-    def set_p12_keystore(self) -> None:
+    def set_kyuubi_server_p12_keystore(self) -> None:
         """Creates the unit Java Keystore and adds unit certificate + private-key."""
         command = [
             "openssl",
             "pkcs12",
             "-export",
             "-in",
-            self.workload.paths.certificate,
+            self.workload.paths.kyuubi_server_certificate,
             "-inkey",
             self.workload.paths.server_key,
             "-passin",
             f"pass:{self.context.unit_server.keystore_password}",
             "-certfile",
-            self.workload.paths.certificate,
+            self.workload.paths.kyuubi_server_certificate,
             "-out",
             self.workload.paths.keystore,
             "-password",
@@ -232,21 +233,130 @@ class TLSManager:
             logger.error(str(e.stdout))
             raise e
 
-    def remove_stores(self) -> None:
-        """Removes all certs, keys, stores from the unit."""
-        command = [
-            "rm",
-            "-rf",
-            self.workload.paths.ca,
-            self.workload.paths.certificate,
-            self.workload.paths.keystore,
-            self.workload.paths.truststore,
-        ]
-        try:
-            self.workload.exec(
-                " ".join(command),
-                working_dir=str(self.workload.paths.conf_path),
+    def delete_kyuubi_server_certificate(self) -> None:
+        """Delete Kyuubi server certificate."""
+        self._delete_cert_from_truststore(
+            alias=KYUUBI_SERVER_CA_ALIAS,
+            truststore_path=self.workload.paths.truststore,
+            truststore_password=self.context.unit_server.truststore_password,
+        )
+        self.workload.delete(self.workload.paths.kyuubi_server_certificate, recursive=True)
+        self.workload.delete(self.workload.paths.kyuubi_server_ca, recursive=True)
+        self.workload.delete(self.workload.paths.keystore, recursive=True)
+
+    def delete_transferred_certificates(self, relation_id: int) -> None:
+        """Delete the transferred certificates for given relation ID."""
+        certificates = self.get_transferred_unit_certificates(relation_id=relation_id)
+        for certificate in certificates:
+            alias = self.generate_alias_for_certificate(certificate)
+            self._delete_cert_from_truststore(
+                alias=alias,
+                truststore_path=self.workload.paths.truststore,
+                truststore_password=self.context.unit_server.truststore_password,
             )
-        except (subprocess.CalledProcessError, ops.pebble.ExecError) as e:
-            logger.error(str(e.stdout))
-            raise e
+        self.workload.delete(
+            self.workload.paths.transferred_certificate_file(relation_id=relation_id),
+            recursive=True,
+        )
+
+    def _import_cert_into_truststore(
+        self, alias: str, cert_path: str, truststore_path: str, truststore_password: str
+    ) -> None:
+        command = [
+            "keytool",
+            "-import",
+            "-v",
+            "-alias",
+            alias,
+            "-file",
+            cert_path,
+            "-keystore",
+            truststore_path,
+            "-storepass",
+            truststore_password,
+            "-noprompt",
+        ]
+        self.workload.exec(" ".join(command))
+
+    def _rename_cert_in_truststore(
+        self, from_alias: str, to_alias: str, truststore_path: str, truststore_password: str
+    ) -> None:
+        command = [
+            "keytool",
+            "-changealias",
+            "-alias",
+            from_alias,
+            "-destalias",
+            to_alias,
+            "-keystore",
+            truststore_path,
+            "-storepass",
+            truststore_password,
+        ]
+        self.workload.exec(" ".join(command))
+
+    def _delete_cert_from_truststore(
+        self, alias: str, truststore_path: str, truststore_password: str
+    ) -> None:
+        command = [
+            "keytool",
+            "-delete",
+            "-v",
+            "-alias",
+            alias,
+            "-keystore",
+            truststore_path,
+            "-storepass",
+            truststore_password,
+        ]
+        self.workload.exec(
+            " ".join(command),
+        )
+
+    def import_certificate(
+        self, alias: str, cert_path: str, truststore_path: str, truststore_password: str
+    ) -> None:
+        """Import the given certificate into the given truststore, replacing it if it already exists.
+
+        By design, this method is supposed to be idempotent, meaning that if the certificate already exists in the truststore,
+        it will be replaced with the new one.
+        """
+        try:
+            self._import_cert_into_truststore(
+                alias=alias,
+                cert_path=cert_path,
+                truststore_path=truststore_path,
+                truststore_password=truststore_password,
+            )
+        except (subprocess.CalledProcessError, ops.pebble.ExecError) as import_cert_err:
+            if "already exists" in str(import_cert_err.stdout):
+                # Replacement strategy:
+                # - We need to own the file, otherwise keytool throws a permission error upon removing an entry
+                # - We need to make sure that the truststore is not empty at any point, hence the three steps.
+                #  Otherwise, Kyuubi would pick up the file change when it's empty, and crash its internal watcher thread
+                try:
+                    self._rename_cert_in_truststore(
+                        from_alias=alias,
+                        to_alias=f"old-{alias}",
+                        truststore_path=truststore_path,
+                        truststore_password=truststore_password,
+                    )
+                    self._import_cert_into_truststore(
+                        alias=alias,
+                        cert_path=cert_path,
+                        truststore_path=truststore_path,
+                        truststore_password=truststore_password,
+                    )
+                    self._delete_cert_from_truststore(
+                        alias=f"old-{alias}",
+                        truststore_path=truststore_path,
+                        truststore_password=truststore_password,
+                    )
+                except ops.pebble.ExecError as e:
+                    logger.error(str(e.stdout))
+                    raise e
+
+                return
+
+            logger.error(str(import_cert_err.stdout))
+            raise import_cert_err

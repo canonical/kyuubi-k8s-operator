@@ -3,10 +3,11 @@
 # Copyright 2026 Canonical Limited
 # See LICENSE file for licensing details.
 
+"""LDAP authentication event handlers for Kyuubi charm."""
+
 from typing import TYPE_CHECKING
 
 from charms.glauth_k8s.v0.ldap import (
-    LdapRequirer,
     LdapReadyEvent,
     LdapUnavailableEvent,
 )
@@ -16,7 +17,6 @@ from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, defer_when_not_ready
 from managers.kyuubi import KyuubiManager
 from utils.logging import WithLogging
-
 
 if TYPE_CHECKING:
     from charm import KyuubiCharm
@@ -33,7 +33,7 @@ class LDAPAuthenticationEvents(BaseEventHandler, WithLogging):
         self.workload = workload
 
         self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
-        
+
         self.framework.observe(
             self.context.ldap_requirer.on.ldap_ready,
             self._on_ldap_ready,

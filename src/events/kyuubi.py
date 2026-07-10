@@ -74,12 +74,12 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             return
 
         # Recreate the TLS files in the container if TLS has been enabled
-        if self.context.tls:
+        if self.context.frontend_tls:
             self.tls_manager.set_private_key()
-            self.tls_manager.set_ca()
-            self.tls_manager.set_certificate()
-            self.tls_manager.set_truststore()
-            self.tls_manager.set_p12_keystore()
+            self.tls_manager.set_kyuubi_server_ca()
+            self.tls_manager.set_kyuubi_server_certificate()
+            self.tls_manager.set_kyuubi_server_truststore()
+            self.tls_manager.set_kyuubi_server_p12_keystore()
             self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready
@@ -97,7 +97,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             auth_manager = JDBCAuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
-            if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
+            if self.context.auth_db and not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
 
@@ -108,8 +108,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 self.charm.provider_events.update_clients_endpoints()
 
             if (
-                admin_password := self.charm.validate_and_get_admin_password()
-            ) and admin_password != self.context.cluster.admin_password:
+                self.context.auth_db
+                and (admin_password := self.charm.validate_and_get_admin_password())
+                and admin_password != self.context.cluster.admin_password
+            ):
                 auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
                 self.context.cluster.set_admin_password(password=admin_password)
 

@@ -89,7 +89,8 @@ class KyuubiManager(WithLogging):
         set_auth_db_none: bool = False,
         set_service_account_none: bool = False,
         set_zookeeper_none: bool = False,
-        set_tls_none: bool = False,
+        set_frontend_tls_none: bool = False,
+        set_backend_tls_none: bool = False,
         set_ldap_none: bool = False,
         force_restart: bool = False,
     ) -> None:
@@ -98,7 +99,8 @@ class KyuubiManager(WithLogging):
         auth_db_info = None if set_auth_db_none else self.context.auth_db
         service_account_info = None if set_service_account_none else self.context.service_account
         zookeeper_info = None if set_zookeeper_none else self.context.zookeeper
-        tls_info = None if set_tls_none else self.context.tls
+        frontend_tls_info = None if set_frontend_tls_none else self.context.frontend_tls
+        backend_tls_info = None if set_backend_tls_none else self.context.backend_tls
         ldap_info = None if set_ldap_none else self.context.ldap
 
         self._sync_hub_truststore(service_account_info)
@@ -132,7 +134,7 @@ class KyuubiManager(WithLogging):
                         charm_config=self.context.config,
                         db_info=auth_db_info,
                         zookeeper_info=zookeeper_info,
-                        tls_info=tls_info,
+                        frontend_tls_info=frontend_tls_info,
                         ldap_info=ldap_info,
                         keystore_path=(
                             self.workload.paths.keystore
@@ -143,7 +145,15 @@ class KyuubiManager(WithLogging):
                     self.workload.paths.kyuubi_properties,
                 ),
                 self._compare_and_update_file(
-                    KyuubiEnvironConfig(service_account_info=service_account_info).contents,
+                    KyuubiEnvironConfig(
+                        service_account_info=service_account_info,
+                        backend_tls_info=backend_tls_info,
+                        truststore_path=(
+                            self.workload.paths.truststore
+                            if self.workload.exists(self.workload.paths.truststore)
+                            else ""
+                        ),
+                    ).contents,
                     self.workload.paths.kyuubi_env,
                 ),
                 not self.workload.active(),
@@ -159,7 +169,7 @@ class KyuubiManager(WithLogging):
                 self.logger.warning("Could not stop Kyuubi workload even when auth db is missing.")
             return
 
-        if tls_info and not self.workload.tls_ready():
+        if frontend_tls_info and not self.workload.frontend_tls_ready():
             self.logger.info("Workload stopped because TLS is being enabled.")
             try:
                 self.workload.stop()

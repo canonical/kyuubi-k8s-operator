@@ -13,8 +13,6 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from charms.glauth_k8s.v0.ldap import (
     LdapRequirer,
-    LdapReadyEvent,
-    LdapUnavailableEvent,
 )
 from charms.spark_integration_hub_k8s.v0.spark_service_account import (
     SparkServiceAccountRequirerData,
@@ -24,8 +22,10 @@ from ops.model import Unit
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    CERTIFICATES_TRANSFER_RELATION_NAME,
     HA_ZNODE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
+    LDAP_RELATION_NAME,
     METASTORE_DATABASE_NAME,
     PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
@@ -34,17 +34,16 @@ from constants import (
     SPARK_SERVICE_ACCOUNT_REL,
     TLS_REL,
     ZOOKEEPER_REL,
-    LDAP_RELATION_NAME,
 )
 from core.config import CharmConfig
 from core.domain import (
     DatabaseConnectionInfo,
     KyuubiCluster,
     KyuubiServer,
+    LDAPInfo,
     SparkServiceAccountInfo,
     TLSInfo,
     ZookeeperInfo,
-    LDAPInfo,
 )
 from utils.logging import WithLogging
 
@@ -113,7 +112,12 @@ class Context(WithLogging):
     def _tls_relation(self) -> Relation | None:
         """The cluster peer relation."""
         return self.model.get_relation(TLS_REL)
-    
+
+    @property
+    def _certificate_transfer_relation(self) -> Relation | None:
+        """The certificate transfer relation."""
+        return self.model.get_relation(CERTIFICATES_TRANSFER_RELATION_NAME)
+
     @property
     def _ldap_relation(self) -> Relation | None:
         """The LDAP relation."""
@@ -148,7 +152,7 @@ class Context(WithLogging):
                 dbname=data["database"],
             )
         return None
-    
+
     @property
     def ldap(self) -> LDAPInfo | None:
         """The state of the LDAP relation."""
@@ -158,13 +162,15 @@ class Context(WithLogging):
         if not data:
             return None
         if any(
-            param is None for param in [
+            param is None
+            for param in [
                 data.base_dn,
                 data.bind_dn,
                 data.bind_password,
             ]
         ) or any(
-            param is None for param in [
+            param is None
+            for param in [
                 data.urls,
                 data.ldaps_urls,
             ]
@@ -204,11 +210,20 @@ class Context(WithLogging):
         return self.auth_db is not None or self.ldap is not None
 
     @property
-    def tls(self) -> TLSInfo | None:
+    def frontend_tls(self) -> TLSInfo | None:
         """The state of the tls configuration info."""
         if self._tls_relation:
             return TLSInfo(
-                self.unit_server.keystore_password, self.unit_server.kyuubi_truststore_password
+                self.unit_server.keystore_password, self.unit_server.truststore_password
+            )
+        return None
+
+    @property
+    def backend_tls(self) -> TLSInfo | None:
+        """The state of the tls configuration info."""
+        if self._certificate_transfer_relation:
+            return TLSInfo(
+                self.unit_server.keystore_password, self.unit_server.truststore_password
             )
         return None
 

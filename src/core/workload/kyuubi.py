@@ -8,16 +8,13 @@ import re
 import secrets
 import string
 
-import httpx
 import ops.pebble
 from ops.model import Container
 
 from common.workload.k8s import K8sWorkload
 from constants import (
-    DEFAULT_ADMIN_USERNAME,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
-    REST_PORT,
 )
 from core.domain import User
 from core.workload import KyuubiPaths, KyuubiWorkloadBase
@@ -125,8 +122,8 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
 
         return True
 
-    def tls_ready(self) -> bool:
-        """Returns if the workload is ready for TLS to be enabled.
+    def frontend_tls_ready(self) -> bool:
+        """Returns if the workload is ready for frontend TLS to be enabled.
 
         This means that TLS related files are available in the container.
         """

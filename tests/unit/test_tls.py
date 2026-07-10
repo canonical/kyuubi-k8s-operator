@@ -345,7 +345,7 @@ def test_certificate_available(
         # Then
 
         # Ensure that the keystore and truststore passwords are generated
-        assert charm.context.unit_server.kyuubi_truststore_password is not None
+        assert charm.context.unit_server.truststore_password is not None
         assert charm.context.unit_server.keystore_password is not None
 
         # Ensure that the CA certificate, server certificate and the private key are in unit peer databag
@@ -361,7 +361,10 @@ def test_certificate_available(
             kyuubi_config["kyuubi.frontend.ssl.keystore.password"]
             == charm.context.unit_server.keystore_password
         )
-        assert kyuubi_config["kyuubi.frontend.ssl.keystore.path"] == charm.workload.paths.keystore
+        assert (
+            kyuubi_config["kyuubi.frontend.ssl.keystore.path"]
+            == charm.workload.paths.kyuuubi_server_keystore
+        )
         assert kyuubi_config["kyuubi.frontend.ssl.keystore.type"] == "PKCS12"
         assert kyuubi_config["kyuubi.frontend.thrift.binary.ssl.enabled"] == "true"
 
@@ -373,12 +376,12 @@ def test_certificate_available(
         )
         assert validate_file_contents(
             test_path=tmp_path,
-            file_path=charm.workload.paths.ca,
+            file_path=charm.workload.paths.kyuubi_server_ca,
             file_content=provider_ca_certificate.raw,
         )
         assert validate_file_contents(
             test_path=tmp_path,
-            file_path=charm.workload.paths.certificate,
+            file_path=charm.workload.paths.kyuubi_server_certificate,
             file_content=client_certificate.raw,
         )
         mock_set_truststore.assert_called_once()

@@ -19,14 +19,14 @@ class KyuubiConfig(WithLogging):
         charm_config: CharmConfig,
         db_info: DatabaseConnectionInfo | None,
         zookeeper_info: ZookeeperInfo | None,
-        tls_info: TLSInfo | None,
+        frontend_tls_info: TLSInfo | None,
         ldap_info: LDAPInfo | None,
         keystore_path: str,
     ):
         self.charm_config = charm_config
         self.db_info = db_info
         self.zookeeper_info = zookeeper_info
-        self.tls = tls_info
+        self.frontend_tls = frontend_tls_info
         self.ldap = ldap_info
         self.keystore_path = keystore_path
 
@@ -74,7 +74,6 @@ class KyuubiConfig(WithLogging):
                 }
             )
         return conf
-
 
     @property
     def _auth_conf(self) -> dict[str, str]:
@@ -130,7 +129,6 @@ class KyuubiConfig(WithLogging):
             "kyuubi.authentication.ldap.url": ldap_url_string,
         }
 
-
     @property
     def _ha_conf(self) -> dict[str, str]:
         if not self.zookeeper_info:
@@ -144,10 +142,10 @@ class KyuubiConfig(WithLogging):
 
     @property
     def _tls_conf(self) -> dict[str, str]:
-        if not self.tls or not self.keystore_path:
+        if not self.frontend_tls or not self.keystore_path:
             return {}
         return {
-            "kyuubi.frontend.ssl.keystore.password": self.tls.keystore_password,
+            "kyuubi.frontend.ssl.keystore.password": self.frontend_tls.keystore_password,
             "kyuubi.frontend.ssl.keystore.path": self.keystore_path,
             "kyuubi.frontend.ssl.keystore.type": "PKCS12",
             "kyuubi.frontend.thrift.binary.ssl.enabled": "true",

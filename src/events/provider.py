@@ -101,7 +101,9 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                 client.id, "True" if self.context.cluster.tls else "False"
             )
             if self.context.cluster.tls:
-                self.database_provides.set_tls_ca(client.id, self.context.unit_server.ca_cert)
+                self.database_provides.set_tls_ca(
+                    client.id, self.context.unit_server.kyuubi_server_ca_cert
+                )
             else:
                 self.database_provides.set_tls_ca(client.id, "")
 

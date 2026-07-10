@@ -454,6 +454,22 @@ dunamai = ">=1.23.1"
 tomlkit = ">=0.13.2"
 
 [[package]]
+name = "charmlibs-interfaces-certificate-transfer"
+version = "1.0.0"
+description = "The charmlibs.interfaces.certificate_transfer package."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "charmlibs_interfaces_certificate_transfer-1.0.0-py3-none-any.whl", hash = "sha256:21cef05199a9efa459be43207e042be6792605b70e742d8b0fed6f09c0cb232d"},
+    {file = "charmlibs_interfaces_certificate_transfer-1.0.0.tar.gz", hash = "sha256:53f230abb2b42e7c23929a2d99321b1f0e226f20595609105fbd0528fcc3cf24"},
+]
+
+[package.dependencies]
+ops = "*"
+pydantic = "*"
+
+[[package]]
 name = "charset-normalizer"
 version = "3.4.7"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
@@ -1641,7 +1657,7 @@ version = "1.10.26"
 description = "Data validation and settings management using python type hints"
 optional = false
 python-versions = ">=3.7"
-groups = ["charm-libs"]
+groups = ["main", "charm-libs"]
 files = [
     {file = "pydantic-1.10.26-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f7ae36fa0ecef8d39884120f212e16c06bb096a38f523421278e2f39c1784546"},
     {file = "pydantic-1.10.26-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d95a76cf503f0f72ed7812a91de948440b2bf564269975738a4751e4fadeb572"},
@@ -2829,4 +2845,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "52f582cface3ab961aa5b099d3ab24e1215118a63c7dbac86a08ba7ba0543870"
+content-hash = "a8c5bc069af2f291f8e380ffb88d8023b5b2d5477eb34300066df55fe66e82ee"
