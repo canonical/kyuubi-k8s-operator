@@ -159,6 +159,29 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             base="ubuntu@24.04",
             alias="data-integrator",
         ),
+        glauth=TestCharm(
+            name="glauth-k8s",
+            channel="latest/edge",
+            revision=63,
+            base="ubuntu@22.04",
+            alias="glauth",
+            trust=True,
+        ),
+        glauth_utils=TestCharm(
+            name="glauth-utils",
+            channel="latest/edge",
+            revision=50,
+            base="ubuntu@22.04",
+            alias="glauth-utils",
+            trust=True,
+        ),
+        ldap_tls=TestCharm(
+            name="self-signed-certificates",
+            channel="1/stable",
+            revision=revisions["tls"],
+            base="ubuntu@24.04",
+            alias="ldap-certificates",
+        ),
     )
 
 
