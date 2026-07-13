@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING, cast
 import ops
 from ops import SecretChangedEvent
 
-from constants import DEFAULT_ADMIN_USERNAME, JDBC_PORT, PEER_REL
+from constants import (
+    CERTIFICATES_TRANSFER_RELATION_NAME,
+    DEFAULT_ADMIN_USERNAME,
+    JDBC_PORT,
+    PEER_REL,
+)
 from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
@@ -73,13 +78,22 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        # Recreate the TLS files in the container if TLS has been enabled
+        # Recreate the frontend TLS files in the container if frontend TLS has been enabled
         if self.context.frontend_tls:
             self.tls_manager.set_private_key()
             self.tls_manager.set_kyuubi_server_ca()
             self.tls_manager.set_kyuubi_server_certificate()
             self.tls_manager.set_kyuubi_server_truststore()
             self.tls_manager.set_kyuubi_server_p12_keystore()
+            self.kyuubi.update(force_restart=True)
+
+        # Recreate the backend TLS files in the container if backend TLS has been enabled
+        if self.context.backend_tls:
+            for relation in self.charm.model.relations[CERTIFICATES_TRANSFER_RELATION_NAME]:
+                self.tls_manager.set_transferred_certificates(relation_id=cast(int, relation.id))
+                self.tls_manager.set_transferred_certificates_truststore(
+                    relation_id=cast(int, relation.id)
+                )
             self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready
