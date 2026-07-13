@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
-SAMPLE_USERS_LDIF = Path("./tests/integration/setup/sample_users.ldif")
+SAMPLE_USERS_LDIF = Path("./tests/integration/setup/sample-users.ldif")
 LDAP_TEST_USER = "bikalpa"
 LDAP_TEST_PASSWORD = "bikalpa"
 
@@ -85,6 +85,14 @@ def test_kyuubi_with_invalid_credentials(juju: jubilant.Juju) -> None:
 
 def test_create_ldap_users(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     apply_sample_users_ldif(juju=juju, charm_versions=charm_versions)
+
+
+def test_sleep(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
+    """Sleep for 10 seconds to allow LDAP users to be created."""
+    logger.info("Sleeping for 30 minutes to allow LDAP users to be created...")
+    import time
+
+    time.sleep(30 * 60)
 
 
 def test_kyuubi_valid_credentials(

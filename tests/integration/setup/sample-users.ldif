@@ -1,6 +1,11 @@
-# Sample LDIF to create a user: bikalpa with password: bikalpa
+# Create a OU named 'users'
+dn: ou=users,dc=glauth,dc=com
+objectClass: posixGroup
+ou: users
+gidNumber: 5501
 
-dn: cn=bikalpa,ou=superheros,dc=glauth,dc=com
+# Create a user named 'bikalpa' with password 'bikalpa' that belongs to OU 'users'
+dn: cn=bikalpa,ou=users,dc=glauth,dc=com
 changetype: add
 objectClass: posixAccount
 uidNumber: 5002

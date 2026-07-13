@@ -114,21 +114,24 @@ class KyuubiConfig(WithLogging):
     def _ldap_auth_conf(self) -> dict[str, str]:
         if not self.ldap:
             return {}
-        urls = []
-        if self.ldap.ldaps_urls:
-            urls.extend(self.ldap.ldaps_urls)
-        # Disabling LDAP + StartTLS, and always using LDAPs
-        # if self.ldap.ldap_urls:
-        #     urls.extend(self.ldap.ldap_urls)
-        ldap_url_string = " ".join(urls)
-        return {
+        if not self.ldap.ldaps_urls:
+            self.logger.warning(
+                "LDAP authentication is configured, but no LDAPS URLs are provided. "
+                "Kyuubi configurations are not generated, the charm will go to blocked state."
+            )
+            return {}
+        config = {
             "kyuubi.authentication": "LDAP",
             "kyuubi.authentication.ldap.baseDN": self.ldap.base_dn,
-            # "kyuubi.authentication.ldap.domain": "glauth.com",
             "kyuubi.authentication.ldap.binddn": self.ldap.bind_dn,
             "kyuubi.authentication.ldap.bindpw": self.ldap.bind_password,
-            "kyuubi.authentication.ldap.url": ldap_url_string,
+            "kyuubi.authentication.ldap.url": " ".join(self.ldap.ldaps_urls),
         }
+        if self.charm_config.ldap_search_filter:
+            config["kyuubi.authentication.ldap.customLDAPQuery"] = (
+                self.charm_config.ldap_search_filter
+            )
+        return config
 
     @property
     def _ha_conf(self) -> dict[str, str]:

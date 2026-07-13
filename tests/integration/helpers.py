@@ -494,7 +494,7 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
         f"{charm_versions.glauth.application_name}:glauth-auxiliary",
     )
 
-    logger.info("Waiting for charms to be active and idle...")
+    logger.info("Waiting for auth charms to be active and idle...")
     juju.wait(
         lambda status: jubilant.all_active(
             status,
@@ -506,13 +506,14 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
         delay=15,
         timeout=1000,
     )
-
+    logger.info("Enable LDAPS in glauth-k8s charm...")
+    juju.config(charm_versions.glauth.application_name, values={"ldaps_enabled": "true"})
     logger.info("Integrating kyuubi-k8s charm with glauth charm...")
     juju.integrate(
         f"{charm_versions.glauth.application_name}:ldap", f"{APP_NAME}:ldap-credentials"
     )
 
-    logger.info("Waiting for charms to be active and idle...")
+    logger.info("Waiting for all charms to be active and idle...")
     juju.wait(
         lambda status: jubilant.all_active(
             status,
@@ -520,6 +521,7 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
             charm_versions.glauth.app,
             charm_versions.glauth_utils.app,
             charm_versions.ldap_tls.app,
+            APP_NAME,
         ),
         delay=15,
         timeout=1000,
