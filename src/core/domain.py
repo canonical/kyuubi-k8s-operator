@@ -48,6 +48,9 @@ class Status(Enum):
     MULTIPLE_AUTH_RELATIONS = BlockedStatus(
         "Multiple authentication relations detected. Please integrate to only one of `ldap` or `postgresql_client` interface."
     )
+    LDAP_CONNECTION_NOT_SECURE = BlockedStatus(
+        "LDAP connection is not secure. Please enable LDAPS."
+    )
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")

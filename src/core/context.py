@@ -177,9 +177,6 @@ class Context(WithLogging):
         ):
             self.logger.warning("LDAP relation data is incomplete or missing required fields.")
             return None
-        if not data.ldaps_urls:
-            self.logger.warning("LDAP relation data is missing LDAPS URLs, which is required. ")
-            return None
         return LDAPInfo(
             auth_method=data.auth_method,
             ldap_urls=data.urls,

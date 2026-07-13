@@ -229,6 +229,8 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             statuses.append(Status.MISSING_AUTH_RELATION.value)
         elif self.context.auth_db and self.context.ldap:
             statuses.append(Status.MULTIPLE_AUTH_RELATIONS.value)
+        elif self.context.ldap and not self.context.ldap.ldaps_urls:
+            statuses.append(Status.LDAP_CONNECTION_NOT_SECURE.value)
 
         if status := self._collect_status_system_users():
             statuses.append(status.value)
@@ -261,7 +263,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if self.context.frontend_tls and not self.workload.frontend_tls_ready():
             statuses.append(Status.WAITING_FOR_TLS.value)
 
-        if not self.workload.is_serving_requests(self.context.cluster.admin_password):
+        if not self.workload.is_serving_requests():
             statuses.append(Status.NOT_SERVING_REQUESTS.value)
 
         return statuses

@@ -161,8 +161,15 @@ class KyuubiManager(WithLogging):
             ]
         )
 
-        if not (auth_db_info or ldap_info):
-            self.logger.info("Workload stopped because authentication is missing.")
+        # Stop workload if authentication is not enabled properly
+        if (
+            (not auth_db_info and not ldap_info)  # None of the authentication methods enabled
+            or (auth_db_info and ldap_info)  # Both authentication methods enabled
+            or (
+                ldap_info and not ldap_info.ldaps_urls
+            )  # LDAP authentication enabled but no LDAPS URLs detected
+        ):
+            self.logger.info("Workload stopped because authentication not enabled properly.")
             try:
                 self.workload.stop()
             except Exception:

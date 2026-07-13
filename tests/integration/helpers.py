@@ -508,9 +508,14 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
     )
     logger.info("Enable LDAPS in glauth-k8s charm...")
     juju.config(charm_versions.glauth.application_name, values={"ldaps_enabled": "true"})
-    logger.info("Integrating kyuubi-k8s charm with glauth charm...")
+    logger.info(
+        "Integrating kyuubi-k8s charm with glauth charm (over ldap and send-ca-cert interfaces)..."
+    )
     juju.integrate(
         f"{charm_versions.glauth.application_name}:ldap", f"{APP_NAME}:ldap-credentials"
+    )
+    juju.integrate(
+        f"{charm_versions.glauth.application_name}:send-ca-cert", f"{APP_NAME}:receive-ca-cert"
     )
 
     logger.info("Waiting for all charms to be active and idle...")

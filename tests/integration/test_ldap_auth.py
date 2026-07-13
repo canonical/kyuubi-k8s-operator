@@ -11,6 +11,8 @@ import pytest
 import yaml
 from thrift.transport.TTransport import TTransportException
 
+from core.domain import Status
+
 from .helpers import (
     deploy_minimal_kyuubi_setup,
     validate_sql_queries_with_kyuubi,
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
-SAMPLE_USERS_LDIF = Path("./tests/integration/setup/sample-users.ldif")
+SAMPLE_USERS_LDIF = Path("./tests/integration/setup/sample-ldap-users.ldif")
 LDAP_TEST_USER = "bikalpa"
 LDAP_TEST_PASSWORD = "bikalpa"
 
@@ -87,14 +89,6 @@ def test_create_ldap_users(juju: jubilant.Juju, charm_versions: IntegrationTests
     apply_sample_users_ldif(juju=juju, charm_versions=charm_versions)
 
 
-def test_sleep(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
-    """Sleep for 10 seconds to allow LDAP users to be created."""
-    logger.info("Sleeping for 30 minutes to allow LDAP users to be created...")
-    import time
-
-    time.sleep(30 * 60)
-
-
 def test_kyuubi_valid_credentials(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
@@ -125,6 +119,72 @@ def test_ldap_relation_integrated_again(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
         delay=5,
     )
+
+    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_ldaps_disabled(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
+    """Test the behavior of the charm when LDAPS is disabled."""
+    juju.config(charm_versions.glauth.application_name, {"ldaps_enabled": "false"})
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
+        delay=5,
+    )
+    assert (
+        status.apps[APP_NAME].app_status.message == Status.LDAP_CONNECTION_NOT_SECURE.value.message
+    )
+
+    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_reenable_ldaps(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
+    """Test the behavior of the charm when LDAPS is re-enabled."""
+    juju.config(charm_versions.glauth.application_name, {"ldaps_enabled": "true"})
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
+        delay=5,
+    )
+    assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
+
+    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_remove_certificate_transfer_relation(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Test what happens when certificate_transfer relation between Kyuubi <> GlAuth is removed.
+
+    In this case, the JDBC connection should fail, since Kyuubi cannot establish secure LDAP connection to GlAuth.
+    """
+    juju.remove_relation(f"{APP_NAME}:receive-ca-cert", charm_versions.glauth.app)
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
+        delay=5,
+    )
+    assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
+
+    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_reintegrate_certificate_transfer_relation(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Test what happens when certificate_transfer relation between Kyuubi <> GlAuth is re-integrated.
+
+    In this case, the JDBC connection should succeed, since Kyuubi can establish secure LDAP connection to GlAuth.
+    """
+    juju.integrate(f"{APP_NAME}:receive-ca-cert", charm_versions.glauth.app)
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
+        delay=5,
+    )
+    assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
     username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
