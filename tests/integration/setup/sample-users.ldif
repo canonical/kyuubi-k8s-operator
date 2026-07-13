@@ -1,0 +1,12 @@
+# Sample LDIF to create a user: bikalpa with password: bikalpa
+
+dn: cn=bikalpa,ou=superheros,dc=glauth,dc=com
+changetype: add
+objectClass: posixAccount
+uidNumber: 5002
+gidNumber: 5501
+cn: bikalpa
+sn: bikalpa
+uid: bikalpa
+mail: bikalpa@glauth.com
+userPassword: {SHA256}daedb070a5837f5c2412e793529be02ffde1e7f2a7e2c8bd8fc9940ada829235 # base64 encoded value of string 'bikalpa'

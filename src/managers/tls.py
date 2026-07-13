@@ -233,7 +233,7 @@ class TLSManager:
             logger.error(str(e.stdout))
             raise e
 
-    def delete_kyuubi_server_certificate(self) -> None:
+    def delete_kyuubi_server_certificates(self) -> None:
         """Delete Kyuubi server certificate."""
         self._delete_cert_from_truststore(
             alias=KYUUBI_SERVER_CA_ALIAS,

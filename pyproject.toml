@@ -117,6 +117,8 @@ module = [
   "charms.loki_k8s.*",
   "charms.prometheus_k8s.*",
   "charms.tls_certificates_interface.*",
+  "charms.certificate_transfer_interface.*",
+  "charms.glauth_k8s.*",
   "charms.spark_integration_hub_k8s.*",
   "spark8t.services",
   "charm_refresh",

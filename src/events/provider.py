@@ -118,7 +118,6 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        auth = JDBCAuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
         service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -134,12 +133,14 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        username = f"relation_id_{event.relation.id}"
-        password = auth.generate_password()
-        if not auth.create_user(username=username, password=password):
-            logging.warning("User could not be created; deferring")
-            event.defer()
-            return
+        if self.context.auth_db is not None:
+            auth = JDBCAuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+            username = f"relation_id_{event.relation.id}"
+            password = auth.generate_password()
+            if not auth.create_user(username=username, password=password):
+                logging.warning("User could not be created; deferring")
+                event.defer()
+                return
 
         jdbc_uri = ",".join(
             [
@@ -166,16 +167,23 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
 
         # Set username and password
-        self.database_provides.set_credentials(
-            relation_id=event.relation.id, username=username, password=password
-        )
+        if self.context.auth_db is not None:
+            self.database_provides.set_credentials(
+                relation_id=event.relation.id, username=username, password=password
+            )
+        else:
+            self.database_provides.set_credentials(
+                relation_id=event.relation.id, username="<random>", password="<random>"
+            )
 
         self.database_provides.set_database(event.relation.id, event.database)
         self.database_provides.set_tls(
             event.relation.id, "True" if self.context.cluster.tls else "False"
         )
         if self.context.cluster.tls:
-            self.database_provides.set_tls_ca(event.relation.id, self.context.unit_server.ca_cert)
+            self.database_provides.set_tls_ca(
+                event.relation.id, self.context.unit_server.kyuubi_server_ca_cert
+            )
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Remove the user created for this relation."""

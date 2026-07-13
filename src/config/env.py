@@ -43,6 +43,12 @@ class KyuubiEnvironConfig(WithLogging):
         if not self.backend_tls_info:
             return {}
 
+        if not self.truststore_path or not self.backend_tls_info.truststore_password:
+            self.logger.warning(
+                "Truststore path or truststore password is not set, skipping TLS environment variables."
+            )
+            return {}
+
         return {
             "KYUUBI_JAVA_OPTS": (
                 f"-Djavax.net.ssl.trustStore={self.truststore_path} "

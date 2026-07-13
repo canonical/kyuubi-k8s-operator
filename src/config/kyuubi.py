@@ -117,8 +117,9 @@ class KyuubiConfig(WithLogging):
         urls = []
         if self.ldap.ldaps_urls:
             urls.extend(self.ldap.ldaps_urls)
-        if self.ldap.ldap_urls:
-            urls.extend(self.ldap.ldap_urls)
+        # Disabling LDAP + StartTLS, and always using LDAPs
+        # if self.ldap.ldap_urls:
+        #     urls.extend(self.ldap.ldap_urls)
         ldap_url_string = " ".join(urls)
         return {
             "kyuubi.authentication": "LDAP",

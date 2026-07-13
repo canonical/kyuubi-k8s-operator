@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from charmlibs.interfaces.certificate_transfer import (
-    CertificatesAvailableEvent as TransferredCertificatesAvailableEvent,
+from charms.certificate_transfer_interface.v0.certificate_transfer import (
+    CertificateAvailableEvent as TransferredCertificatesAvailableEvent,
 )
-from charmlibs.interfaces.certificate_transfer import (
-    CertificatesRemovedEvent as TransferredCertificatesRemovedEvent,
+from charms.certificate_transfer_interface.v0.certificate_transfer import (
+    CertificateRemovedEvent as TransferredCertificatesRemovedEvent,
 )
-from charmlibs.interfaces.certificate_transfer import (
+from charms.certificate_transfer_interface.v0.certificate_transfer import (
     CertificateTransferRequires,
 )
 from charms.tls_certificates_interface.v4.tls_certificates import (
@@ -91,11 +91,11 @@ class TLSEvents(BaseEventHandler, WithLogging):
             self._on_kyuubi_server_certificates_broken,
         )
         self.framework.observe(
-            getattr(self.certificates_transfer.on, "certificate_set_updated"),
+            getattr(self.certificates_transfer.on, "certificate_available"),
             self._on_transferred_certificates_available,
         )
         self.framework.observe(
-            getattr(self.certificates_transfer.on, "certificates_removed"),
+            getattr(self.certificates_transfer.on, "certificate_removed"),
             self._on_transferred_certificates_removed,
         )
 
@@ -159,11 +159,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         )
 
         self.context.unit_server.update(
-            {
-                f"transferred-certificates-{event.relation_id}": "\n".join(
-                    cast(list, event.certificates)
-                )
-            }
+            {f"transferred-certificates-{event.relation_id}": event.ca}
         )
 
         self.tls_manager.set_transferred_certificates(relation_id=cast(int, event.relation_id))
@@ -182,7 +178,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.context.unit_server.update({"certificate": "", "ca-cert": ""})
 
         # remove all existing keystores from the unit so we don't preserve certs
-        self.tls_manager.delete_kyuubi_server_certificate()
+        self.tls_manager.delete_kyuubi_server_certificates()
         self.kyuubi.update(set_frontend_tls_none=True)
 
         if self.charm.unit.is_leader():
