@@ -69,8 +69,8 @@ def test_system_users_config_secret_invalid(
     assert out.unit_status == Status.SYSTEM_USERS_SECRET_INVALID.value
 
 
-@patch("managers.auth.AuthenticationManager.set_password")
-@patch("managers.auth.AuthenticationManager.user_exists", return_value=True)
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.set_password")
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.user_exists", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch(
