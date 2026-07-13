@@ -23,7 +23,7 @@ jobs:
       jobs: ${{ steps.collect-jobs.outputs.jobs }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up spread
         run: |
           sudo snap install go --classic
@@ -114,7 +114,7 @@ jobs:
           df --human-readable
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up spread
         run: |
