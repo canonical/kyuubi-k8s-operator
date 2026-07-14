@@ -52,6 +52,10 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
+SAMPLE_USERS_LDIF = Path("./tests/integration/setup/sample-ldap-users.ldif")
+LDAP_TEST_USER = "bikalpa"
+LDAP_TEST_PASSWORD = "bikalpa"
+
 LATEST_STABLE_REV = 112
 
 
@@ -534,6 +538,28 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
     logger.info("LDAP authentication setup completed.")
 
 
+def apply_sample_users_ldif(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
+    """Apply a sample LDIF file to the glauth-k8s charm to create users for LDAP authentication."""
+    if not SAMPLE_USERS_LDIF.exists():
+        raise FileNotFoundError(f"Sample LDIF file not found: {SAMPLE_USERS_LDIF}")
+    sample_ldif_file = SAMPLE_USERS_LDIF
+
+    logger.info("Applying sample LDIF file to glauth-k8s...")
+    juju.scp(
+        str(sample_ldif_file),
+        f"{charm_versions.glauth_utils.application_name}/0:/tmp/sample_users.ldif",
+    )
+    result = juju.run(
+        f"{charm_versions.glauth_utils.application_name}/0",
+        "apply-ldif",
+        {
+            "path": "/tmp/sample_users.ldif",
+        },
+    )
+    assert result.return_code == 0, f"Failed to apply sample LDIF file: {result.stderr}"
+    logger.info("Sample LDIF file applied successfully.")
+
+
 def deploy_minimal_kyuubi_setup(
     juju: jubilant.Juju,
     kyuubi_charm: str | Path,
@@ -662,6 +688,7 @@ def deploy_minimal_kyuubi_setup(
         setup_jdbc_authentication(juju=juju, charm_versions=charm_versions)
     elif auth_mode == "ldap":
         setup_ldap_authentication(juju=juju, charm_versions=charm_versions)
+        apply_sample_users_ldif(juju=juju, charm_versions=charm_versions)
 
     if integrate_zookeeper:
         # Deploy Zookeeper and wait
