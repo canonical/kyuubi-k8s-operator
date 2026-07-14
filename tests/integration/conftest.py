@@ -94,6 +94,8 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "zk": 78,
             "tls": 586,
             "data": 362,
+            "glauth": 63,
+            "glauth-utils": 50,
         },
         "arm64": {
             "s3": 332,
@@ -103,6 +105,8 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 585,
             "data": 359,
+            "glauth": 64,
+            "glauth-utils": 0,  # TODO(glauth-utils-arm): Update once we have an arm64 revision
         },
     }[platform]
 
@@ -162,7 +166,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         glauth=TestCharm(
             name="glauth-k8s",
             channel="latest/edge",
-            revision=63,
+            revision=revisions["glauth"],
             base="ubuntu@22.04",
             alias="glauth",
             trust=True,
@@ -170,7 +174,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         glauth_utils=TestCharm(
             name="glauth-utils",
             channel="latest/edge",
-            revision=50,
+            revision=revisions["glauth-utils"],
             base="ubuntu@22.04",
             alias="glauth-utils",
             trust=True,
