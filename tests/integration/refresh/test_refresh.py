@@ -22,7 +22,7 @@ from tenacity import Retrying, stop_after_attempt, wait_fixed
 from integration.helpers import (
     APP_NAME,
     LDAP_TEST_PASSWORD,
-    LDAP_TEST_USER,
+    LDAP_TEST_USERNAME,
     delete_engines_pod,
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
@@ -113,7 +113,7 @@ def test_populate(
     We will use this to assert that we can still query data written prior to the inplace upgrade.
     """
     if with_ldap:
-        username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     else:
         _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_fixed(60)):
@@ -232,7 +232,7 @@ def test_create_new_data(
         delay=10,
     )
     if with_ldap:
-        username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     else:
         _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
@@ -249,7 +249,7 @@ def test_validate_previous_data(
     This test is skipped if we were relying on the local metastore, since it would be gone.
     """
     if with_ldap:
-        username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     else:
         _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
@@ -329,7 +329,7 @@ def test_fail_and_rollback(
 
     logger.info("Checking that deployment is working once again")
     if with_ldap:
-        username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     else:
         _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(

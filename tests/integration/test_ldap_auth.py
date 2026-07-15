@@ -15,7 +15,8 @@ from core.domain import Status
 
 from .helpers import (
     LDAP_TEST_PASSWORD,
-    LDAP_TEST_USER,
+    LDAP_TEST_USER_CUSTOM_ID,
+    LDAP_TEST_USERNAME,
     deploy_minimal_kyuubi_setup,
     validate_sql_queries_with_kyuubi,
 )
@@ -65,7 +66,7 @@ def test_kyuubi_valid_credentials(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test the JDBC connection when valid credentials are provided."""
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
@@ -77,7 +78,7 @@ def test_remove_ldap_relation(juju: jubilant.Juju, charm_versions: IntegrationTe
         delay=5,
     )
 
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
@@ -92,7 +93,7 @@ def test_ldap_relation_integrated_again(
         delay=5,
     )
 
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
@@ -107,7 +108,7 @@ def test_ldaps_disabled(juju: jubilant.Juju, charm_versions: IntegrationTestsCha
         status.apps[APP_NAME].app_status.message == Status.LDAP_CONNECTION_NOT_SECURE.value.message
     )
 
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
@@ -121,7 +122,7 @@ def test_reenable_ldaps(juju: jubilant.Juju, charm_versions: IntegrationTestsCha
     )
     assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
 
@@ -139,7 +140,7 @@ def test_remove_certificate_transfer_relation(
     )
     assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     with pytest.raises(TTransportException):
         validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
 
@@ -158,5 +159,32 @@ def test_reintegrate_certificate_transfer_relation(
     )
     assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
-    username, password = LDAP_TEST_USER, LDAP_TEST_PASSWORD
+    username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+
+def test_login_with_custom_attribute(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Try logging in with custom attribute of the LDAP user."""
+    # First try logging in with custom attribute without the proper `ldap-search-filter` attribute
+    username, password = LDAP_TEST_USER_CUSTOM_ID, LDAP_TEST_PASSWORD
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+    juju.config(APP_NAME, {"ldap-search-filter": "customid=%s"})
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
+        delay=5,
+    )
+
+    username, password = LDAP_TEST_USER_CUSTOM_ID, LDAP_TEST_PASSWORD
+    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
+
+    juju.config(APP_NAME, reset="ldap-search-filter")
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
+        delay=5,
+    )
+    with pytest.raises(TTransportException):
+        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)

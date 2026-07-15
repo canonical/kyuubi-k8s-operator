@@ -157,5 +157,5 @@ options:
     type: string
     description: |
       The LDAP search query filter to use for user authentication. This should be a valid LDAP search filter.
-      Example: "(|(uid=%s)(mail=%s))" where %s will be replaced with the username provided by the user during login.
+      Example: "(|(uid=%s)(cn=%s)(mail=%s))" where %s will be replaced with the username provided by the user during login.
     default: "(|(uid=%s)(cn=%s)(mail=%s))"

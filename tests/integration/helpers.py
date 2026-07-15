@@ -53,7 +53,9 @@ JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
 SAMPLE_USERS_LDIF = Path("./tests/integration/setup/sample-ldap-users.ldif")
-LDAP_TEST_USER = "bikalpa"
+LDAP_TEST_USERNAME = "bikalpa"
+LDAP_TEST_USER_EMAIL = "bikalpa@glauth.com"
+LDAP_TEST_USER_CUSTOM_ID = "dhakal"
 LDAP_TEST_PASSWORD = "bikalpa"
 
 LATEST_STABLE_REV = 112

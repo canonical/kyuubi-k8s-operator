@@ -172,8 +172,10 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                 relation_id=event.relation.id, username=username, password=password
             )
         else:
+            # Data integrator would expect the username and password keys, but we don't have this information when auth mode is LDAP
+            # Therefore, as a workaround, we set empty spaces as username and password.
             self.database_provides.set_credentials(
-                relation_id=event.relation.id, username="<random>", password="<random>"
+                relation_id=event.relation.id, username=" ", password=" "
             )
 
         self.database_provides.set_database(event.relation.id, event.database)
