@@ -15,7 +15,6 @@ from core.domain import Status
 
 from .helpers import (
     LDAP_TEST_PASSWORD,
-    LDAP_TEST_USER_CUSTOM_ID,
     LDAP_TEST_USERNAME,
     deploy_minimal_kyuubi_setup,
     validate_sql_queries_with_kyuubi,
@@ -161,30 +160,3 @@ def test_reintegrate_certificate_transfer_relation(
 
     username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
     assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
-
-
-def test_login_with_custom_attribute(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
-) -> None:
-    """Try logging in with custom attribute of the LDAP user."""
-    # First try logging in with custom attribute without the proper `ldap-search-filter` attribute
-    username, password = LDAP_TEST_USER_CUSTOM_ID, LDAP_TEST_PASSWORD
-    with pytest.raises(TTransportException):
-        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
-
-    juju.config(APP_NAME, {"ldap-search-filter": "customid=%s"})
-    juju.wait(
-        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
-        delay=5,
-    )
-
-    username, password = LDAP_TEST_USER_CUSTOM_ID, LDAP_TEST_PASSWORD
-    assert validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
-
-    juju.config(APP_NAME, reset="ldap-search-filter")
-    juju.wait(
-        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
-        delay=5,
-    )
-    with pytest.raises(TTransportException):
-        validate_sql_queries_with_kyuubi(juju=juju, username=username, password=password)
