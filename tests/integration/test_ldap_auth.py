@@ -74,7 +74,7 @@ def test_remove_ldap_relation(juju: jubilant.Juju, charm_versions: IntegrationTe
     juju.remove_relation(f"{APP_NAME}:ldap-credentials", charm_versions.glauth.app)
     juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
-        delay=5,
+        delay=15,
     )
 
     username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
@@ -89,7 +89,7 @@ def test_ldap_relation_integrated_again(
     juju.integrate(f"{APP_NAME}:ldap-credentials", charm_versions.glauth.app)
     juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status, APP_NAME),
-        delay=5,
+        delay=15,
     )
 
     username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
@@ -101,7 +101,7 @@ def test_ldaps_disabled(juju: jubilant.Juju, charm_versions: IntegrationTestsCha
     juju.config(charm_versions.glauth.application_name, {"ldaps_enabled": "false"})
     status = juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
-        delay=5,
+        delay=15,
     )
     assert (
         status.apps[APP_NAME].app_status.message == Status.LDAP_CONNECTION_NOT_SECURE.value.message
@@ -117,7 +117,7 @@ def test_reenable_ldaps(juju: jubilant.Juju, charm_versions: IntegrationTestsCha
     juju.config(charm_versions.glauth.application_name, {"ldaps_enabled": "true"})
     status = juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
-        delay=5,
+        delay=15,
     )
     assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
@@ -135,7 +135,7 @@ def test_remove_certificate_transfer_relation(
     juju.remove_relation(f"{APP_NAME}:receive-ca-cert", charm_versions.glauth.app)
     status = juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
-        delay=5,
+        delay=15,
     )
     assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
@@ -154,7 +154,7 @@ def test_reintegrate_certificate_transfer_relation(
     juju.integrate(f"{APP_NAME}:receive-ca-cert", charm_versions.glauth.app)
     status = juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status),
-        delay=5,
+        delay=15,
     )
     assert status.apps[APP_NAME].app_status.message == Status.ACTIVE.value.message
 
