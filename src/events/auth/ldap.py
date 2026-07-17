@@ -5,6 +5,8 @@
 
 """LDAP authentication event handlers for Kyuubi charm."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from charms.glauth_k8s.v0.ldap import (
