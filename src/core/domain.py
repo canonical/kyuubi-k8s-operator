@@ -43,10 +43,10 @@ class Status(Enum):
     MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
     MISSING_AUTH_RELATION = BlockedStatus(
-        "Missing authentication relation. Please integrate to one of `ldap` or `postgresql_client` interface."
+        "Missing authentication relation. Please integrate to one of `ldap-credentials` or `auth-db` relations."
     )
     MULTIPLE_AUTH_RELATIONS = BlockedStatus(
-        "Multiple authentication relations detected. Please integrate to only one of `ldap` or `postgresql_client` interface."
+        "Multiple authentication relations detected. Please integrate to only one of `ldap-credentials` or `auth-db` relations."
     )
     LDAP_CONNECTION_NOT_SECURE = BlockedStatus(
         "LDAP connection is not secure. Please enable LDAPS."
