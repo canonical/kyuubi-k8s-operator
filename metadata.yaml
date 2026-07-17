@@ -47,11 +47,11 @@ requires:
   auth-db:
     interface: postgresql_client
     limit: 1
-    optional: false
+    optional: true
   ldap-credentials:
     interface: ldap
     limit: 1
-    optional: false
+    optional: true
   spark-service-account:
     interface: spark_service_account
     limit: 1
