@@ -90,12 +90,11 @@ class KyuubiConfig(WithLogging):
                 "Kyuubi configurations are not generated, the charm will go to blocked state."
             )
             return {}
-        if self.db_info:
+        elif self.db_info:
             return self._jdbc_auth_conf
         elif self.ldap:
             return self._ldap_auth_conf
-        else:
-            return {}
+        return {}
 
     @property
     def _jdbc_auth_conf(self) -> dict[str, str]:
