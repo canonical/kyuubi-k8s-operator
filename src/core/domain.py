@@ -438,10 +438,6 @@ class KyuubiServer(RelationState):
         """The root CA contents for the unit to use for TLS."""
         return self.relation_data.get("ca-cert", "")
 
-    @property
-    def transferred_certificates(self) -> str:
-        """The certificate contents received from certificate_transfer relation."""
-        return self.relation_data.get("transferred-certificates", "")
 
     def get_transferred_certificates_for_relation(self, relation_id: int) -> str:
         """The certificate contents received from certificate_transfer relation for a specific relation."""

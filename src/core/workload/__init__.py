@@ -56,11 +56,6 @@ class KyuubiPaths:
         """The Java Keystore containing Kyuubi server's private-key and signed certificates."""
         return f"{self.conf_path}/keystore.p12"
 
-    @property
-    def transferred_certificates(self) -> str:
-        """The certificates transferred to Kyuubi via relations."""
-        return f"{self.conf_path}/transferred-certificates.pem"
-
     def transferred_certificate_file(self, relation_id: int) -> str:
         """The file where the transferred certificates for a relation are stored."""
         return f"{self.conf_path}/transferred-certificates-{relation_id}.pem"
