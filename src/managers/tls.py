@@ -175,15 +175,17 @@ class TLSManager:
         certificates = x509.load_pem_x509_certificates(bundle_bytes)
         return certificates
 
-    def generate_alias_for_certificate(self, certificate: x509.Certificate) -> str:
+    def generate_alias_for_certificate(
+        self, certificate: x509.Certificate, relation_id: int
+    ) -> str:
         """Generates an alias for the given certificate based on its SHA256 fingerprint."""
         fingerprint = certificate.fingerprint(hashes.SHA256()).hex()[:16]
-        return f"transferred-cert-{fingerprint}"
+        return f"transferred-cert-{relation_id}-{fingerprint}"
 
     def set_transferred_certificates_truststore(self, relation_id: int) -> None:
         """Creates the unit Java Truststore and adds the transferred certificates."""
         for certificate in self.get_transferred_unit_certificates(relation_id=relation_id):
-            alias = self.generate_alias_for_certificate(certificate)
+            alias = self.generate_alias_for_certificate(certificate, relation_id=relation_id)
             with self.workload.temporary_file(
                 content=certificate.public_bytes(encoding=serialization.Encoding.PEM).decode(
                     "utf-8"
@@ -248,7 +250,7 @@ class TLSManager:
         """Delete the transferred certificates for given relation ID."""
         certificates = self.get_transferred_unit_certificates(relation_id=relation_id)
         for certificate in certificates:
-            alias = self.generate_alias_for_certificate(certificate)
+            alias = self.generate_alias_for_certificate(certificate, relation_id=relation_id)
             self._delete_cert_from_truststore(
                 alias=alias,
                 truststore_path=self.workload.paths.truststore,
