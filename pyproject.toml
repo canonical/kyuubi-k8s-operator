@@ -43,7 +43,7 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 ruff = ">=0.15.20"
 codespell = ">=2.4.2"
-mypy = "^1.20.2"
+mypy = "^2.3.0"
 types-psycopg2 = "^2.9.21.20250318"
 types-pyyaml = "^6.0.12.20250402"
 types-requests = "^2.32.0.20250328"
