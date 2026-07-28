@@ -20,15 +20,14 @@ httpx = "^0.28.1"
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^3.2.0"
 poetry-core = "*"
-# grafana_agent/v0/cos_agent.py requires pydantic <2
+# dataplatform_libs/v0/data_model.py requires pydantic <2
 pydantic = "^1.10.17, <2"
 # grafana, loki, prometheus
 pyyaml = "^6.0.1"
 # prometheus, loki
-cosl = "^0.0.57"
-# tls_certificates_interface/v1/tls_certificates.py
-# tls_certificates lib uses a feature only available in cryptography >=42.0.5
-cryptography = ">=42.0.5"
+cosl = "*"
+# tls_certificates_interface/v4/tls_certificates.py
+cryptography = ">=43.0.0"
 jsonschema = "*"
 
 [tool.poetry.group.format]
