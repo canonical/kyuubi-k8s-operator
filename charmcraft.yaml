@@ -5,6 +5,23 @@ type: charm
 platforms:
   ubuntu@22.04:amd64:
   ubuntu@22.04:arm64:
+
+charm-libs:
+  - lib: data_platform_libs.data_models
+    version: "0"
+  - lib: data_platform_libs.data_interfaces
+    version: "0"
+  - lib: grafana_k8s.grafana_dashboard
+    version: "0"
+  - lib: loki_k8s.loki_push_api
+    version: "1"
+  - lib: prometheus_k8s.prometheus_scrape
+    version: "0"
+  - lib: spark_integration_hub_k8s.spark_service_account
+    version: "0"
+  - lib: tls_certificates_interface.tls_certificates
+    version: "4"
+
 # Files implicitly created by charmcraft without a part:
 # - dispatch (https://github.com/canonical/charmcraft/pull/1898)
 # - manifest.yaml
