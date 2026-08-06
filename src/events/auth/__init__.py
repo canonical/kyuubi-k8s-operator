@@ -4,5 +4,9 @@
 # See LICENSE file for licensing details.
 
 from .jdbc import JDBCAuthenticationEvents
+from .ldap import LDAPAuthenticationEvents
 
-__all__ = ["JDBCAuthenticationEvents"]
+__all__ = [
+    "JDBCAuthenticationEvents",
+    "LDAPAuthenticationEvents",
+]
