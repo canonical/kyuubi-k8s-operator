@@ -141,6 +141,15 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.charm.provider_events.update_clients_endpoints()
 
+
+    # def generate_alias_for_certificate(
+    #     self, certificate: x509.Certificate, relation_id: int
+    # ) -> str:
+    #     """Generates an alias for the given certificate based on its SHA256 fingerprint."""
+    #     fingerprint = certificate.fingerprint(hashes.SHA256()).hex()[:16]
+    #     return f"transferred-cert-{relation_id}-{fingerprint}"
+
+
     def _on_transferred_certificates_available(
         self, event: TransferredCertificatesAvailableEvent
     ) -> None:

@@ -199,6 +199,21 @@ class TLSManager:
                     truststore_password=self.context.unit_server.truststore_password,
                 )
 
+    # def set_transferred_certificates_truststore(self, alias: str, certificate: x509.Certificate) -> None:
+    #     """Creates the unit Java Truststore and adds the transferred certificate."""
+    #     with self.workload.temporary_file(
+    #         content=certificate.public_bytes(encoding=serialization.Encoding.PEM).decode(
+    #             "utf-8"
+    #         ),
+    #         mode="w",
+    #     ) as cert_path:
+    #         self.import_certificate(
+    #             alias=alias,
+    #             cert_path=cert_path,
+    #             truststore_path=self.workload.paths.truststore,
+    #             truststore_password=self.context.unit_server.truststore_password,
+    #         )
+
     def set_kyuubi_server_truststore(self) -> None:
         """Creates the unit Java Truststore and adds the unit CA."""
         self.import_certificate(
