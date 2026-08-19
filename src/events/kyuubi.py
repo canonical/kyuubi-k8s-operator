@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import ops
+from cryptography import x509
 from ops import SecretChangedEvent
 
 from constants import (
@@ -90,10 +91,19 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         # Recreate the backend TLS files in the container if backend TLS has been enabled
         if self.context.backend_tls:
             for relation in self.charm.model.relations[CERTIFICATES_TRANSFER_RELATION_NAME]:
-                self.tls_manager.set_transferred_certificates(relation_id=cast(int, relation.id))
-                self.tls_manager.set_transferred_certificates_truststore(
-                    relation_id=cast(int, relation.id)
+                relation_id = cast(int, relation.id)
+                ca_bundle = self.context.unit_server.get_transferred_certificates_for_relation(
+                    relation_id
                 )
+                if not ca_bundle:
+                    continue
+                certificates = {
+                    self.charm.tls_events.generate_alias_for_certificate(
+                        certificate, relation_id
+                    ): certificate
+                    for certificate in x509.load_pem_x509_certificates(ca_bundle.encode())
+                }
+                self.tls_manager.set_truststore_certificates(certificates)
             self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready

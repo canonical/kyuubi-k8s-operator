@@ -8,10 +8,11 @@ import logging
 import os
 import socket
 import subprocess
+from collections.abc import Iterable, Mapping
 
 import ops.pebble
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 
 from core.context import Context
 from core.domain import SANs
@@ -142,50 +143,9 @@ class TLSManager:
             path=self.workload.paths.kyuubi_server_certificate,
         )
 
-    def set_transferred_certificates(self, relation_id: int) -> None:
-        """Sets the unit transferred certificates."""
-        if not self.context.unit_server.get_transferred_certificates_for_relation(
-            relation_id=relation_id
-        ):
-            logger.error(
-                "Can't set transferred certificates to unit, missing certificates in certificate_transfer relation data"
-            )
-            return
-
-        self.workload.write(
-            content=self.context.unit_server.get_transferred_certificates_for_relation(
-                relation_id=relation_id
-            ),
-            path=self.workload.paths.transferred_certificate_file(relation_id=relation_id),
-        )
-
-    def get_transferred_unit_certificates(self, relation_id: int) -> list[x509.Certificate]:
-        """Gets the unit transferred certificates."""
-        if not self.workload.exists(
-            self.workload.paths.transferred_certificate_file(relation_id=relation_id)
-        ):
-            logger.error(
-                "Can't get transferred certificates from unit, missing transferred certificates file"
-            )
-            return []
-
-        bundle_bytes = self.workload.read(
-            self.workload.paths.transferred_certificate_file(relation_id=relation_id)
-        ).encode()
-        certificates = x509.load_pem_x509_certificates(bundle_bytes)
-        return certificates
-
-    def generate_alias_for_certificate(
-        self, certificate: x509.Certificate, relation_id: int
-    ) -> str:
-        """Generates an alias for the given certificate based on its SHA256 fingerprint."""
-        fingerprint = certificate.fingerprint(hashes.SHA256()).hex()[:16]
-        return f"transferred-cert-{relation_id}-{fingerprint}"
-
-    def set_transferred_certificates_truststore(self, relation_id: int) -> None:
-        """Creates the unit Java Truststore and adds the transferred certificates."""
-        for certificate in self.get_transferred_unit_certificates(relation_id=relation_id):
-            alias = self.generate_alias_for_certificate(certificate, relation_id=relation_id)
+    def set_truststore_certificates(self, certificates: Mapping[str, x509.Certificate]) -> None:
+        """Add the given aliased certificates to the unit Java Truststore."""
+        for alias, certificate in certificates.items():
             with self.workload.temporary_file(
                 content=certificate.public_bytes(encoding=serialization.Encoding.PEM).decode(
                     "utf-8"
@@ -198,21 +158,6 @@ class TLSManager:
                     truststore_path=self.workload.paths.truststore,
                     truststore_password=self.context.unit_server.truststore_password,
                 )
-
-    # def set_transferred_certificates_truststore(self, alias: str, certificate: x509.Certificate) -> None:
-    #     """Creates the unit Java Truststore and adds the transferred certificate."""
-    #     with self.workload.temporary_file(
-    #         content=certificate.public_bytes(encoding=serialization.Encoding.PEM).decode(
-    #             "utf-8"
-    #         ),
-    #         mode="w",
-    #     ) as cert_path:
-    #         self.import_certificate(
-    #             alias=alias,
-    #             cert_path=cert_path,
-    #             truststore_path=self.workload.paths.truststore,
-    #             truststore_password=self.context.unit_server.truststore_password,
-    #         )
 
     def set_kyuubi_server_truststore(self) -> None:
         """Creates the unit Java Truststore and adds the unit CA."""
@@ -261,20 +206,14 @@ class TLSManager:
         self.workload.delete(self.workload.paths.kyuubi_server_ca, recursive=True)
         self.workload.delete(self.workload.paths.keystore, recursive=True)
 
-    def delete_transferred_certificates(self, relation_id: int) -> None:
-        """Delete the transferred certificates for given relation ID."""
-        certificates = self.get_transferred_unit_certificates(relation_id=relation_id)
-        for certificate in certificates:
-            alias = self.generate_alias_for_certificate(certificate, relation_id=relation_id)
+    def delete_truststore_certificates(self, aliases: Iterable[str]) -> None:
+        """Remove the certificates with the given aliases from the unit Java Truststore."""
+        for alias in aliases:
             self._delete_cert_from_truststore(
                 alias=alias,
                 truststore_path=self.workload.paths.truststore,
                 truststore_password=self.context.unit_server.truststore_password,
             )
-        self.workload.delete(
-            self.workload.paths.transferred_certificate_file(relation_id=relation_id),
-            recursive=True,
-        )
 
     def _import_cert_into_truststore(
         self, alias: str, cert_path: str, truststore_path: str, truststore_password: str

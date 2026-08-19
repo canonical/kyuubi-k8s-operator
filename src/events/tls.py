@@ -22,6 +22,8 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     CertificateRequestAttributes,
     TLSCertificatesRequiresV4,
 )
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 from ops import EventSource
 from ops.charm import RelationBrokenEvent, RelationCreatedEvent
 from ops.framework import EventBase
@@ -141,15 +143,6 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
         self.charm.provider_events.update_clients_endpoints()
 
-
-    # def generate_alias_for_certificate(
-    #     self, certificate: x509.Certificate, relation_id: int
-    # ) -> str:
-    #     """Generates an alias for the given certificate based on its SHA256 fingerprint."""
-    #     fingerprint = certificate.fingerprint(hashes.SHA256()).hex()[:16]
-    #     return f"transferred-cert-{relation_id}-{fingerprint}"
-
-
     def _on_transferred_certificates_available(
         self, event: TransferredCertificatesAvailableEvent
     ) -> None:
@@ -171,10 +164,12 @@ class TLSEvents(BaseEventHandler, WithLogging):
             {f"transferred-certificates-{event.relation_id}": event.ca}
         )
 
-        self.tls_manager.set_transferred_certificates(relation_id=cast(int, event.relation_id))
-        self.tls_manager.set_transferred_certificates_truststore(
-            relation_id=cast(int, event.relation_id)
-        )
+        relation_id = cast(int, event.relation_id)
+        certificates = {
+            self.generate_alias_for_certificate(certificate, relation_id): certificate
+            for certificate in x509.load_pem_x509_certificates(event.ca.encode())
+        }
+        self.tls_manager.set_truststore_certificates(certificates)
         self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready
@@ -203,8 +198,27 @@ class TLSEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
         relation_id = event.relation_id
+        ca_bundle = self.context.unit_server.get_transferred_certificates_for_relation(relation_id)
+        aliases = (
+            [
+                self.generate_alias_for_certificate(certificate, relation_id)
+                for certificate in x509.load_pem_x509_certificates(ca_bundle.encode())
+            ]
+            if ca_bundle
+            else []
+        )
         self.context.unit_server.update({f"transferred-certificates-{relation_id}": ""})
 
-        # remove all existing keystores from the unit so we don't preserve certs (for transferred certificates)
-        self.tls_manager.delete_transferred_certificates(relation_id=relation_id)
+        self.tls_manager.delete_truststore_certificates(aliases)
+        # self.workload.delete(
+        #     self.workload.paths.transferred_certificate_file(relation_id=relation_id),
+        #     recursive=True,
+        # )
         self.kyuubi.update(set_backend_tls_none=True)
+
+    def generate_alias_for_certificate(
+        self, certificate: x509.Certificate, relation_id: int
+    ) -> str:
+        """Generate an alias for the given certificate based on its SHA256 fingerprint."""
+        fingerprint = certificate.fingerprint(hashes.SHA256()).hex()[:16]
+        return f"transferred-cert-{relation_id}-{fingerprint}"
