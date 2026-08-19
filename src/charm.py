@@ -35,6 +35,7 @@ from core.context import Context
 from core.domain import Secret, Status
 from core.workload.kyuubi import KyuubiWorkload
 from events.auth import JDBCAuthenticationEvents, LDAPAuthenticationEvents
+from events.certificate_transfer import CertificatesTransferEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
@@ -81,6 +82,9 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.ldap_auth_events = LDAPAuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.tls_events = TLSEvents(self, self.context, self.workload)
+        self.certificate_transfer_events = CertificatesTransferEvents(
+            self, self.context, self.workload
+        )
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 
         # Monitoring/alerting (COS)

@@ -98,7 +98,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 if not ca_bundle:
                     continue
                 certificates = {
-                    self.charm.tls_events.generate_alias_for_certificate(
+                    self.charm.certificate_transfer_events.generate_alias_for_certificate(
                         certificate, relation_id
                     ): certificate
                     for certificate in x509.load_pem_x509_certificates(ca_bundle.encode())
