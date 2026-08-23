@@ -7,6 +7,7 @@ environment:
   REFRESH_ARGS/base: ""
   REFRESH_ARGS/multi: "--refresh-multi-units"
   REFRESH_ARGS/tls: "--refresh-tls"
+  # REFRESH_ARGS/ldap: "--refresh-ldap" TODO: Enable LDAP refresh tests once the charm supports it
   REFRESH_ARGS/image: "--refresh-image"
   REFRESH_ARGS/metastore: "--refresh-metastore"
   REFRESH_ARGS/multi_tls: "--refresh-multi-units --refresh-tls"

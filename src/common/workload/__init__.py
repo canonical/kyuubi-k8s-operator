@@ -5,6 +5,7 @@
 """Abstract classes for the workload."""
 
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
 
 
 class AbstractWorkload(ABC):
@@ -78,5 +79,23 @@ class AbstractWorkload(ABC):
 
         Args:
             path: the full filepath to be checked for
+        """
+        ...
+
+    @abstractmethod
+    def temporary_file(
+        self, content: str | bytes = "", mode: str = "w"
+    ) -> AbstractContextManager[str]:
+        """Provides a temporary file on the workload for use within a context.
+
+        The file is created on entering the context and deleted on exit,
+        regardless of whether an exception was raised inside the context.
+
+        Args:
+            content: optional initial content to write to the temporary file
+            mode: the write mode. Usually "w" for write, or "wb" for bytes. Default "w"
+
+        Yields:
+            The full filepath of the temporary file on the workload
         """
         ...

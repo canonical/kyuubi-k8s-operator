@@ -5,7 +5,10 @@
 """Common classes/functions for K8s implementations."""
 
 import logging
+import uuid
 from abc import ABC
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from ops import Container
 from ops.pebble import ExecError
@@ -87,3 +90,25 @@ class K8sWorkload(AbstractWorkload, ABC):
         except ExecError as e:
             logger.error(str(e.stderr))
             raise e
+
+    @override
+    @contextmanager
+    def temporary_file(self, content: str | bytes = "", mode: str = "w") -> Iterator[str]:
+        """Provides a temporary file inside the container for use within a context.
+
+        The file is created on entering the context and deleted on exit,
+        regardless of whether an exception was raised inside the context.
+
+        Args:
+            content: optional initial content to write to the temporary file
+            mode: the write mode. Usually "w" for write, or "wb" for bytes. Default "w"
+
+        Yields:
+            The full filepath of the temporary file inside the container
+        """
+        path = f"/tmp/{uuid.uuid4().hex}"
+        self.write(content, path, mode=mode)
+        try:
+            yield path
+        finally:
+            self.delete(path)

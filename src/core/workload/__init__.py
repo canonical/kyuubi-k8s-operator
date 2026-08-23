@@ -37,23 +37,23 @@ class KyuubiPaths:
         return f"{self.conf_path}/server.key"
 
     @property
-    def ca(self) -> str:
+    def kyuubi_server_ca(self) -> str:
         """The shared cluster CA."""
         return f"{self.conf_path}/ca.pem"
 
     @property
-    def certificate(self) -> str:
+    def kyuubi_server_certificate(self) -> str:
         """The certificate for the service to identify itself with for TLS auth."""
         return f"{self.conf_path}/server.pem"
 
     @property
     def truststore(self) -> str:
-        """The Java Truststore containing trusted CAs + certificates."""
+        """The Java Truststore containing Kyuubi server's trusted CAs + certificates."""
         return f"{self.conf_path}/truststore.jks"
 
     @property
     def keystore(self) -> str:
-        """The Java Truststore containing service private-key and signed certificates."""
+        """The Java Keystore containing Kyuubi server's private-key and signed certificates."""
         return f"{self.conf_path}/keystore.p12"
 
     @property
