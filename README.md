@@ -8,6 +8,7 @@ The Kyuubi charm can be found on [Charmhub](https://charmhub.io/kyuubi-k8s).
 
 Apache Kyuubi is a free, open source software project by the Apache Software Foundation. Users can find out more at the [Kyuubi project page](https://kyuubi.apache.org/).
 
+
 ## Other resources
 
 - [Contributing](CONTRIBUTING.md) 
