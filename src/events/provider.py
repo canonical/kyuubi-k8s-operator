@@ -20,7 +20,7 @@ from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler
-from managers.auth import AuthenticationManager
+from managers.auth import JDBCAuthenticationManager
 from managers.service import ServiceManager
 from utils.logging import WithLogging
 
@@ -101,7 +101,9 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
                 client.id, "True" if self.context.cluster.tls else "False"
             )
             if self.context.cluster.tls:
-                self.database_provides.set_tls_ca(client.id, self.context.unit_server.ca_cert)
+                self.database_provides.set_tls_ca(
+                    client.id, self.context.unit_server.kyuubi_server_ca_cert
+                )
             else:
                 self.database_provides.set_tls_ca(client.id, "")
 
@@ -116,7 +118,6 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        auth = AuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
         service_manager = ServiceManager(
             namespace=self.charm.model.name,
             unit_name=self.charm.unit.name,
@@ -132,12 +133,14 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        username = f"relation_id_{event.relation.id}"
-        password = auth.generate_password()
-        if not auth.create_user(username=username, password=password):
-            logging.warning("User could not be created; deferring")
-            event.defer()
-            return
+        if self.context.auth_db is not None:
+            auth = JDBCAuthenticationManager(cast(DatabaseConnectionInfo, self.context.auth_db))
+            username = f"relation_id_{event.relation.id}"
+            password = auth.generate_password()
+            if not auth.create_user(username=username, password=password):
+                logging.warning("User could not be created; deferring")
+                event.defer()
+                return
 
         jdbc_uri = ",".join(
             [
@@ -164,16 +167,25 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
         self.database_provides.set_version(event.relation.id, self.workload.kyuubi_version)
 
         # Set username and password
-        self.database_provides.set_credentials(
-            relation_id=event.relation.id, username=username, password=password
-        )
+        if self.context.auth_db is not None:
+            self.database_provides.set_credentials(
+                relation_id=event.relation.id, username=username, password=password
+            )
+        else:
+            # Data integrator would expect the username and password keys, but we don't have this information when auth mode is LDAP
+            # Therefore, as a workaround, we set empty spaces as username and password.
+            self.database_provides.set_credentials(
+                relation_id=event.relation.id, username=" ", password=" "
+            )
 
         self.database_provides.set_database(event.relation.id, event.database)
         self.database_provides.set_tls(
             event.relation.id, "True" if self.context.cluster.tls else "False"
         )
         if self.context.cluster.tls:
-            self.database_provides.set_tls_ca(event.relation.id, self.context.unit_server.ca_cert)
+            self.database_provides.set_tls_ca(
+                event.relation.id, self.context.unit_server.kyuubi_server_ca_cert
+            )
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Remove the user created for this relation."""
@@ -183,7 +195,7 @@ class KyuubiClientProviderEvents(BaseEventHandler, WithLogging):
             return
 
         if self.context.auth_db is not None:
-            auth = AuthenticationManager(self.context.auth_db)
+            auth = JDBCAuthenticationManager(self.context.auth_db)
             username = f"relation_id_{event.relation.id}"
 
             try:

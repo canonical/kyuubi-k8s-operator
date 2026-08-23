@@ -67,3 +67,6 @@ class IntegrationTestsCharms(BaseModel):
     zookeeper: TestCharm
     tls: TestCharm
     data_integrator: TestCharm
+    glauth: TestCharm
+    glauth_utils: TestCharm
+    ldap_tls: TestCharm

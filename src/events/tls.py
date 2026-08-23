@@ -46,8 +46,8 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.kyuubi = KyuubiManager(self.charm, self.workload, self.context)
         self.tls_manager = TLSManager(context, workload)
 
-        common_name = self.tls_manager.get_subject()
-        sans = self.tls_manager.build_sans()
+        common_name = self.tls_manager.get_kyuubi_subject_name()
+        sans = self.tls_manager.build_kyuubi_sans()
         sans_ip = frozenset(sans.sans_ip)
         sans_dns = frozenset(sans.sans_dns)
         private_key = self.charm.validate_and_get_private_key()
@@ -66,23 +66,26 @@ class TLSEvents(BaseEventHandler, WithLogging):
         )
 
         self.framework.observe(
-            getattr(self.charm.on, "certificates_relation_created"), self._on_certificates_created
+            getattr(self.charm.on, "certificates_relation_created"),
+            self._on_kyuubi_server_certificates_created,
         )
         self.framework.observe(
-            getattr(self.certificates.on, "certificate_available"), self._on_certificate_available
+            getattr(self.certificates.on, "certificate_available"),
+            self._on_kyuubi_server_certificate_available,
         )
         self.framework.observe(
-            getattr(self.charm.on, "certificates_relation_broken"), self._on_certificates_broken
+            getattr(self.charm.on, "certificates_relation_broken"),
+            self._on_kyuubi_server_certificates_broken,
         )
 
-    def _on_certificates_created(self, _: RelationCreatedEvent) -> None:
+    def _on_kyuubi_server_certificates_created(self, _: RelationCreatedEvent) -> None:
         """Handler for `certificates_relation_created` event."""
         if not self.charm.unit.is_leader():
             return
 
         self.context.cluster.update({"tls": "enabled"})
 
-    def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
+    def _on_kyuubi_server_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
         # avoid setting tls files and restarting
         if not self.workload.ready():
@@ -109,16 +112,16 @@ class TLSEvents(BaseEventHandler, WithLogging):
         )
 
         self.tls_manager.set_private_key()
-        self.tls_manager.set_ca()
-        self.tls_manager.set_certificate()
-        self.tls_manager.set_truststore()
-        self.tls_manager.set_p12_keystore()
+        self.tls_manager.set_kyuubi_server_ca()
+        self.tls_manager.set_kyuubi_server_certificate()
+        self.tls_manager.set_kyuubi_server_truststore()
+        self.tls_manager.set_kyuubi_server_p12_keystore()
         self.kyuubi.update(force_restart=True)
 
         self.charm.provider_events.update_clients_endpoints()
 
     @defer_when_not_ready
-    def _on_certificates_broken(self, event: RelationBrokenEvent) -> None:
+    def _on_kyuubi_server_certificates_broken(self, event: RelationBrokenEvent) -> None:
         """Handler for `certificates_relation_broken` event."""
         if not self.workload.ready():
             event.defer()
@@ -127,8 +130,8 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.context.unit_server.update({"certificate": "", "ca-cert": ""})
 
         # remove all existing keystores from the unit so we don't preserve certs
-        self.tls_manager.remove_stores()
-        self.kyuubi.update(set_tls_none=True)
+        self.tls_manager.delete_kyuubi_server_certificates()
+        self.kyuubi.update(set_frontend_tls_none=True)
 
         if self.charm.unit.is_leader():
             self.context.cluster.update({"tls": ""})

@@ -14,7 +14,7 @@ from managers.database import DatabaseManager
 from utils.logging import WithLogging
 
 
-class AuthenticationManager(WithLogging):
+class JDBCAuthenticationManager(WithLogging):
     """Manager encapsulating various authentication related methods."""
 
     def __init__(self, db_info: DatabaseConnectionInfo) -> None:
