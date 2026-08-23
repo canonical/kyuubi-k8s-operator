@@ -116,7 +116,7 @@ def test_enable_tls(
         config={"ca-common-name": "kyuubi"},
     )
     juju.wait(jubilant.all_active, delay=5)
-    juju.integrate(APP_NAME, charm_versions.tls.app)
+    juju.integrate(f"{APP_NAME}:certificates", f"{charm_versions.tls.app}:certificates")
     status = juju.wait(
         lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status), delay=10
     )

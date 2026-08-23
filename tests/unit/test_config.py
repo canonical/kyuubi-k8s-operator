@@ -51,8 +51,8 @@ def charm_configuration():
     return json.loads(json.dumps(CONFIG))
 
 
-@patch("managers.auth.AuthenticationManager.set_password")
-@patch("managers.auth.AuthenticationManager.user_exists", return_value=True)
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.set_password")
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.user_exists", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch(
@@ -113,8 +113,8 @@ def test_profile_config_option(
         assert "spark.kubernetes.driver.request.cores" not in spark_properties
 
 
-@patch("managers.auth.AuthenticationManager.set_password")
-@patch("managers.auth.AuthenticationManager.user_exists", return_value=True)
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.set_password")
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.user_exists", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch(
@@ -183,8 +183,8 @@ def test_k8s_node_selectors_config_option(
         assert spark_properties[k] == v
 
 
-@patch("managers.auth.AuthenticationManager.set_password")
-@patch("managers.auth.AuthenticationManager.user_exists", return_value=True)
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.set_password")
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.user_exists", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch(

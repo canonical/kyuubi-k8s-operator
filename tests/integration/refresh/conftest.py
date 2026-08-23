@@ -25,6 +25,12 @@ def pytest_addoption(parser):
         help="Setup metastore",
     )
     parser.addoption(
+        "--refresh-ldap",
+        action="store_true",
+        default=False,
+        help="Setup LDAP authentication mode",
+    )
+    parser.addoption(
         "--refresh-image",
         action="store_true",
         default=False,
@@ -43,6 +49,11 @@ def with_tls(request) -> bool:
 
 
 @pytest.fixture(scope="module")
+def with_ldap(request) -> bool:
+    return request.config.getoption("--refresh-ldap")
+
+
+@pytest.fixture(scope="module")
 def with_metastore(request) -> bool:
     return request.config.getoption("--refresh-metastore")
 
@@ -56,6 +67,12 @@ def with_image_upgrade(request) -> bool:
 def skipif_no_metastore(with_metastore: bool) -> None:
     if not with_metastore:
         pytest.skip("No metastore available")
+
+
+@pytest.fixture(scope="module")
+def skipif_no_ldap(with_ldap: bool) -> None:
+    if not with_ldap:
+        pytest.skip("No LDAP available")
 
 
 @pytest.fixture(scope="module")

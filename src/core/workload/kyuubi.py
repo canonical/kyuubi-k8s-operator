@@ -14,7 +14,6 @@ from ops.model import Container
 
 from common.workload.k8s import K8sWorkload
 from constants import (
-    DEFAULT_ADMIN_USERNAME,
     KYUUBI_CONTAINER_NAME,
     KYUUBI_SERVICE_NAME,
     REST_PORT,
@@ -110,23 +109,32 @@ class KyuubiWorkload(KyuubiWorkloadBase, K8sWorkload, WithLogging):
         """
         return "".join([secrets.choice(string.ascii_letters + string.digits) for _ in range(32)])
 
-    def is_serving_requests(self, admin_password: str) -> bool:
-        """Is kyuubi serving requests."""
+    def is_serving_requests(self) -> bool:
+        """Return if kyuubi is serving requests.
+
+        This performs an unauthenticated request against the Kyuubi REST
+        frontend. Since the charm no longer holds valid end-user credentials,
+        we cannot authenticate the request. Instead, we rely on the fact that
+        Kyuubi routes every REST call through its authentication filter: when
+        the server is healthy it answers an unauthenticated request with an
+        HTTP response (``401 Unauthorized`` when authentication is enabled),
+        whereas a server that is not serving requests raises a transport-level
+        error. Any HTTP response therefore means the frontend is up and
+        processing requests.
+        """
         try:
-            res = httpx.get(
+            httpx.get(
                 f"http://127.0.0.1:{REST_PORT}/api/v1/ping",
-                auth=httpx.BasicAuth(DEFAULT_ADMIN_USERNAME, admin_password),
                 timeout=httpx.Timeout(15),
             )
-            res.raise_for_status()
         except httpx.HTTPError:
             self.logger.info("Unit is not serving requests")
             return False
 
         return True
 
-    def tls_ready(self) -> bool:
-        """Returns if the workload is ready for TLS to be enabled.
+    def frontend_tls_ready(self) -> bool:
+        """Returns if the workload is ready for frontend TLS to be enabled.
 
         This means that TLS related files are available in the container.
         """

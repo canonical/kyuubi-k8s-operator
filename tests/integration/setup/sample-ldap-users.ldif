@@ -1,0 +1,18 @@
+# Create a OU named 'users'
+dn: ou=users,dc=glauth,dc=com
+objectClass: posixGroup
+ou: users
+gidNumber: 5511
+
+# Create a user named 'bikalpa' with password 'bikalpa' that belongs to OU 'users'
+dn: cn=bikalpa,ou=users,dc=glauth,dc=com
+changetype: add
+objectClass: posixAccount
+uidNumber: 5512
+gidNumber: 5511
+cn: bikalpa
+sn: bikalpa
+uid: bikalpa
+mail: bikalpa@glauth.com
+givenName: dhakal
+userPassword: {SHA256}daedb070a5837f5c2412e793529be02ffde1e7f2a7e2c8bd8fc9940ada829235
