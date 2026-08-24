@@ -69,10 +69,11 @@ class KyuubiManager(WithLogging):
         # Always clean previously managed truststores so stale files do not survive
         # when integration hub removes or rotates truststore secrets.
         stale_prefix = f"{HUB_TRUSTSTORE_MOUNT_BASE}/{TRUSTSTORE_SECRET_PREFIX}"
-        for path in self.workload.list(HUB_TRUSTSTORE_MOUNT_BASE):
-            if path.startswith(stale_prefix):
-                self.workload.delete(path, recursive=True)
-                self.logger.info("Removed stale S3 truststore path %s", path)
+        if self.workload.exists(HUB_TRUSTSTORE_MOUNT_BASE):
+            for path in self.workload.list(HUB_TRUSTSTORE_MOUNT_BASE):
+                if path.startswith(stale_prefix):
+                    self.workload.delete(path, recursive=True)
+                    self.logger.info("Removed stale S3 truststore path %s", path)
 
         truststore = service_account_info.hub_truststore
         if not truststore:
