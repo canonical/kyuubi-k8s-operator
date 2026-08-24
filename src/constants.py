@@ -47,3 +47,8 @@ SECRETS_APP: list[str] = [ADMIN_PASSWORD_KEY]
 
 TRUSTSTORE_SECRET_PREFIX = "integrator-hub-conf-truststore"
 TRUSTSTORE_SECRET_NAME_KEY = "truststore_secret_name"
+
+# Base directory under which Integration Hub mounts the S3 truststore secret in
+# the Spark pods. Kept in sync with the integration hub so that Kyuubi (running
+# as non-root `_daemon_`) can replicate the file for client-side operations.
+HUB_TRUSTSTORE_MOUNT_BASE = "/etc/spark8t/conf"

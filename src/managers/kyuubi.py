@@ -12,7 +12,7 @@ from config.env import KyuubiEnvironConfig
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
-from constants import TRUSTSTORE_SECRET_PREFIX
+from constants import HUB_TRUSTSTORE_MOUNT_BASE, TRUSTSTORE_SECRET_PREFIX
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
 from managers.k8s import K8sManager
@@ -68,8 +68,9 @@ class KyuubiManager(WithLogging):
 
         # Always clean previously managed truststores so stale files do not survive
         # when integration hub removes or rotates truststore secrets.
-        for path in self.workload.list("/"):
-            if path.startswith(f"/{TRUSTSTORE_SECRET_PREFIX}"):
+        stale_prefix = f"{HUB_TRUSTSTORE_MOUNT_BASE}/{TRUSTSTORE_SECRET_PREFIX}"
+        for path in self.workload.list(HUB_TRUSTSTORE_MOUNT_BASE):
+            if path.startswith(stale_prefix):
                 self.workload.delete(path, recursive=True)
                 self.logger.info("Removed stale S3 truststore path %s", path)
 

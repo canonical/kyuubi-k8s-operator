@@ -14,7 +14,7 @@ from ops.testing import Container, Context, PeerRelation, Relation, State
 
 from charm import KyuubiCharm
 from constants import KYUUBI_CONTAINER_NAME
-from core.domain import Status
+from core.domain import IntegrationHubTrustStore, Status
 from managers.service import Endpoint
 
 from .helpers import (
@@ -249,3 +249,16 @@ def test_wrong_k8s_node_selectors_config_option(
         _ = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
     except ops.testing.errors.UncaughtCharmError as excinfo:
         assert "ValidationError" in str(excinfo)
+
+
+def test_hub_truststore_path_under_spark8t_conf() -> None:
+    """The hub truststore is synced under /etc/spark8t/conf (writable by _daemon_)."""
+    truststore = IntegrationHubTrustStore(
+        secret_name="integrator-hub-conf-truststore-abcd1234",
+        file_name="truststore.jks",
+        content=b"",
+    )
+    assert (
+        truststore.path
+        == "/etc/spark8t/conf/integrator-hub-conf-truststore-abcd1234/truststore.jks"
+    )

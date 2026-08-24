@@ -21,7 +21,7 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
 
 from common.relation.domain import RelationState
-from constants import ADMIN_PASSWORD_KEY, TRUSTSTORE_SECRET_PREFIX
+from constants import ADMIN_PASSWORD_KEY, HUB_TRUSTSTORE_MOUNT_BASE, TRUSTSTORE_SECRET_PREFIX
 from managers.service import Endpoint, ServiceManager
 from utils.logging import WithLogging
 
@@ -132,7 +132,7 @@ class IntegrationHubTrustStore(WithLogging):
     @property
     def path(self) -> str:
         """The path where the truststore file should be synced to."""
-        return f"/{self.secret_name}/{self.file_name}"
+        return f"{HUB_TRUSTSTORE_MOUNT_BASE}/{self.secret_name}/{self.file_name}"
 
 
 class SparkServiceAccountInfo(RelationState):
