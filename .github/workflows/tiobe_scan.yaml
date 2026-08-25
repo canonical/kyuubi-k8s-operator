@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the project
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install system dependencies
         run: |
@@ -48,7 +48,7 @@ jobs:
           mv coverage.xml cover/coverage.xml
 
       - name: Run TICS analysis with github-action
-        uses: tiobe/tics-github-action@v3
+        uses: tiobe/tics-github-action@016a4d79f3027fe7b4a2901619a58c745ab7cadf # v3
         with:
           mode: qserver
           project: kyuubi-k8s-operator
