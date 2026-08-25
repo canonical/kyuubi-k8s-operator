@@ -32,7 +32,7 @@ class CertificatesTransferEvents(BaseEventHandler, WithLogging):
     """Event handlers for related applications on the `certificate_transfer` relation interface."""
 
     def __init__(self, charm: KyuubiCharm, context: Context, workload: KyuubiWorkload):
-        super().__init__(charm, "tls")
+        super().__init__(charm, "certificate_transfer")
         self.charm = charm
         self.context = context
         self.workload = workload
