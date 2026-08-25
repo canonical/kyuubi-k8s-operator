@@ -175,7 +175,7 @@ def test_relation_created_enables_tls(
 
 
 @pytest.mark.parametrize("is_leader", [True, False])
-@patch("core.workload.kyuubi.KyuubiWorkload.tls_ready", return_value=False)
+@patch("core.workload.kyuubi.KyuubiWorkload.frontend_tls_ready", return_value=False)
 @patch(
     "managers.service.ServiceManager.get_service_endpoint",
     return_value=[Endpoint(host="10.10.10.10", port=10009)],
@@ -183,7 +183,7 @@ def test_relation_created_enables_tls(
 @patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
-def test_tls_enabled_but_not_ready(
+def test_frontend_tls_enabled_but_not_ready(
     mock_sa_valid,
     mock_ns_valid,
     mock_s3_configured,
@@ -217,7 +217,7 @@ def test_tls_enabled_but_not_ready(
     assert state_out.unit_status == Status.WAITING_FOR_TLS.value
 
 
-def test_certificate_available_gets_deferred_when_workload_not_ready(
+def test_frontend_tls_certificate_available_gets_deferred_when_workload_not_ready(
     certificate_available_context,
 ):
     """Test CertificateAvailble event when workload is not ready."""
@@ -245,7 +245,7 @@ def test_certificate_available_gets_deferred_when_workload_not_ready(
         certificate_available_event.certificate = client_certificate
         certificate_available_event.ca = provider_ca_certificate
         certificate_available_event.defer = MagicMock()
-        charm.tls_events._on_certificate_available(certificate_available_event)
+        charm.tls_events._on_kyuubi_server_certificate_available(certificate_available_event)
 
         certificate_available_event.defer.assert_called_once()
 
@@ -256,7 +256,7 @@ def test_certificate_available_gets_deferred_when_workload_not_ready(
 )
 @pytest.mark.parametrize("tls_client_private_key", [None, generate_private_key()])
 @pytest.mark.parametrize("is_leader", [True, False])
-def test_certificate_available(
+def test_frontend_tls_certificate_available(
     certificate_available_context,
     tmp_path,
     is_leader,
@@ -314,8 +314,8 @@ def test_certificate_available(
             "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
             return_value=(client_provider_certificate, requirer_private_key),
         ),
-        patch("managers.tls.TLSManager.set_truststore") as mock_set_truststore,
-        patch("managers.tls.TLSManager.set_p12_keystore") as mock_set_keystore,
+        patch("managers.tls.TLSManager.set_kyuubi_server_truststore") as mock_set_truststore,
+        patch("managers.tls.TLSManager.set_kyuubi_server_p12_keystore") as mock_set_keystore,
         patch("core.workload.kyuubi.KyuubiWorkload.exists", return_value=True),
         patch(
             "core.workload.kyuubi.KyuubiWorkload.kyuubi_version",
@@ -340,7 +340,7 @@ def test_certificate_available(
         certificate_available_event.chain = client_provider_certificate.chain
 
         # When
-        charm.tls_events._on_certificate_available(certificate_available_event)
+        charm.tls_events._on_kyuubi_server_certificate_available(certificate_available_event)
 
         # Then
 
@@ -349,8 +349,8 @@ def test_certificate_available(
         assert charm.context.unit_server.keystore_password is not None
 
         # Ensure that the CA certificate, server certificate and the private key are in unit peer databag
-        assert charm.context.unit_server.certificate == client_certificate.raw
-        assert charm.context.unit_server.ca_cert == provider_ca_certificate.raw
+        assert charm.context.unit_server.kyuubi_server_certificate == client_certificate.raw
+        assert charm.context.unit_server.kyuubi_server_ca_cert == provider_ca_certificate.raw
         assert charm.context.unit_server.private_key == requirer_private_key.raw
         if tls_client_private_key:
             assert charm.context.unit_server.private_key == tls_client_private_key.raw
@@ -373,12 +373,12 @@ def test_certificate_available(
         )
         assert validate_file_contents(
             test_path=tmp_path,
-            file_path=charm.workload.paths.ca,
+            file_path=charm.workload.paths.kyuubi_server_ca,
             file_content=provider_ca_certificate.raw,
         )
         assert validate_file_contents(
             test_path=tmp_path,
-            file_path=charm.workload.paths.certificate,
+            file_path=charm.workload.paths.kyuubi_server_certificate,
             file_content=client_certificate.raw,
         )
         mock_set_truststore.assert_called_once()
@@ -405,9 +405,9 @@ def test_certificate_available(
     "managers.service.ServiceManager.get_service_endpoint",
     return_value=[Endpoint(host="example.com", port=10009)],
 )
-@patch("managers.tls.TLSManager.remove_stores")
-def test_relation_broken(
-    mock_remove_stores,
+@patch("managers.tls.TLSManager.delete_kyuubi_server_certificates")
+def test_frontend_tls_relation_broken(
+    mock_delete_kyuubi_server_certificates,
     mock_service_endpoint,
     mock_kyuubi_version,
     mock_spark_master,
@@ -431,7 +431,7 @@ def test_relation_broken(
     # Then
 
     # The removal of TLS files should get triggered for all units
-    mock_remove_stores.assert_called_once()
+    mock_delete_kyuubi_server_certificates.assert_called_once()
 
     # TLS related configurations should be removed for all units
     kyuubi_config = parse_kyuubi_configurations(tmp_path=tmp_path)

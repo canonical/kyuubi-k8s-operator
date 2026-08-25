@@ -1,0 +1,8 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+summary: Run integration-jdbc-auth tests
+
+execute: |
+  cd "$SPREAD_PATH"
+  tox run -e integration-jdbc-auth -- --model testing --keep-models -m "$MARK_EXPRESSION"

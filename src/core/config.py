@@ -39,6 +39,7 @@ class CharmConfig(BaseConfigModel):
     service_account: str
     system_users: str | None = Field(pattern=SECRET_REGEX, exclude=True)
     tls_client_private_key: str | None = Field(pattern=SECRET_REGEX, exclude=True)
+    ldap_search_filter: str | None
 
     @validator("k8s_node_selectors", pre=True)
     @classmethod
