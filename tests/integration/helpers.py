@@ -52,8 +52,9 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
-# TODO: Replace this with newer revision when we have releases for branch 4.0/edge
-KYUUBI_REVISION_TO_REFRESH_FROM = 112
+# This is the revision from which the refresh tests will try to
+# refresh the kyuubi-k8s charm to the locally built revision.
+LATEST_STABLE_REV = 181  # 4.0/stable (amd64)
 
 
 def get_random_name():
@@ -452,7 +453,7 @@ def deploy_minimal_kyuubi_setup(
         "channel": "4.0/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
-        "revision": KYUUBI_REVISION_TO_REFRESH_FROM,
+        "revision": LATEST_STABLE_REV,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
