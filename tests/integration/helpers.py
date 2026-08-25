@@ -60,7 +60,6 @@ LDAP_TEST_PASSWORD = "bikalpa"
 
 # TODO: Replace this with newer revision when we have releases for branch 4.0/edge
 KYUUBI_REVISION_TO_REFRESH_FROM = 112
-LATEST_STABLE_REV = 112
 
 
 def get_random_name():
