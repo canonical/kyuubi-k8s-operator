@@ -52,7 +52,9 @@ NODEPORT_MAX_VALUE = 32767
 JDBC_PORT = 10009
 JDBC_PORT_NAME = "kyuubi-jdbc"
 
-LATEST_STABLE_REV = 113
+# This is the revision from which the refresh tests will try to
+# refresh the kyuubi-k8s charm to the locally built revision.
+LATEST_STABLE_REV = 180  # 3.4/stable (amd64)
 
 
 def get_random_name():
