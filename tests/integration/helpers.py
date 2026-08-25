@@ -59,7 +59,7 @@ LDAP_TEST_USER_CUSTOM_ID = "dhakal"
 LDAP_TEST_PASSWORD = "bikalpa"
 
 # TODO: Replace this with newer revision when we have releases for branch 4.0/edge
-KYUUBI_REVISION_TO_REFRESH_FROM = 112
+LATEST_STABLE_REVISION = 112
 
 
 def get_random_name():
@@ -581,7 +581,7 @@ def deploy_minimal_kyuubi_setup(
         "channel": "4.0/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
-        "revision": KYUUBI_REVISION_TO_REFRESH_FROM,
+        "revision": LATEST_STABLE_REVISION,
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]
