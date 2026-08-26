@@ -21,6 +21,8 @@ from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from integration.helpers import (
     APP_NAME,
+    LDAP_TEST_PASSWORD,
+    LDAP_TEST_USERNAME,
     delete_engines_pod,
     deploy_minimal_kyuubi_setup,
     fetch_connection_info,
@@ -47,6 +49,7 @@ def test_deploy(
     with_multi_units: bool,
     with_tls: bool,
     with_metastore: bool,
+    with_ldap: bool,
 ):
     """Initial deployment.
 
@@ -67,6 +70,7 @@ def test_deploy(
         trust=True,
         num_units=num_units,
         integrate_zookeeper=integrate_zookeeper,
+        auth_mode="ldap" if with_ldap else "jdbc",
     )
 
     juju.wait(jubilant.all_active, delay=5)
@@ -80,7 +84,7 @@ def test_deploy(
             config={"ca-common-name": "kyuubi"},
         )
         juju.wait(lambda status: jubilant.all_active(status, charm_versions.tls.app), delay=5)
-        juju.integrate(APP_NAME, charm_versions.tls.app)
+        juju.integrate(f"{APP_NAME}:certificates", f"{charm_versions.tls.app}:certificates")
 
     if with_metastore:
         logger.info("Deploying postgresql-k8s charm...")
@@ -101,13 +105,16 @@ def test_deploy(
 
 
 def test_populate(
-    juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
+    juju: jubilant.Juju, with_tls: bool, with_ldap: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Populate the database.
 
     We will use this to assert that we can still query data written prior to the inplace upgrade.
     """
-    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    if with_ldap:
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
+    else:
+        _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_fixed(60)):
         with attempt:
             assert validate_sql_queries_with_kyuubi(
@@ -214,16 +221,19 @@ def test_run_inplace_upgrade(
 
 
 def test_create_new_data(
-    juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
+    juju: jubilant.Juju, with_tls: bool, with_ldap: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
+    """Test that the upgraded deployment is valid (can connect with auth, and write)."""
     juju.wait(
         lambda status: (
             jubilant.all_active(status, APP_NAME) and jubilant.all_agents_idle(status, APP_NAME)
         ),
         delay=10,
     )
-    """Test that the upgraded deployment is valid (can connect with auth, and write)."""
-    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    if with_ldap:
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
+    else:
+        _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
     )
@@ -231,13 +241,16 @@ def test_create_new_data(
 
 @pytest.mark.usefixtures("skipif_no_metastore")
 def test_validate_previous_data(
-    juju: jubilant.Juju, with_tls: bool, charm_versions: IntegrationTestsCharms
+    juju: jubilant.Juju, with_tls: bool, with_ldap: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
     """Test that we can still access data from before the upgrade.
 
     This test is skipped if we were relying on the local metastore, since it would be gone.
     """
-    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    if with_ldap:
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
+    else:
+        _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju,
         username=username,
@@ -256,6 +269,7 @@ def test_fail_and_rollback(
     kyuubi_charm: Path,
     with_tls: bool,
     with_image_upgrade: bool,
+    with_ldap: bool,
     charm_versions: IntegrationTestsCharms,
 ) -> None:
     """Test that we can rollback after a failed upgrade.
@@ -313,7 +327,10 @@ def test_fail_and_rollback(
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
 
     logger.info("Checking that deployment is working once again")
-    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
+    if with_ldap:
+        username, password = LDAP_TEST_USERNAME, LDAP_TEST_PASSWORD
+    else:
+        _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
     assert validate_sql_queries_with_kyuubi(
         juju=juju, username=username, password=password, use_tls=with_tls
     )

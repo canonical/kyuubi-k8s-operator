@@ -34,7 +34,8 @@ from core.config import CharmConfig
 from core.context import Context
 from core.domain import Secret, Status
 from core.workload.kyuubi import KyuubiWorkload
-from events.auth import AuthenticationEvents
+from events.auth import JDBCAuthenticationEvents, LDAPAuthenticationEvents
+from events.certificate_transfer import CertificatesTransferEvents
 from events.integration_hub import SparkIntegrationHubEvents
 from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
@@ -71,15 +72,19 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         )
 
         # Context
-        self.context = Context(model=self.model, config=self.config)
+        self.context = Context(charm=self, config=self.config)
 
         # Event handlers
         self.kyuubi_events = KyuubiEvents(self, self.context, self.workload)
         self.hub_events = SparkIntegrationHubEvents(self, self.context, self.workload)
         self.metastore_events = MetastoreEvents(self, self.context, self.workload)
-        self.auth_events = AuthenticationEvents(self, self.context, self.workload)
+        self.jdbc_auth_events = JDBCAuthenticationEvents(self, self.context, self.workload)
+        self.ldap_auth_events = LDAPAuthenticationEvents(self, self.context, self.workload)
         self.zookeeper_events = ZookeeperEvents(self, self.context, self.workload)
         self.tls_events = TLSEvents(self, self.context, self.workload)
+        self.certificate_transfer_events = CertificatesTransferEvents(
+            self, self.context, self.workload
+        )
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
 
         # Monitoring/alerting (COS)
@@ -225,8 +230,12 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         ):
             statuses.append(Status.NOT_ENOUGH_GPUS.value)
 
-        if not self.context.auth_db:
-            statuses.append(Status.MISSING_AUTH_DB.value)
+        if not (self.context.auth_db or self.context.ldap):
+            statuses.append(Status.MISSING_AUTH_RELATION.value)
+        elif self.context.auth_db and self.context.ldap:
+            statuses.append(Status.MULTIPLE_AUTH_RELATIONS.value)
+        elif self.context.ldap and not self.context.ldap.ldaps_urls:
+            statuses.append(Status.LDAP_CONNECTION_NOT_SECURE.value)
 
         if status := self._collect_status_system_users():
             statuses.append(status.value)
@@ -256,10 +265,10 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         ):
             statuses.append(Status.WAITING_FOR_SERVICE.value)
 
-        if self.context.tls and not self.workload.tls_ready():
+        if self.context.frontend_tls and not self.workload.frontend_tls_ready():
             statuses.append(Status.WAITING_FOR_TLS.value)
 
-        if not self.workload.is_serving_requests(self.context.cluster.admin_password):
+        if not self.workload.is_serving_requests():
             statuses.append(Status.NOT_SERVING_REQUESTS.value)
 
         return statuses

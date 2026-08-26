@@ -42,7 +42,15 @@ class Status(Enum):
     WAITING_PEBBLE = MaintenanceStatus("Waiting for Pebble")
     MISSING_OBJECT_STORAGE_BACKEND = BlockedStatus("Missing Object Storage backend")
     MISSING_INTEGRATION_HUB = BlockedStatus("Missing integration hub relation")
-    MISSING_AUTH_DB = BlockedStatus("Missing authentication database relation")
+    MISSING_AUTH_RELATION = BlockedStatus(
+        "Missing authentication relation. Please integrate to one of `ldap-credentials` or `auth-db` relations."
+    )
+    MULTIPLE_AUTH_RELATIONS = BlockedStatus(
+        "Multiple authentication relations detected. Please integrate to only one of `ldap-credentials` or `auth-db` relations."
+    )
+    LDAP_CONNECTION_NOT_SECURE = BlockedStatus(
+        "LDAP connection is not secure. Please enable LDAPS."
+    )
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
@@ -331,7 +339,7 @@ class TLSInfo:
     """Class representing a information related to tls."""
 
     keystore_password: str
-    trustore_password: str
+    truststore_password: str
 
 
 @dataclass
@@ -340,6 +348,19 @@ class SANs:
 
     sans_ip: list[str]
     sans_dns: list[str]
+
+
+@dataclass
+class LDAPInfo:
+    """Class representing a information related to LDAP."""
+
+    auth_method: str
+    ldap_urls: list[str]
+    ldaps_urls: list[str]
+    base_dn: str
+    bind_dn: str
+    bind_password: str
+    start_tls: bool
 
 
 class KyuubiServer(RelationState):
@@ -403,19 +424,23 @@ class KyuubiServer(RelationState):
         return self.relation_data.get("truststore-password", "")
 
     @property
-    def csr(self) -> str:
+    def kyuubi_server_csr(self) -> str:
         """The current certificate signing request contents for the unit."""
         return self.relation_data.get("csr", "")
 
     @property
-    def certificate(self) -> str:
+    def kyuubi_server_certificate(self) -> str:
         """The certificate contents for the unit to use for TLS."""
         return self.relation_data.get("certificate", "")
 
     @property
-    def ca_cert(self) -> str:
+    def kyuubi_server_ca_cert(self) -> str:
         """The root CA contents for the unit to use for TLS."""
         return self.relation_data.get("ca-cert", "")
+
+    def get_transferred_certificates_for_relation(self, relation_id: int) -> str:
+        """The certificate contents received from certificate_transfer relation for a specific relation."""
+        return self.relation_data.get(f"transferred-certificates-{relation_id}", "")
 
     @property
     def internal_address(self) -> str:

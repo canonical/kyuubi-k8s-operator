@@ -9,14 +9,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import ops
+from cryptography import x509
 from ops import SecretChangedEvent
 
-from constants import DEFAULT_ADMIN_USERNAME, JDBC_PORT, PEER_REL
+from constants import (
+    CERTIFICATES_TRANSFER_RELATION_NAME,
+    DEFAULT_ADMIN_USERNAME,
+    JDBC_PORT,
+    PEER_REL,
+)
 from core.context import Context
 from core.domain import DatabaseConnectionInfo
 from core.workload.kyuubi import KyuubiWorkload
 from events.base import BaseEventHandler, defer_when_not_ready
-from managers.auth import AuthenticationManager
+from managers.auth import JDBCAuthenticationManager
 from managers.kyuubi import KyuubiManager
 from managers.service import ServiceManager
 from managers.tls import TLSManager
@@ -73,13 +79,31 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             event.defer()
             return
 
-        # Recreate the TLS files in the container if TLS has been enabled
-        if self.context.tls:
+        # Recreate the frontend TLS files in the container if frontend TLS has been enabled
+        if self.context.frontend_tls:
             self.tls_manager.set_private_key()
-            self.tls_manager.set_ca()
-            self.tls_manager.set_certificate()
-            self.tls_manager.set_truststore()
-            self.tls_manager.set_p12_keystore()
+            self.tls_manager.set_kyuubi_server_ca()
+            self.tls_manager.set_kyuubi_server_certificate()
+            self.tls_manager.set_kyuubi_server_truststore()
+            self.tls_manager.set_kyuubi_server_p12_keystore()
+            self.kyuubi.update(force_restart=True)
+
+        # Recreate the backend TLS files in the container if backend TLS has been enabled
+        if self.context.backend_tls:
+            for relation in self.charm.model.relations[CERTIFICATES_TRANSFER_RELATION_NAME]:
+                relation_id = cast(int, relation.id)
+                ca_bundle = self.context.unit_server.get_transferred_certificates_for_relation(
+                    relation_id
+                )
+                if not ca_bundle:
+                    continue
+                certificates = {
+                    self.charm.certificate_transfer_events.generate_alias_for_certificate(
+                        certificate, relation_id
+                    ): certificate
+                    for certificate in x509.load_pem_x509_certificates(ca_bundle.encode())
+                }
+                self.tls_manager.set_truststore_certificates(certificates)
             self.kyuubi.update(force_restart=True)
 
     @defer_when_not_ready
@@ -94,10 +118,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            auth_manager = AuthenticationManager(
+            auth_manager = JDBCAuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
-            if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
+            if self.context.auth_db and not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):
                 event.defer()
                 return
 
@@ -108,8 +132,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 self.charm.provider_events.update_clients_endpoints()
 
             if (
-                admin_password := self.charm.validate_and_get_admin_password()
-            ) and admin_password != self.context.cluster.admin_password:
+                self.context.auth_db
+                and (admin_password := self.charm.validate_and_get_admin_password())
+                and admin_password != self.context.cluster.admin_password
+            ):
                 auth_manager.set_password(username=DEFAULT_ADMIN_USERNAME, password=admin_password)
                 self.context.cluster.set_admin_password(password=admin_password)
 
@@ -207,7 +233,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
                 event.defer()
                 return
 
-            auth_manager = AuthenticationManager(
+            auth_manager = JDBCAuthenticationManager(
                 cast(DatabaseConnectionInfo, self.context.auth_db)
             )
             if not auth_manager.user_exists(DEFAULT_ADMIN_USERNAME):

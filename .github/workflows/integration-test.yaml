@@ -57,11 +57,13 @@ jobs:
           # - integration-observability:   No arm64 builds for observability charms
           # - integration-ha:              TODO(zk-arm): ZooKeeper has no arm64 revision yet
           # - integration-external-access: TODO(zk-arm): ZooKeeper has no arm64 revision yet
+          # - integration-ldap-auth:       TODO(glauth-utils-arm): glauth-utils has no arm64 revision yet
           AMD64_ONLY_TASKS = {
               "integration-charm",
               "integration-observability",
               "integration-ha",
               "integration-external-access",
+              "integration-ldap-auth",
           }
 
           jobs = []

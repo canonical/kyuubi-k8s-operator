@@ -11,16 +11,21 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DataPeerData,
     DataPeerUnitData,
 )
+from charms.glauth_k8s.v0.ldap import (
+    LdapRequirer,
+)
 from charms.spark_integration_hub_k8s.v0.spark_service_account import (
     SparkServiceAccountRequirerData,
 )
-from ops import Model, Relation
+from ops import CharmBase, Relation
 from ops.model import Unit
 
 from constants import (
     AUTHENTICATION_DATABASE_NAME,
+    CERTIFICATES_TRANSFER_RELATION_NAME,
     HA_ZNODE_NAME,
     KYUUBI_CLIENT_RELATION_NAME,
+    LDAP_RELATION_NAME,
     METASTORE_DATABASE_NAME,
     PEER_REL,
     POSTGRESQL_AUTH_DB_REL,
@@ -35,6 +40,7 @@ from core.domain import (
     DatabaseConnectionInfo,
     KyuubiCluster,
     KyuubiServer,
+    LDAPInfo,
     SparkServiceAccountInfo,
     TLSInfo,
     ZookeeperInfo,
@@ -54,8 +60,8 @@ SECRETS_UNIT = [
 class Context(WithLogging):
     """Properties and relations of the charm."""
 
-    def __init__(self, model: Model, config: CharmConfig):
-        self.model = model
+    def __init__(self, charm: CharmBase, config: CharmConfig):
+        self.model = charm.model
         self.config = config
         self.metastore_db_requirer = DatabaseRequirerData(
             self.model, POSTGRESQL_METASTORE_DB_REL, database_name=METASTORE_DATABASE_NAME
@@ -66,6 +72,7 @@ class Context(WithLogging):
             database_name=AUTHENTICATION_DATABASE_NAME,
             extra_user_roles="superuser",
         )
+        self.ldap_requirer = LdapRequirer(charm=charm, relation_name=LDAP_RELATION_NAME)
         self.zookeeper_requirer_data = DatabaseRequirerData(
             self.model,
             ZOOKEEPER_REL,
@@ -106,6 +113,16 @@ class Context(WithLogging):
         """The cluster peer relation."""
         return self.model.get_relation(TLS_REL)
 
+    @property
+    def _certificate_transfer_relation(self) -> Relation | None:
+        """The certificate transfer relation."""
+        return self.model.get_relation(CERTIFICATES_TRANSFER_RELATION_NAME)
+
+    @property
+    def _ldap_relation(self) -> Relation | None:
+        """The LDAP relation."""
+        return self.model.get_relation(LDAP_RELATION_NAME)
+
     # --- DOMAIN OBJECTS ---
 
     @property
@@ -124,7 +141,7 @@ class Context(WithLogging):
 
     @property
     def auth_db(self) -> DatabaseConnectionInfo | None:
-        """The state of authentication DB connection."""
+        """The state of JDBC authentication connection."""
         for data in self.auth_db_requirer.fetch_relation_data().values():
             if any(key not in data for key in ["endpoints", "username", "password"]):
                 continue
@@ -135,6 +152,40 @@ class Context(WithLogging):
                 dbname=data["database"],
             )
         return None
+
+    @property
+    def ldap(self) -> LDAPInfo | None:
+        """The state of the LDAP relation."""
+        if not self._ldap_relation:
+            return None
+        data = self.ldap_requirer.consume_ldap_relation_data(relation=self._ldap_relation)
+        if not data:
+            return None
+        if any(
+            param is None
+            for param in [
+                data.base_dn,
+                data.bind_dn,
+                data.bind_password,
+            ]
+        ) or any(
+            param is None
+            for param in [
+                data.urls,
+                data.ldaps_urls,
+            ]
+        ):
+            self.logger.warning("LDAP relation data is incomplete or missing required fields.")
+            return None
+        return LDAPInfo(
+            auth_method=data.auth_method,
+            ldap_urls=data.urls,
+            ldaps_urls=data.ldaps_urls,
+            base_dn=data.base_dn,
+            bind_dn=data.bind_dn,
+            bind_password=data.bind_password,
+            start_tls=data.starttls,
+        )
 
     @property
     def service_account(self) -> SparkServiceAccountInfo | None:
@@ -156,12 +207,21 @@ class Context(WithLogging):
 
     def is_authentication_enabled(self) -> bool:
         """Returns whether the authentication has been enabled in the Kyuubi charm."""
-        return self.auth_db is not None
+        return self.auth_db is not None or self.ldap is not None
 
     @property
-    def tls(self) -> TLSInfo | None:
+    def frontend_tls(self) -> TLSInfo | None:
         """The state of the tls configuration info."""
         if self._tls_relation:
+            return TLSInfo(
+                self.unit_server.keystore_password, self.unit_server.truststore_password
+            )
+        return None
+
+    @property
+    def backend_tls(self) -> TLSInfo | None:
+        """The state of the tls configuration info."""
+        if self._certificate_transfer_relation:
             return TLSInfo(
                 self.unit_server.keystore_password, self.unit_server.truststore_password
             )
