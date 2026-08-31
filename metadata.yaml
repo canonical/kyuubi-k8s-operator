@@ -23,8 +23,10 @@ website:
   - https://matrix.to/#/%23charmhub-analytics%3Aubuntu.com
 maintainers:
   - Canonical Data Platform <data-platform@lists.launchpad.net>
+
 assumes:
   - k8s-api
+  - juju >= 3.6
 
 charm-user: non-root
 
@@ -80,3 +82,4 @@ provides:
     interface: prometheus_scrape
   grafana-dashboard:
     interface: grafana_dashboard
+
