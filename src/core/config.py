@@ -12,7 +12,7 @@ from typing import Literal
 from charms.data_platform_libs.v0.data_models import BaseConfigModel
 from pydantic import Field, NonNegativeInt, PositiveInt, validator
 
-from .enums import ExposeExternal
+from .enums import CleanupDriverPods, ExposeExternal
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ SECRET_REGEX = re.compile("secret:[a-z0-9]{20}")
 class CharmConfig(BaseConfigModel):
     """Manager for the structured configuration."""
 
+    cleanup_terminated_driver_pods: CleanupDriverPods
     driver_pod_template: str
     enable_dynamic_allocation: bool
     executor_cores: PositiveInt | None

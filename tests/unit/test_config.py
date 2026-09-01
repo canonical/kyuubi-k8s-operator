@@ -18,6 +18,7 @@ from core.domain import Status
 from managers.service import Endpoint
 
 from .helpers import (
+    parse_kyuubi_configurations,
     parse_spark_properties,
 )
 
@@ -249,3 +250,65 @@ def test_wrong_k8s_node_selectors_config_option(
         _ = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
     except ops.testing.errors.UncaughtCharmError as excinfo:
         assert "ValidationError" in str(excinfo)
+
+
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.set_password")
+@patch("managers.auth.jdbc.JDBCAuthenticationManager.user_exists", return_value=True)
+@patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
+@patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
+@patch(
+    "events.provider.KyuubiClientProviderEvents.update_clients_endpoints",
+    return_value=True,
+)
+@patch(
+    "managers.service.ServiceManager.get_service_endpoint",
+    return_value=[Endpoint(host="10.10.10.10", port=10009)],
+)
+@patch(
+    "managers.service.ServiceManager.reconcile_services",
+    return_value=True,
+)
+@patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
+@patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
+@patch(
+    "config.spark.SparkConfig._sa_conf", return_value={"spark.hadoop.fs.s3a.endpoint": "foo.bar"}
+)
+@pytest.mark.parametrize(
+    "option,expected",
+    [(None, "COMPLETED"), ("none", "NONE"), ("completed", "COMPLETED"), ("all", "ALL")],
+)
+def test_cleanup_terminated_driver_pods_config_option(
+    mock_sa_conf,
+    mock_s3_configured,
+    mock_get_master,
+    mock_reconcile_service,
+    mock_service_endpoint,
+    mock_update_client_endpoints,
+    mock_valid_sa,
+    mock_valid_ns,
+    mock_user_exists,
+    mock_set_password,
+    kyuubi_context: Context,
+    kyuubi_container: Container,
+    spark_service_account_relation: Relation,
+    auth_db_relation: Relation,
+    kyuubi_peers_relation: PeerRelation,
+    tmp_path,
+    option,
+    expected,
+) -> None:
+    """Test cleanup-terminated-driver-pods config option."""
+    state = State(
+        relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
+        containers=[kyuubi_container],
+        config={} if option is None else {"cleanup-terminated-driver-pods": option},
+        leader=True,
+    )
+    out = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
+    assert out.unit_status == Status.ACTIVE.value
+
+    kyuubi_configurations = parse_kyuubi_configurations(tmp_path)
+    assert (
+        kyuubi_configurations["kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind"]
+        == expected
+    )
