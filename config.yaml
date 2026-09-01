@@ -2,6 +2,16 @@
 # See LICENSE file for licensing details.
 
 options:
+  cleanup-terminated-driver-pods:
+    type: string
+    description: |
+      Which Spark engine driver pods Kyuubi deletes once their application has terminated.
+      Is equivalent to the following Kyuubi configuration:
+
+      kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind=<COMPLETED|ALL|NONE>
+
+    default: completed
+
   driver-pod-template:
     type: string
     description: |
