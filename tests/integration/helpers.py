@@ -58,7 +58,9 @@ LDAP_TEST_USER_EMAIL = "bikalpa@glauth.com"
 LDAP_TEST_USER_CUSTOM_ID = "dhakal"
 LDAP_TEST_PASSWORD = "bikalpa"
 
-LATEST_STABLE_REV = 112
+# This is the revision from which the refresh tests will try to
+# refresh the kyuubi-k8s charm to the locally built revision.
+LATEST_STABLE_REV = 183  # 3.5/stable (amd64)
 
 
 def get_random_name():
