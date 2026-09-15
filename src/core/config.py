@@ -60,3 +60,11 @@ class CharmConfig(BaseConfigModel):
             else:
                 raise ValueError("Malformed k8s_node_selectors options.")
         return res
+
+    @field_validator("system_users", "tls_client_private_key", mode="before")
+    @classmethod
+    def sanitize_empty_secret_strings(cls, value: str | None) -> str | None:
+        """Convert empty string inputs to None before regex pattern validation."""
+        if value == "":
+            return None
+        return value
