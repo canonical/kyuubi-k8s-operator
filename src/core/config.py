@@ -9,8 +9,8 @@ import logging
 import re
 from typing import Literal
 
-from charms.data_platform_libs.v0.data_models import BaseConfigModel
-from pydantic import Field, NonNegativeInt, PositiveInt, validator
+from charms.data_platform_libs.v1.data_models import BaseConfigModel
+from pydantic import Field, NonNegativeInt, PositiveInt, field_validator
 
 from .enums import ExposeExternal
 
@@ -24,24 +24,24 @@ class CharmConfig(BaseConfigModel):
 
     driver_pod_template: str
     enable_dynamic_allocation: bool
-    executor_cores: PositiveInt | None
-    executor_memory: PositiveInt | None
+    executor_cores: PositiveInt | None = None
+    executor_memory: PositiveInt | None = None
     executor_pod_template: str
     expose_external: ExposeExternal
     gpu_enable: bool
     gpu_engine_executors_limit: PositiveInt | Literal[-1]
     gpu_pinned_memory: NonNegativeInt
     iceberg_catalog_name: str
-    k8s_node_selectors: dict[str, str] | None
+    k8s_node_selectors: dict[str, str] | None = None
     loadbalancer_extra_annotations: str
     namespace: str
     profile: Literal["production", "staging", "testing"]
     service_account: str
-    system_users: str | None = Field(pattern=SECRET_REGEX, exclude=True)
-    tls_client_private_key: str | None = Field(pattern=SECRET_REGEX, exclude=True)
-    ldap_search_filter: str | None
+    system_users: str | None = Field(default=None, pattern=SECRET_REGEX, exclude=True)
+    tls_client_private_key: str | None = Field(default=None, pattern=SECRET_REGEX, exclude=True)
+    ldap_search_filter: str | None = None
 
-    @validator("k8s_node_selectors", pre=True)
+    @field_validator("k8s_node_selectors", mode="before")
     @classmethod
     def k8s_node_selectors_validator(cls, value: str) -> dict[str, str] | None:
         """Check validity of `k8s_node_selectors` field."""
@@ -60,3 +60,11 @@ class CharmConfig(BaseConfigModel):
             else:
                 raise ValueError("Malformed k8s_node_selectors options.")
         return res
+
+    @field_validator("system_users", "tls_client_private_key", mode="before")
+    @classmethod
+    def sanitize_empty_secret_strings(cls, value: str | None) -> str | None:
+        """Convert empty string inputs to None before regex pattern validation."""
+        if value == "":
+            return None
+        return value
