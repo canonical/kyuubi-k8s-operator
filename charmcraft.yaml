@@ -8,7 +8,7 @@ platforms:
 
 charm-libs:
   - lib: data_platform_libs.data_models
-    version: "0"
+    version: "1"
   - lib: data_platform_libs.data_interfaces
     version: "0"
   - lib: grafana_k8s.grafana_dashboard
