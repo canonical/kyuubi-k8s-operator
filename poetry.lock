@@ -290,18 +290,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.43.89"
-description = "The AWS SDK for Python"
+version = "1.43.97"
+description = "The AWS SDK for Python (Boto3)"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "integration"]
 files = [
-    {file = "boto3-1.43.89-py3-none-any.whl", hash = "sha256:fe4190afe63eb562b6ba6a3911cf4427473b35fa047adde093bf696d3ae09fc0"},
-    {file = "boto3-1.43.89.tar.gz", hash = "sha256:c28abbe472e9b7cad08807356311aeec51bde5218c18489da827045d2267bfd9"},
+    {file = "boto3-1.43.97-py3-none-any.whl", hash = "sha256:420b45f566d3b49c6c1f021c50f47f66ea99ef05b1872d80b472c536542b321e"},
+    {file = "boto3-1.43.97.tar.gz", hash = "sha256:ffe9a93a6b4b2c1b59f4f5e07c18d2acfe8f68c320a1a12251d4ea8570b9bdfe"},
 ]
 
 [package.dependencies]
-botocore = ">=1.43.89,<1.44.0"
+botocore = ">=1.43.97,<1.44.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.19.0,<0.20.0"
 
@@ -310,14 +310,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.43.89"
+version = "1.43.97"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "integration"]
 files = [
-    {file = "botocore-1.43.89-py3-none-any.whl", hash = "sha256:d7211220c815427fe71225acc6909e4ab5dfab3b03770e72fd16cf9eb86b3d1a"},
-    {file = "botocore-1.43.89.tar.gz", hash = "sha256:f0574942970742657b0e0716cf08c2dfe6bef8e6de5fbb7081c3424e262b4cca"},
+    {file = "botocore-1.43.97-py3-none-any.whl", hash = "sha256:6b2beefd4f515aa7bfc614c945493a19315577ff31b464abbc9e33b7aff5112c"},
+    {file = "botocore-1.43.97.tar.gz", hash = "sha256:7c0e18686367e98de49826d8ac9ae951ce0915c172969a5d96b768c9afa9e979"},
 ]
 
 [package.dependencies]
@@ -1900,19 +1900,19 @@ files = [
 
 [[package]]
 name = "psycopg2"
-version = "2.9.12"
+version = "2.9.13"
 description = "psycopg2 - Python-PostgreSQL Database Adapter"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "psycopg2-2.9.12-cp310-cp310-win_amd64.whl", hash = "sha256:d5fbe092315fb007c03544704e6d1e678a6c0378139d01cea433dc59edf041b4"},
-    {file = "psycopg2-2.9.12-cp311-cp311-win_amd64.whl", hash = "sha256:2532c0cdc6ad18c9c35cd935cc3159712e14f05276a6d29a6435c52d24b840c1"},
-    {file = "psycopg2-2.9.12-cp312-cp312-win_amd64.whl", hash = "sha256:83d48e66e18c301d832e93c984a7bcbc0f4ac3bb79e2137e3bc335978c756dc0"},
-    {file = "psycopg2-2.9.12-cp313-cp313-win_amd64.whl", hash = "sha256:3d23e684927d37b95cee9a943f6927b04ae2fdcd056fd0e2a30929ee89fee5a9"},
-    {file = "psycopg2-2.9.12-cp314-cp314-win_amd64.whl", hash = "sha256:a73d5513bfe929c56555006c7a9cc7ae6e4276aa99dd2b1e2544eb8bb54f8b23"},
-    {file = "psycopg2-2.9.12-cp39-cp39-win_amd64.whl", hash = "sha256:09826a6b89714626a662275d03f21639f1c68d183e2dcc9ba134d463a3da753e"},
-    {file = "psycopg2-2.9.12.tar.gz", hash = "sha256:1dedb1c7a1d8552c4a6044c6b1c41a52e6a8e2d144af83eccac758076b1b7c15"},
+    {file = "psycopg2-2.9.13-cp310-cp310-win_amd64.whl", hash = "sha256:7d48416f6a4823ada9b33771085331b842b553df88435701bff5ddb4469905de"},
+    {file = "psycopg2-2.9.13-cp311-cp311-win_amd64.whl", hash = "sha256:d16e7a5f5e400ac51ca953d42255804eff6c8a9650b1a2074f6ca6261d740382"},
+    {file = "psycopg2-2.9.13-cp312-cp312-win_amd64.whl", hash = "sha256:10f7408b34412e8c0d4f8b1565541f1d651b1d00447857e5d8561b38f5c1a738"},
+    {file = "psycopg2-2.9.13-cp313-cp313-win_amd64.whl", hash = "sha256:165e25c1b0e616a1f28080c5c68bd2dc015051d83c90240b2171d3e76ca2b5ff"},
+    {file = "psycopg2-2.9.13-cp314-cp314-win_amd64.whl", hash = "sha256:a6f54fd8e0024f35240866b5dfff9ead2a0dbd33b8096eec438bc6093412842d"},
+    {file = "psycopg2-2.9.13-cp315-cp315-win_amd64.whl", hash = "sha256:0d2fc7eedfaca0586dcf1476454598428d0d8471d3b5cb55f92015a5f9d0af40"},
+    {file = "psycopg2-2.9.13.tar.gz", hash = "sha256:d36784fc2dae69523ba4b79c7d1d1b4d6e83e87836874f111262f4db940b16a6"},
 ]
 
 [[package]]
@@ -2443,30 +2443,30 @@ files = [
 
 [[package]]
 name = "ruff"
-version = "0.16.6"
+version = "0.16.8"
 description = "An extremely fast Python linter and code formatter, written in Rust."
 optional = false
 python-versions = ">=3.7"
 groups = ["format", "lint"]
 files = [
-    {file = "ruff-0.16.6-py3-none-linux_armv6l.whl", hash = "sha256:61c368c26bf8e973e5ab14a2772de587bc068ea3f9a277f673380749b4898fb8"},
-    {file = "ruff-0.16.6-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:ecf4f068e2e123e43a26e9db4e19524cc56563912404e83bbfca375757e45a32"},
-    {file = "ruff-0.16.6-py3-none-macosx_11_0_arm64.whl", hash = "sha256:99b62ea33baf130f50368798d841f0d95527b6d817bf31817b65dd058f1d314c"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7fbf89013f2bb3f6835a6038ff658dc8a1b38c98dc8e724b964168ad4e881876"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:56a67065e22efa6bc4d498299d3bb06c0c90aace8fac2068b5a12f9dc4d8d51d"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e25cc89174874b176a157e4428d66761c2c0c006654419bf384f967f361ff1b1"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:0700580ed5303723cb3c11c2f1d2a8913ce77b7ea86646dddb887f5417a9ba70"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:15f1d0b6e165a6e56567befb6629f8209271311d990bae0f37e6d065035ef5f3"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d72c591a96986ee4268860e2b7235082129ca5e4cb9cbba653a4b57c11893757"},
-    {file = "ruff-0.16.6-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:65a006baa18f33324325814c864daef03541d51564b98c517610ea756ab7003e"},
-    {file = "ruff-0.16.6-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:cd02a7bf1a21a8735228a3e8c95a9dc5cf86bd2a52194f4aaae2a5755b4de0f4"},
-    {file = "ruff-0.16.6-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:31b36f1e5ad85e0737f09d2be4e512e2e283583c14015da3b9dc07359ac0fc88"},
-    {file = "ruff-0.16.6-py3-none-musllinux_1_2_i686.whl", hash = "sha256:61029b4ab4aa723fd3064fab96b1d814492596bf0c792679fffcbde1e1679953"},
-    {file = "ruff-0.16.6-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:9ac8998457832c2061709d900856b7ad271dace0cb41f346588d540162bfa718"},
-    {file = "ruff-0.16.6-py3-none-win32.whl", hash = "sha256:0b87d9d16fcb63e8018423ca1d50b7260f15cb2da33e30db4baad4183a948c25"},
-    {file = "ruff-0.16.6-py3-none-win_amd64.whl", hash = "sha256:10d21c51c3495d8eaea7b703a16592117ea6eb1d649e36335aa965ff1173eb39"},
-    {file = "ruff-0.16.6-py3-none-win_arm64.whl", hash = "sha256:7a976c79b958f94e50a022a19f0f8c87387448020935ec14fc74331bd0a7f2c5"},
-    {file = "ruff-0.16.6.tar.gz", hash = "sha256:dcf8a73d2ff77e99dde91244b4da16feba7f14e6beeb4015dee7c5a909e99050"},
+    {file = "ruff-0.16.8-py3-none-linux_armv6l.whl", hash = "sha256:6ffbd6d87383c1edf5f6fa890f10200950240d7c1a16052a19a09d3a2307dd38"},
+    {file = "ruff-0.16.8-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:42ed6b878ed61e3acca92f2730a17acff39286944ea82398544696366a6f925e"},
+    {file = "ruff-0.16.8-py3-none-macosx_11_0_arm64.whl", hash = "sha256:7ea781c7f2afba8c6a505ea0fb3f994020249e0c450635f5381286fea6b46170"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:8efeae3bbe414a5efefda11a792dfb51ef90ac48d50c4830de2f644caf3e8659"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:3a79b795469fef7fc6e908b218eed2eb17332afd85031db6480dc864560e69b2"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3fdc5563cdc50555e6fba39322850860e9267c1b3d12c26a74729d8604c3c812"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:34508983c70665578dab88f5223d8e6228307e1135398ca8bfc8b7e9501e282b"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:644bb578569e0ffc575741232bd385dacdd6fbe123f1a729e7a225f54aa3957f"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:15e7d226246961db9235098333caa13063906d3851136b84c2900b82f5daa1df"},
+    {file = "ruff-0.16.8-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:a2bf6bc3e9ebdd4449abc6f06cf64b98051a2c61cf94d2fe9596518c881f1a1e"},
+    {file = "ruff-0.16.8-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:6ca111ba0849539165e9e59d2b442542f3c1e8060ebbdea82494f1ffbccb1e1f"},
+    {file = "ruff-0.16.8-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:359a1e5b495448ee1e91018064382ebc86f90e8aac2fed222c7d0e4e8df85fd2"},
+    {file = "ruff-0.16.8-py3-none-musllinux_1_2_i686.whl", hash = "sha256:59e8f5681349474110b24d62e93cfda6593f5fa3473446ca3705200cac1a08b9"},
+    {file = "ruff-0.16.8-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:efa3e7a16d1baaa79957888dfdf8be9ef2e44db81cb032af06d76632ab59e773"},
+    {file = "ruff-0.16.8-py3-none-win32.whl", hash = "sha256:55793ba85c69921e89be061426d91a78652d6e50317c962240922747a4eb713f"},
+    {file = "ruff-0.16.8-py3-none-win_amd64.whl", hash = "sha256:a6b85621fd3c81e31fc5f5add09c9c078b430db3595ca632efafdec9e64ebfaa"},
+    {file = "ruff-0.16.8-py3-none-win_arm64.whl", hash = "sha256:d075e820af612102ce217f07cc93e69f9490b10ec13ea85fa87bd03d996cef8a"},
+    {file = "ruff-0.16.8.tar.gz", hash = "sha256:9247bf92b5f04d825c8639a4fe423ec2e4222acd9222e58412b0dab7e442798b"},
 ]
 
 [[package]]
@@ -2686,14 +2686,14 @@ files = [
 
 [[package]]
 name = "types-boto3"
-version = "1.43.89"
-description = "Type annotations for boto3 1.43.89 generated with mypy-boto3-builder 8.12.0"
+version = "1.43.97"
+description = "Type annotations for boto3 1.43.97 generated with mypy-boto3-builder 8.12.0"
 optional = false
 python-versions = ">=3.9"
 groups = ["lint"]
 files = [
-    {file = "types_boto3-1.43.89-py3-none-any.whl", hash = "sha256:0d04c2c246eb52042347ac8352c8b4753986b6ef10746d952c91051725358d73"},
-    {file = "types_boto3-1.43.89.tar.gz", hash = "sha256:325b0b546f89caa8ec7e0924bde93a7e2553e9e809c35fd56597dc9a2e49d627"},
+    {file = "types_boto3-1.43.97-py3-none-any.whl", hash = "sha256:3f6a34d26179055cee5c21f167861d028b3a1c1e39855f9d39529f098c328cce"},
+    {file = "types_boto3-1.43.97.tar.gz", hash = "sha256:8f9531736bd1ec57587c1cf2d4e6b6d68adfc69fd5c9954775467cd500ee4b17"},
 ]
 
 [package.dependencies]
@@ -2757,7 +2757,7 @@ bedrock-data-automation-runtime = ["types-boto3-bedrock-data-automation-runtime 
 bedrock-runtime = ["types-boto3-bedrock-runtime (>=1.43.0,<1.44.0)"]
 billing = ["types-boto3-billing (>=1.43.0,<1.44.0)"]
 billingconductor = ["types-boto3-billingconductor (>=1.43.0,<1.44.0)"]
-boto3 = ["boto3 (==1.43.89)"]
+boto3 = ["boto3 (==1.43.97)"]
 braket = ["types-boto3-braket (>=1.43.0,<1.44.0)"]
 budgets = ["types-boto3-budgets (>=1.43.0,<1.44.0)"]
 ce = ["types-boto3-ce (>=1.43.0,<1.44.0)"]
@@ -3253,4 +3253,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "7e2b305649e8dde820ba84735f4f179e0ed9f9724c5289662c0fa634ca512abe"
+content-hash = "e28e3d1e7c720113b294d90977d99dcdfb8b55967fe4bdd2c48797bb8a4dd37b"
