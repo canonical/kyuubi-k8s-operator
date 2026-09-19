@@ -28,7 +28,7 @@ logging.getLogger("jubilant.wait").setLevel(logging.WARNING)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 TEST_BUCKET_NAME = "kyuubi-test"
-TEST_PATH_NAME = "spark-events/"
+TEST_PATH_NAME = "spark-events"
 TEST_NAMESPACE = "kyuubi-test"
 TEST_SERVICE_ACCOUNT = "kyuubi-test"
 TEST_POD_SPEC_FILE = "./tests/integration/setup/testpod_spec.yaml.template"
@@ -88,25 +88,26 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
     revisions = {
         "amd64": {
             "s3": 330,
-            "metastore": 774,
-            "auth": 774,
+            "postgres": 774,
             "hub": 149,
             "zk": 78,
             "tls": 586,
             "data": 362,
             "glauth": 63,
             "glauth-utils": 50,
+            "grafana-agent": 164,
+            "otel-collector": 210,
         },
         "arm64": {
             "s3": 332,
-            "metastore": 775,
-            "auth": 775,
+            "postgres": 775,
             "hub": 150,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 585,
             "data": 359,
             "glauth": 64,
-            "glauth-utils": 0,  # TODO(glauth-utils-arm): Update once we have an arm64 revision
+            "grafana-agent": 163,
+            "otel-collector": 209,
         },
     }[platform]
 
@@ -121,7 +122,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         metastore_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=revisions["metastore"],
+            revision=revisions["postgres"],
             base="ubuntu@22.04",
             alias="metastore",
             trust=True,
@@ -129,7 +130,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         auth_db=TestCharm(
             name="postgresql-k8s",
             channel="14/stable",
-            revision=revisions["auth"],
+            revision=revisions["postgres"],
             base="ubuntu@22.04",
             alias="auth-db",
             trust=True,
@@ -185,6 +186,30 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             revision=revisions["tls"],
             base="ubuntu@24.04",
             alias="ldap-certificates",
+        ),
+        ldap_db=TestCharm(
+            name="postgresql-k8s",
+            channel="14/stable",
+            revision=revisions["postgres"],
+            base="ubuntu@22.04",
+            alias="ldap-db",
+            trust=True,
+        ),
+        grafana_agent=TestCharm(
+            name="grafana-agent-k8s",
+            channel="1/stable",
+            revision=revisions["grafana-agent"],
+            base="ubuntu@22.04",
+            alias="grafana-agent-k8s",
+            trust=True,
+        ),
+        otel_collector=TestCharm(
+            name="opentelemetry-collector-k8s",
+            channel="2/stable",
+            revision=revisions["otel-collector"],
+            base="ubuntu@24.04",
+            alias="opentelemetry-collector-k8s",
+            trust=True,
         ),
     )
 
