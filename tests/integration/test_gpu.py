@@ -14,11 +14,8 @@ from spark_test.utils import LightKubePod, get_spark_drivers, get_spark_executor
 
 from core.domain import Status
 
-from .helpers import (
-    deploy_minimal_kyuubi_setup,
-    fetch_connection_info,
-    validate_sql_queries_with_kyuubi,
-)
+from .helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
