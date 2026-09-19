@@ -21,6 +21,8 @@ charm-libs:
     version: "0"
   - lib: tls_certificates_interface.tls_certificates
     version: "4"
+  - lib: istio_beacon_k8s.service_mesh
+    version: "0"
 
 # Files implicitly created by charmcraft without a part:
 # - dispatch (https://github.com/canonical/charmcraft/pull/1898)
