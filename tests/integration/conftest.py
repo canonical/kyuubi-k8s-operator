@@ -95,6 +95,8 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "data": 362,
             "glauth": 63,
             "glauth-utils": 50,
+            "istio": 45,
+            "istio-beacon": 63,
             "grafana-agent": 164,
             "otel-collector": 210,
         },
@@ -107,6 +109,8 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             "data": 359,
             "glauth": 64,
             "glauth-utils": 0,  # TODO(glauth-utils-arm): Update once we have an arm64 revision
+            "istio": 0,  # istio charm releases not available for arm64
+            "istio-beacon": 0,
             "grafana-agent": 163,
             "otel-collector": 209,
         },
@@ -194,6 +198,22 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             revision=revisions["postgres"],
             base="ubuntu@22.04",
             alias="ldap-db",
+            trust=True,
+        ),
+        istio=TestCharm(
+            name="istio-k8s",
+            channel="2/stable",
+            revision=revisions["istio"],
+            base="ubuntu@24.04",
+            alias="istio-k8s",
+            trust=True,
+        ),
+        istio_beacon=TestCharm(
+            name="istio-beacon-k8s",
+            channel="2/stable",
+            revision=revisions["istio-beacon"],
+            base="ubuntu@22.04",
+            alias="istio-beacon-k8s",
             trust=True,
         ),
         grafana_agent=TestCharm(
