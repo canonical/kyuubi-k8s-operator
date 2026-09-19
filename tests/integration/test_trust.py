@@ -8,7 +8,7 @@ from pathlib import Path
 import jubilant
 import yaml
 
-from .helpers import deploy_minimal_kyuubi_setup
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
