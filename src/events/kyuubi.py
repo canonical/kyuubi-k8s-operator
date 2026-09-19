@@ -57,6 +57,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         self.framework.observe(self.charm.on.update_status, self._update_event)
         self.framework.observe(self.charm.on.config_changed, self._on_config_changed)
         self.framework.observe(self.charm.on.secret_changed, self._on_secret_changed)
+        self.framework.observe(self.charm.on.remove, self._on_remove)
 
         # Peer relation events
         self.framework.observe(
@@ -251,3 +252,10 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """Handle the peer relation changed event."""
         self.logger.info("Kyuubi peer relation changed...")
         self.charm.tls_events.refresh_tls_certificates_event.emit()
+
+    def _on_remove(self, _: ops.RemoveEvent):
+        """Handle the remove event."""
+        self.logger.info("Kyuubi charm is being removed...")
+        if not self.charm.unit.is_leader():
+            return
+        self.charm.service_mesh_events.delete_mesh_resources()
