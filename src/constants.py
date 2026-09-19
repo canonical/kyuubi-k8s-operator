@@ -22,6 +22,8 @@ TLS_REL = "certificates"
 LDAP_RELATION_NAME = "ldap-credentials"
 CERTIFICATES_TRANSFER_RELATION_NAME = "receive-ca-cert"
 KYUUBI_CLIENT_RELATION_NAME = "jdbc"
+SERVICE_MESH_RELATION_NAME = "service-mesh"
+METRICS_RELATION_NAME = "metrics-endpoint"
 
 COS_METRICS_PORT = 10019
 COS_METRICS_PATH = "/metrics"
