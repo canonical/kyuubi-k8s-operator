@@ -73,6 +73,8 @@ class IntegrationTestsCharms(BaseModel):
     glauth_utils: TestCharm
     ldap_tls: TestCharm
     ldap_db: TestCharm
+    istio: TestCharm
+    istio_beacon: TestCharm
     grafana_agent: TestCharm
     otel_collector: TestCharm
 
