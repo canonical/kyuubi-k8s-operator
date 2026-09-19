@@ -19,18 +19,12 @@ import pytest
 import yaml
 from tenacity import Retrying, stop_after_attempt, wait_fixed
 
-from integration.helpers import (
-    APP_NAME,
-    LDAP_TEST_PASSWORD,
-    LDAP_TEST_USERNAME,
-    delete_engines_pod,
-    deploy_minimal_kyuubi_setup,
-    fetch_connection_info,
-    get_leader_unit,
-    inject_dependency_fault,
-    validate_sql_queries_with_kyuubi,
-)
-from integration.types import IntegrationTestsCharms, S3Info
+from ..helpers.auth import LDAP_TEST_PASSWORD, LDAP_TEST_USERNAME
+from ..helpers.ha import delete_engines_pod
+from ..helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
+from ..helpers.juju import get_leader_unit
+from ..helpers.kyuubi import APP_NAME, deploy_minimal_kyuubi_setup, inject_dependency_fault
+from ..types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
 
