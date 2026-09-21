@@ -21,8 +21,7 @@ charmlibs-interfaces-certificate-transfer = "^1.0.0"
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^3.2.0"
 poetry-core = "*"
-# dataplatform_libs/v0/data_model.py requires pydantic <2
-pydantic = "^1.10.17, <2"
+pydantic = "^2.0.0"
 # grafana, loki, prometheus
 pyyaml = "^6.0.1"
 # prometheus, loki
