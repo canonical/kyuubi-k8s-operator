@@ -64,7 +64,7 @@ jobs:
     needs:
       - release-checks
     name: Create charm refresh compatibility version git tag
-    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@6f9c6da60190e1860d33e82da04498a56ea64725 # v51.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@9cc78a0564fc32632bfc82dd3f7e5f5aaeabcd23 # v53.0.0
     with:
       track: ${{ needs.release-checks.outputs.track }}
     permissions:
@@ -81,7 +81,7 @@ jobs:
     needs:
       - ci-tests
       - release-checks
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@6f9c6da60190e1860d33e82da04498a56ea64725 # v51.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@9cc78a0564fc32632bfc82dd3f7e5f5aaeabcd23 # v53.0.0
     with:
       track: ${{ needs.release-checks.outputs.track }}
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
