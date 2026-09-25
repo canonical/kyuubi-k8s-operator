@@ -54,13 +54,11 @@ class KyuubiConfig(WithLogging):
     @property
     def _base_conf(self) -> dict[str, str]:
         """Return base Kyuubi configurations."""
-        # Kyuubi spells the strategy NONE/COMPLETED/ALL, the charm option is lower case.
-        cleanup_kind = self.charm_config.cleanup_terminated_driver_pods.value.upper()
         conf = {
             "kyuubi.session.engine.initialize.timeout": "PT10M",
             "kyuubi.frontend.protocols": "THRIFT_BINARY,REST",
             "kyuubi.frontend.rest.bind.host": "127.0.0.1",
-            "kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind": cleanup_kind,
+            "kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind": "COMPLETED",
         }
 
         if self.charm_config.gpu_enable:
