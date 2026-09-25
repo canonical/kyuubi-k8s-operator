@@ -9,11 +9,3 @@ class ExposeExternal(str, Enum):
     FALSE = "false"
     NODEPORT = "nodeport"
     LOADBALANCER = "loadbalancer"
-
-
-class CleanupDriverPods(str, Enum):
-    """Enum for the `cleanup-terminated-driver-pods` field."""
-
-    NONE = "none"
-    COMPLETED = "completed"
-    ALL = "all"
