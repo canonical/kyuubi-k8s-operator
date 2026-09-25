@@ -12,11 +12,9 @@ import yaml
 from spark_test.core.kyuubi import KyuubiClient
 from spark_test.utils import get_spark_executors
 
-from .helpers import (
-    deploy_minimal_kyuubi_setup,
-    fetch_connection_info,
-    get_leader_unit,
-)
+from .helpers.jdbc import fetch_connection_info
+from .helpers.juju import get_leader_unit
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)

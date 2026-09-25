@@ -17,12 +17,9 @@ from constants import (
     KYUUBI_CLIENT_RELATION_NAME,
 )
 
-from .helpers import (
-    deploy_minimal_kyuubi_setup,
-    fetch_connection_info,
-    get_leader_unit,
-    validate_sql_queries_with_kyuubi,
-)
+from .helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
+from .helpers.juju import get_leader_unit
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)

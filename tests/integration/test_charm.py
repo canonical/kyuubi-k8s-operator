@@ -7,13 +7,17 @@ from pathlib import Path
 from typing import cast
 
 import jubilant
+import lightkube
+import pytest
 import yaml
 
 from core.domain import Status
 
-from .helpers import (
-    fetch_connection_info,
-    validate_sql_queries_with_kyuubi,
+from .helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
+from .helpers.k8s import (
+    assert_security_context,
+    generate_container_securitycontext_map,
+    get_pod_names,
 )
 from .types import IntegrationTestsCharms, S3Info
 
@@ -21,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
+CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 
 
 def test_build_and_deploy_kyuubi(juju: jubilant.Juju, kyuubi_charm: Path) -> None:
@@ -155,6 +160,28 @@ def test_enable_authentication(
         lambda status: jubilant.all_active(status, APP_NAME, charm_versions.auth_db.app),
         delay=20,
         timeout=1000,
+    )
+
+
+@pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
+def test_container_security_context(
+    juju: jubilant.Juju,
+    container_name: str,
+) -> None:
+    """Test container security context is correctly set.
+
+    Verify that container spec defines the security context with correct
+    user ID and group ID.
+    """
+    model = cast(str, juju.model)
+    lightkube_client = lightkube.Client()
+    pod_name = get_pod_names(model, APP_NAME)[0]
+    assert_security_context(
+        lightkube_client,
+        pod_name,
+        container_name,
+        CONTAINERS_SECURITY_CONTEXT_MAP,
+        model,
     )
 
 

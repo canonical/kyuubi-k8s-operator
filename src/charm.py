@@ -16,7 +16,7 @@ import re
 
 import charm_refresh
 import ops
-from charms.data_platform_libs.v0.data_models import TypedCharmBase
+from charms.data_platform_libs.v1.data_models import TypedCharmBase
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
@@ -41,6 +41,7 @@ from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.provider import KyuubiClientProviderEvents
 from events.refresh import KyuubiRefresh
+from events.service_mesh import ServiceMeshEvents
 from events.tls import TLSEvents
 from events.zookeeper import ZookeeperEvents
 from managers.hive_metastore import HiveMetastoreManager
@@ -86,6 +87,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             self, self.context, self.workload
         )
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
+        self.service_mesh_events = ServiceMeshEvents(self, self.context, self.workload)
 
         # Monitoring/alerting (COS)
         # Prometheus

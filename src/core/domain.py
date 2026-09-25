@@ -16,12 +16,13 @@ from typing import MutableMapping
 import ops
 import yaml
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
+from lightkube.generic_resource import create_namespaced_resource
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
 
 from common.relation.domain import RelationState
-from constants import ADMIN_PASSWORD_KEY, TRUSTSTORE_SECRET_PREFIX
+from constants import ADMIN_PASSWORD_KEY, HUB_TRUSTSTORE_MOUNT_BASE, TRUSTSTORE_SECRET_PREFIX
 from managers.service import Endpoint, ServiceManager
 from utils.logging import WithLogging
 
@@ -140,7 +141,7 @@ class IntegrationHubTrustStore(WithLogging):
     @property
     def path(self) -> str:
         """The path where the truststore file should be synced to."""
-        return f"/{self.secret_name}/{self.file_name}"
+        return f"{HUB_TRUSTSTORE_MOUNT_BASE}/{self.secret_name}/{self.file_name}"
 
 
 class SparkServiceAccountInfo(RelationState):
@@ -570,3 +571,11 @@ class Secret(WithLogging):
         if not self.has_permission():
             return {}
         return self.model.get_secret(id=self.secret_id).get_content(refresh=True)
+
+
+PeerAuthentication = create_namespaced_resource(
+    group="security.istio.io",
+    version="v1beta1",
+    kind="PeerAuthentication",
+    plural="peerauthentications",
+)
