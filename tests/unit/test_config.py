@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2025 Canonical Limited
 # See LICENSE file for licensing details.
-
 import json
 import logging
 from pathlib import Path
@@ -17,9 +16,7 @@ from constants import KYUUBI_CONTAINER_NAME
 from core.domain import IntegrationHubTrustStore, Status
 from managers.service import Endpoint
 
-from .helpers import (
-    parse_spark_properties,
-)
+from .helpers import parse_spark_properties
 
 logger = logging.getLogger(__name__)
 

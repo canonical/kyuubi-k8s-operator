@@ -208,6 +208,10 @@ def test_zookeeper_relation_joined(
     )
     assert kyuubi_configurations["kyuubi.ha.zookeeper.auth.type"] == "DIGEST"
     assert (
+        kyuubi_configurations["kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind"]
+        == "COMPLETED"
+    )
+    assert (
         kyuubi_configurations["kyuubi.ha.zookeeper.auth.digest"]
         == f"{zookeeper_relation.remote_app_data['username']}:{zookeeper_relation.remote_app_data['password']}"
     )
