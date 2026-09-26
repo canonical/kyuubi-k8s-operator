@@ -11,12 +11,13 @@ package-mode = false
 python = ">=3.10,<4.0"
 ops = "^3.8.2"
 boto3 = ">=1.43.98"
-lightkube = ">=1.0.1"
+lightkube = "<1.0.0" # lightkube 1.0 is not supported by service mesh lib
 psycopg2 = "^2.9.13"
 tenacity = ">=9.1.4"
 charm-refresh = "^3.1.0.0"
 httpx = "^0.28.1"
 charmlibs-interfaces-certificate-transfer = "^1.0.0"
+charmlibs-interfaces-service-mesh = "^1.0.2"
 
 [tool.poetry.group.charm-libs.dependencies]
 ops = "^3.2.0"
@@ -64,7 +65,7 @@ optional = true
 pytest = ">=9.1.1"
 boto3 = ">=1.43.98"
 tenacity = "^9.1.4"
-spark8t = "^1.4.1"
+spark8t = "<1.4.1"
 spark-k8s-test = "^0.0.4"
 jubilant = "^1.13.0"
 tomli = "^2.4.1"
@@ -121,6 +122,7 @@ module = [
   "charms.spark_integration_hub_k8s.*",
   "spark8t.services",
   "charm_refresh",
+  "charmed_service_mesh_helpers",
 ]
 ignore_missing_imports = true
 
