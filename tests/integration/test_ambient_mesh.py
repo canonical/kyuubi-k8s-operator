@@ -128,7 +128,12 @@ def test_enable_ambient_mesh_integration_hub(
         f"{charm_versions.integration_hub.application_name}:service-mesh",
         f"{charm_versions.istio_beacon.application_name}:service-mesh",
     )
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=10)
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status, charm_versions.integration_hub.application_name
+        ),
+        delay=10,
+    )
     for pod_name in get_pod_names(
         cast(str, juju.model), charm_versions.integration_hub.application_name
     ):
