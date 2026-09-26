@@ -167,7 +167,7 @@ def has_authorization_policy_to_spark_driver(
     )
     kyuubi_principal = _spiffe_principal(kyuubi_namespace, kyuubi_service_account)
     kyuubi_allowed = _workload_auth_policy_exists(
-        workload_namespace=kyuubi_namespace, role="kyuubi", principal=kyuubi_principal
+        workload_namespace=kyuubi_namespace, role="driver", principal=kyuubi_principal
     )
     return workload_allowed and kyuubi_allowed
 
