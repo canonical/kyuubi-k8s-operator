@@ -120,7 +120,7 @@ def test_enable_ambient_mesh_integration_hub(
             "configmap",
             "-n",
             cast(str, juju.model),
-            f"juju-service-mesh-{APP_NAME}-labels",
+            f"juju-service-mesh-{charm_versions.integration_hub.application_name}-labels",
         ],
         check=True,
     )
