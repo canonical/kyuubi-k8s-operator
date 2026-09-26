@@ -14,16 +14,15 @@ import yaml
 
 from core.domain import Status
 
-from .helpers import (
+from .helpers.ha import (
     delete_pod,
-    deploy_minimal_kyuubi_setup,
-    fetch_connection_info,
     get_active_kyuubi_servers_list,
     get_kyuubi_pid,
     is_entire_cluster_responding_requests,
     kill_kyuubi_process,
-    run_sql_test_against_jdbc_endpoint,
 )
+from .helpers.jdbc import fetch_connection_info, run_sql_test_against_jdbc_endpoint
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
