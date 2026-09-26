@@ -6,6 +6,7 @@ import base64
 import logging
 import os
 import subprocess
+import uuid
 from pathlib import Path
 from platform import machine
 from string import Template
@@ -89,7 +90,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 149,
+            "hub": 161,
             "zk": 78,
             "tls": 586,
             "data": 362,
@@ -142,7 +143,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         ),
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",
-            channel="3/edge",
+            channel="3/edge/pr-242",
             revision=revisions["hub"],
             base="ubuntu@22.04",
             alias="integration-hub",
@@ -364,3 +365,15 @@ def context():
     """A common data store read+writeable by all tests."""
     context = {}
     return context
+
+
+@pytest.fixture(scope="module")
+def workload_namespace() -> str:
+    """Fixture to provide the Kyuubi workload namespace for testing."""
+    return str(uuid.uuid4())
+
+
+@pytest.fixture(scope="module")
+def workload_service_account() -> str:
+    """Fixture to provide the Kyuubi workload service account for testing."""
+    return str(uuid.uuid4())

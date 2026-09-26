@@ -23,7 +23,7 @@ from core.enums import ExposeExternal
 
 from ..types import IntegrationTestsCharms, S3Info
 from .auth import setup_jdbc_authentication, setup_ldap_authentication
-from .k8s import run_command_in_pod
+from .k8s import get_pods_by_label, run_command_in_pod
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ def deploy_minimal_kyuubi_setup(
     integrate_data_integrator=True,
     auth_mode: str = "jdbc",
     expose_external: ExposeExternal = ExposeExternal.FALSE,
+    config: dict[str, str] | None = None,
 ) -> None:
     deploy_args = {
         "app": APP_NAME,
@@ -79,6 +80,8 @@ def deploy_minimal_kyuubi_setup(
         "service-account": username,
         "expose-external": expose_external.value,
     }
+    if config:
+        charm_config.update(config)
     juju.config(APP_NAME, charm_config)
 
     # try to apply profile = testing
@@ -244,3 +247,21 @@ def inject_dependency_fault(original_charm_file: Path) -> Generator[Path, None, 
 
     fault_charm.unlink(missing_ok=True)
     tmp.rmdir()
+
+
+def get_kyuubi_spark_driver_pods(namespace: str | None = None) -> list[str]:
+    """Return the names of all Spark driver pods in the given namespace.
+
+    Args:
+        namespace: namespace to search in. If None, searches all namespaces.
+    """
+    return get_pods_by_label(labels={"spark-role": "driver"}, namespace=namespace)
+
+
+def get_kyuubi_spark_executor_pods(namespace: str | None = None) -> list[str]:
+    """Return the names of all Spark executor pods in the given namespace.
+
+    Args:
+        namespace: namespace to search in. If None, searches all namespaces.
+    """
+    return get_pods_by_label(labels={"spark-role": "executor"}, namespace=namespace)
