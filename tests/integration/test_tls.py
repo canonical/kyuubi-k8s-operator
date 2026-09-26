@@ -19,15 +19,14 @@ from thrift.transport.TTransport import TTransportException
 
 from core.domain import Status
 
-from .helpers import (
-    assert_service_status,
-    deploy_minimal_kyuubi_setup,
+from .helpers.jdbc import (
     fetch_connection_info,
     kyuubi_host_port_from_jdbc_uri,
-    mock_hostname_resolution,
     validate_sql_queries_with_kyuubi,
-    verify_certificate_matches_public_key,
 )
+from .helpers.k8s import assert_service_status
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
+from .helpers.tls import mock_hostname_resolution, verify_certificate_matches_public_key
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)
