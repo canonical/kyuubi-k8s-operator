@@ -156,7 +156,7 @@ def deploy_minimal_kyuubi_setup(
     )
 
     logger.info("Integrating kyuubi charm with integration-hub charm...")
-    juju.integrate(charm_versions.integration_hub.app, APP_NAME)
+    juju.integrate(charm_versions.integration_hub.app, f"{APP_NAME}:spark-service-account")
 
     logger.info("Waiting for s3-integrator and integration_hub charms to be idle and active...")
     juju.wait(

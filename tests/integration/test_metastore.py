@@ -292,7 +292,7 @@ def test_remove_relations(juju: jubilant.Juju, charm_versions: IntegrationTestsC
     """Remove relation between kyuubi and other apps in the model."""
     juju.remove_relation(f"{APP_NAME}:metastore-db", charm_versions.metastore_db.app)
     juju.remove_relation(f"{APP_NAME}:auth-db", charm_versions.auth_db.app)
-    juju.remove_relation(APP_NAME, charm_versions.integration_hub.app)
+    juju.remove_relation(f"{APP_NAME}:spark-service-account", charm_versions.integration_hub.app)
     juju.wait(jubilant.all_agents_idle, delay=2)
     juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5)
 
