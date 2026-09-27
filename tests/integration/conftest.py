@@ -90,7 +90,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 161,
+            "hub": 161,  # 3/edge/pr-242TODO: update revision
             "zk": 78,
             "tls": 586,
             "data": 362,
@@ -143,7 +143,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         ),
         integration_hub=TestCharm(
             name="spark-integration-hub-k8s",
-            channel="3/edge/pr-242",
+            channel="3/edge",
             revision=revisions["hub"],
             base="ubuntu@22.04",
             alias="integration-hub",
