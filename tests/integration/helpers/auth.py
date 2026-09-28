@@ -32,8 +32,6 @@ LDAP_TEST_USER_EMAIL = "bikalpa@glauth.com"
 LDAP_TEST_USER_CUSTOM_ID = "dhakal"
 LDAP_TEST_PASSWORD = "bikalpa"
 
-LATEST_STABLE_REV = 112
-
 
 def apply_sample_users_ldif(juju: jubilant.Juju, charm_versions: IntegrationTestsCharms) -> None:
     """Apply a sample LDIF file to the glauth-k8s charm to create users for LDAP authentication."""

@@ -88,10 +88,8 @@ jobs:
       arch: arm64
     secrets: inherit
 
-  # TODO: Re-enable refresh tests when we have revisions to refresh from in channel 4.0/edge
   refresh-tests:
     name: Inplace upgrades
-    if: false
     needs:
       - lint
       - unit-tests
