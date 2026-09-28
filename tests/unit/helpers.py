@@ -21,5 +21,5 @@ def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
     file_path = tmp_path / Path(KYUUBI_PROPERTIES).relative_to("/opt")
     with file_path.open("r") as fid:
         return dict(
-            row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
+            row.split("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
         )
