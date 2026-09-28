@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
-LATEST_STABLE_REV = 112
+LATEST_STABLE_REV = 181
 
 
 def get_random_name():
