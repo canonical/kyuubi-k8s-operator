@@ -54,7 +54,7 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "3.5/edge",
+        "channel": "3.4/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
         "revision": LATEST_STABLE_CHARM_REVISION,
