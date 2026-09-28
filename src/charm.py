@@ -41,6 +41,7 @@ from events.kyuubi import KyuubiEvents
 from events.metastore import MetastoreEvents
 from events.provider import KyuubiClientProviderEvents
 from events.refresh import KyuubiRefresh
+from events.service_mesh import ServiceMeshEvents
 from events.tls import TLSEvents
 from events.zookeeper import ZookeeperEvents
 from managers.hive_metastore import HiveMetastoreManager
@@ -86,6 +87,7 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             self, self.context, self.workload
         )
         self.provider_events = KyuubiClientProviderEvents(self, self.context, self.workload)
+        self.service_mesh_events = ServiceMeshEvents(self, self.context, self.workload)
 
         # Monitoring/alerting (COS)
         # Prometheus
