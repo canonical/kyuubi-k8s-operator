@@ -16,6 +16,7 @@ from typing import MutableMapping
 import ops
 import yaml
 from charms.data_platform_libs.v0.data_interfaces import Data, DataPeerData
+from lightkube.generic_resource import create_namespaced_resource
 from ops import Application, Relation, Unit
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from typing_extensions import override
@@ -570,3 +571,11 @@ class Secret(WithLogging):
         if not self.has_permission():
             return {}
         return self.model.get_secret(id=self.secret_id).get_content(refresh=True)
+
+
+PeerAuthentication = create_namespaced_resource(
+    group="security.istio.io",
+    version="v1beta1",
+    kind="PeerAuthentication",
+    plural="peerauthentications",
+)
