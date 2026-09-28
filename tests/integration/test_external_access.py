@@ -10,13 +10,10 @@ from typing import cast
 import jubilant
 import yaml
 
-from .helpers import (
-    assert_service_status,
-    deploy_minimal_kyuubi_setup,
-    fetch_connection_info,
-    is_entire_cluster_responding_requests,
-    run_sql_test_against_jdbc_endpoint,
-)
+from .helpers.ha import is_entire_cluster_responding_requests
+from .helpers.jdbc import fetch_connection_info, run_sql_test_against_jdbc_endpoint
+from .helpers.k8s import assert_service_status
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms, S3Info
 
 logger = logging.getLogger(__name__)

@@ -13,12 +13,9 @@ from thrift.transport.TTransport import TTransportException
 
 from core.domain import Status
 
-from .helpers import (
-    LDAP_TEST_PASSWORD,
-    LDAP_TEST_USERNAME,
-    deploy_minimal_kyuubi_setup,
-    validate_sql_queries_with_kyuubi,
-)
+from .helpers.auth import LDAP_TEST_PASSWORD, LDAP_TEST_USERNAME
+from .helpers.jdbc import validate_sql_queries_with_kyuubi
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup
 from .types import IntegrationTestsCharms
 
 logger = logging.getLogger(__name__)

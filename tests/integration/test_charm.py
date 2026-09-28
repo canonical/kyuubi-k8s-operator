@@ -13,12 +13,11 @@ import yaml
 
 from core.domain import Status
 
-from .helpers import (
+from .helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
+from .helpers.k8s import (
     assert_security_context,
-    fetch_connection_info,
     generate_container_securitycontext_map,
     get_pod_names,
-    validate_sql_queries_with_kyuubi,
 )
 from .types import IntegrationTestsCharms, S3Info
 
