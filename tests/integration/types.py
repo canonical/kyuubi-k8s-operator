@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+
+from enum import Enum
 from typing import TypedDict
 
 from pydantic import BaseModel
@@ -70,3 +72,13 @@ class IntegrationTestsCharms(BaseModel):
     glauth: TestCharm
     glauth_utils: TestCharm
     ldap_tls: TestCharm
+    ldap_db: TestCharm
+    grafana_agent: TestCharm
+    otel_collector: TestCharm
+
+
+class TelemetryAgent(Enum):
+    """The different possible telemetry agents for the history server charm."""
+
+    GRAFANA_AGENT = "grafana-agent"
+    OTEL_COLLECTOR = "otel-collector"
