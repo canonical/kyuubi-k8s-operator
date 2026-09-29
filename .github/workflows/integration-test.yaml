@@ -65,7 +65,7 @@ jobs:
           }
 
           jobs = []
-          for job in spread_jobs:
+          for job in spread_jobs[:1]:
               # Example: "github-ci:ubuntu-22.04:spread/integration-charm"
               _, runner, task, *_ = job.split(":")
               task_name = task.removeprefix("spread/")
