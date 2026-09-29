@@ -5,10 +5,10 @@
 
 import json
 import logging
-from pathlib import Path
 from unittest.mock import patch
 
 from ops.testing import Container, Context, PeerRelation, Relation, Secret, State
+from tests.unit.helpers import parse_kyuubi_configurations
 
 from constants import LDAP_RELATION_NAME
 from core.domain import Status
@@ -16,22 +16,11 @@ from managers.service import Endpoint
 
 logger = logging.getLogger(__name__)
 
-KYUUBI_PROPERTIES = "/opt/kyuubi/conf/kyuubi-defaults.conf"
-
 LDAP_BASE_DN = "dc=glauth,dc=com"
 LDAP_BIND_DN = "cn=serviceuser,ou=svcaccts,dc=glauth,dc=com"
 LDAP_BIND_PASSWORD = "bind-password"
 LDAP_URLS = ["ldap://glauth-k8s.test:3893"]
 LDAPS_URLS = ["ldaps://glauth-k8s.test:6360"]
-
-
-def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
-    """Parse and return Kyuubi configurations from the conf file in the container."""
-    file_path = tmp_path / Path(KYUUBI_PROPERTIES).relative_to("/opt")
-    with file_path.open("r") as fid:
-        return dict(
-            row.split("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
-        )
 
 
 def build_ldap_secret() -> Secret:
