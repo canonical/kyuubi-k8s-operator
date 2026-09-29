@@ -24,6 +24,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     generate_private_key,
 )
 from ops.testing import Context, PeerRelation, Relation, Secret, State
+from tests.unit.helpers import parse_kyuubi_configurations
 
 from charm import KyuubiCharm
 from constants import KYUUBI_CLIENT_RELATION_NAME, PEER_REL, TLS_REL
@@ -36,17 +37,7 @@ TLS_NAME = "self-signed-certificates"
 CONFIG = yaml.safe_load(Path("./config.yaml").read_text())
 ACTIONS = yaml.safe_load(Path("./actions.yaml").read_text())
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
-KYUUBI_PROPERTIES = "/opt/kyuubi/conf/kyuubi-defaults.conf"
 KYUUBI_TLS_CONF_DIR = "/opt/kyuubi/conf/"
-
-
-def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
-    """Parse and return Kyuubi configurations from the conf file in the container."""
-    file_path = tmp_path / Path(KYUUBI_PROPERTIES).relative_to("/opt")
-    with file_path.open("r") as fid:
-        return dict(
-            row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
-        )
 
 
 def validate_file_contents(test_path, file_path, file_content):

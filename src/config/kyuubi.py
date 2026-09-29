@@ -58,6 +58,7 @@ class KyuubiConfig(WithLogging):
             "kyuubi.session.engine.initialize.timeout": "PT10M",
             "kyuubi.frontend.protocols": "THRIFT_BINARY,REST",
             "kyuubi.frontend.rest.bind.host": "127.0.0.1",
+            "kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind": "COMPLETED",
         }
 
         if self.charm_config.gpu_enable:
