@@ -32,8 +32,8 @@ DB_NAME = "inplace_db"
 TABLE_NAME = "inplace_table"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 
-# spark-4.0.2, release date 31/08/2026
-WORKLOAD_IMAGE_UPGRADE = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:44c2321ee95c08a6f04536d4be17211ce9bc65d6d632e8cc189070147cf862e7"
+# spark-4.0.2, release date 23/06/2026
+WORKLOAD_IMAGE_UPGRADE = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:533273d788cb9726586b5cf5297ee670b018e40e137bcf8f34f661b6fe74544a"
 
 
 def test_deploy(
