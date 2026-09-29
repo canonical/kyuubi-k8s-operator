@@ -42,7 +42,7 @@ backends:
       VM_NAME="${VM_NAME:-${SPREAD_SYSTEM//./-}-${hash}}"
       lxc delete --force "${VM_NAME}"
     systems:
-      - ubuntu-22.04:
+      - ubuntu-24.04:
           username: runner
     prepare: |
       systemctl disable --now unattended-upgrades.service
