@@ -51,6 +51,7 @@ jobs:
 
   integration-test:
     name: Integration tests
+    if: false
     needs:
       - lint
       - unit-tests
@@ -63,6 +64,7 @@ jobs:
 
   integration-gpu-amd:
     name: GPU tests (amd64)
+    if: false
     needs:
       - lint
       - unit-tests

@@ -215,6 +215,12 @@ def test_run_inplace_upgrade(
     delete_engines_pod(juju.model)
 
 
+def test_sleep():
+    import time
+
+    time.sleep(60 * 60)
+
+
 def test_create_new_data(
     juju: jubilant.Juju, with_tls: bool, with_ldap: bool, charm_versions: IntegrationTestsCharms
 ) -> None:
