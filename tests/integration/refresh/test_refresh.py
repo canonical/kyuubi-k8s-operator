@@ -13,6 +13,7 @@ We are talking about a test matrix with:
 
 import logging
 from pathlib import Path
+from typing import cast
 
 import jubilant
 import pytest
@@ -211,13 +212,7 @@ def test_run_inplace_upgrade(
 
     # kill all existing engines to free up resources in runners.
 
-    delete_engines_pod(juju.model)
-
-
-# def test_sleep():
-#     import time
-
-#     time.sleep(60 * 60)
+    delete_engines_pod(cast(str, juju.model))
 
 
 def test_create_new_data(
