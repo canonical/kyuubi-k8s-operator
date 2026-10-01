@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
-LATEST_STABLE_REV = 181
+LATEST_STABLE_CHARM_REVISION = 181
+LATEST_STABLE_IMAGE_REVISION = 25
 
 
 def get_random_name():
@@ -53,10 +54,11 @@ def deploy_minimal_kyuubi_setup(
     deploy_args = {
         "app": APP_NAME,
         "num_units": num_units,
-        "channel": "3.5/edge",
+        "channel": "4.0/edge",
         "base": "ubuntu@22.04",
         "trust": trust,
-        "revision": LATEST_STABLE_REV,
+        "revision": LATEST_STABLE_CHARM_REVISION,
+        "resources": {"kyuubi-image": LATEST_STABLE_IMAGE_REVISION},
     }
     if not deploy_from_charmhub:
         image_version = METADATA["resources"]["kyuubi-image"]["upstream-source"]

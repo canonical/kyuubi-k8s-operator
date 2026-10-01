@@ -13,6 +13,7 @@ We are talking about a test matrix with:
 
 import logging
 from pathlib import Path
+from typing import cast
 
 import jubilant
 import pytest
@@ -32,9 +33,8 @@ DB_NAME = "inplace_db"
 TABLE_NAME = "inplace_table"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 
-# spark-3.4.4, release date 01/01/25
-# It should not be necessary to use a 4.0 specific image here.
-WORKLOAD_IMAGE_UPGRADE = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:86fc84c8d01da25f756bebbae17395ef9702a8fd855565a4a80ed5d4f8024708"
+# spark-4.0.2, release date 23/06/2026
+WORKLOAD_IMAGE_UPGRADE = "ghcr.io/canonical/charmed-spark-kyuubi@sha256:533273d788cb9726586b5cf5297ee670b018e40e137bcf8f34f661b6fe74544a"
 
 
 def test_deploy(
@@ -212,7 +212,7 @@ def test_run_inplace_upgrade(
 
     # kill all existing engines to free up resources in runners.
 
-    delete_engines_pod(juju.model)
+    delete_engines_pod(cast(str, juju.model))
 
 
 def test_create_new_data(
