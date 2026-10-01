@@ -107,6 +107,13 @@ def test_enable_ambient_mesh_kyuubi(
     assert has_kyuubi_jdbc_peer_authentication(cast(str, juju.model), APP_NAME)
 
 
+def test_sleep():
+    logger.error("sleeping")
+    import time
+
+    time.sleep(60 * 60)
+
+
 def test_enable_ambient_mesh_integration_hub(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
