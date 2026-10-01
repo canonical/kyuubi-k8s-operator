@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 from ops.testing import Container, Context, Relation, State, TCPPort
@@ -14,21 +13,11 @@ from core.domain import Status
 from managers.service import Endpoint
 
 from .helpers import (
+    parse_kyuubi_configurations,
     parse_spark_properties,
 )
 
 logger = logging.getLogger(__name__)
-SPARK_PROPERTIES = "/etc/spark8t/conf/spark-defaults.conf"
-KYUUBI_PROPERTIES = "/opt/kyuubi/conf/kyuubi-defaults.conf"
-
-
-def parse_kyuubi_configurations(tmp_path: Path) -> dict[str, str]:
-    """Parse and return Kyuubi configurations from the conf file in the container."""
-    file_path = tmp_path / Path(KYUUBI_PROPERTIES).relative_to("/opt")
-    with file_path.open("r") as fid:
-        return dict(
-            row.rsplit("=", maxsplit=1) for line in fid.readlines() if (row := line.strip())
-        )
 
 
 def test_start_kyuubi(kyuubi_context: Context) -> None:
@@ -207,6 +196,10 @@ def test_zookeeper_relation_joined(
         kyuubi_configurations["kyuubi.ha.addresses"] == zookeeper_relation.remote_app_data["uris"]
     )
     assert kyuubi_configurations["kyuubi.ha.zookeeper.auth.type"] == "DIGEST"
+    assert (
+        kyuubi_configurations["kyuubi.kubernetes.spark.cleanupTerminatedDriverPod.kind"]
+        == "COMPLETED"
+    )
     assert (
         kyuubi_configurations["kyuubi.ha.zookeeper.auth.digest"]
         == f"{zookeeper_relation.remote_app_data['username']}:{zookeeper_relation.remote_app_data['password']}"
