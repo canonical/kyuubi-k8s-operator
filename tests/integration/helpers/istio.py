@@ -118,15 +118,18 @@ def _spiffe_principal(workload_namespace: str, workload_service_account: str) ->
 
 
 def _is_managed_by_integration_hub(policy) -> bool:
+    """Check if the given policy is managed by the integration hub."""
     labels = (policy.metadata.labels or {}) if policy.metadata else {}
     return labels.get(MANAGED_BY_LABEL) == MANAGED_BY_INTEGRATION_HUB
 
 
 def _policy_selector_labels(policy) -> dict[str, str]:
+    """Get the selector labels from the given policy."""
     return (policy.spec or {}).get("selector", {}).get("matchLabels", {})
 
 
 def _policy_principals(policy) -> set[str]:
+    """Get the SPIFFE principals from the given policy."""
     principals: set[str] = set()
     for rule in (policy.spec or {}).get("rules", []):
         for source_rule in rule.get("from", []):
