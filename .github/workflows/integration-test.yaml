@@ -145,8 +145,8 @@ jobs:
           pattern: ${{ inputs.artifact-prefix }}-*
           merge-multiple: true
 
-      - name: Setup upterm session
-        uses: owenthereal/action-upterm@v2
+      # - name: Setup upterm session
+      #   uses: owenthereal/action-upterm@v2
 
       - name: Run spread job
         timeout-minutes: 110
@@ -179,6 +179,11 @@ jobs:
         timeout-minutes: 3
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
         run: sudo juju debug-log --color --replay --no-tail | tee ~/logs/juju-debug-log.txt
+
+      - name: Integration hub pebble logs
+        timeout-minutes: 3
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo kubectl logs -c integration-hub -n testing integration-hub-0  | tee ~/logs/integration-hub-pebble-logs.txt
 
       - name: Disk usage
         timeout-minutes: 1

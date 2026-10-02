@@ -89,8 +89,6 @@ def test_access_from_unmeshed_pod_before_meshing(
 def test_enable_ambient_mesh_kyuubi(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
-    workload_namespace: str,
-    workload_service_account: str,
 ) -> None:
     """Enable ambient mesh for the deployed Kyuubi setup."""
     deploy_istio_mesh_setup(
@@ -107,11 +105,11 @@ def test_enable_ambient_mesh_kyuubi(
     assert has_kyuubi_jdbc_peer_authentication(cast(str, juju.model), APP_NAME)
 
 
-def test_sleep():
-    logger.error("sleeping")
-    import time
+# def test_sleep():
+#     logger.error("sleeping")
+#     import time
 
-    time.sleep(60 * 60)
+#     time.sleep(60 * 60)
 
 
 def test_enable_ambient_mesh_integration_hub(
