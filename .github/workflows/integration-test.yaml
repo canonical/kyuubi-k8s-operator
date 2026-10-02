@@ -145,6 +145,9 @@ jobs:
           pattern: ${{ inputs.artifact-prefix }}-*
           merge-multiple: true
 
+      - name: Setup upterm session
+        uses: owenthereal/action-upterm@v2
+
       - name: Run spread job
         timeout-minutes: 110
         id: spread
@@ -185,12 +188,12 @@ jobs:
       - name: Spark driver logs
         timeout-minutes: 1
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
-        run: sudo kubectl logs -n default -l spark-role=driver --all-containers=true --prefix=true | tee ~/logs/spark-driver-logs.txt
+        run: sudo kubectl logs -n testing -l spark-role=driver --all-containers=true --prefix=true | tee ~/logs/spark-driver-logs.txt
 
       - name: Spark executor logs
         timeout-minutes: 1
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
-        run: sudo kubectl logs -n default -l spark-role=executor --all-containers=true --prefix=true | tee ~/logs/spark-executor-logs.txt
+        run: sudo kubectl logs -n testing -l spark-role=executor --all-containers=true --prefix=true | tee ~/logs/spark-executor-logs.txt
 
       - name: Integration hub pebble logs
         timeout-minutes: 3

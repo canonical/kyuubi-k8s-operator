@@ -186,6 +186,12 @@ def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     assert curl_process.returncode != 0
 
 
+def test_sleep():
+    import time
+
+    time.sleep(60 * 60)
+
+
 def test_sql_queries_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
