@@ -177,6 +177,21 @@ jobs:
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
         run: sudo juju debug-log --color --replay --no-tail | tee ~/logs/juju-debug-log.txt
 
+      - name: kubectl get all -A
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo kubectl get all -A | tee ~/logs/kubectl-get-all.txt
+
+      - name: Spark driver logs
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo kubectl logs -n default -l spark-role=driver --all-containers=true --prefix=true | tee ~/logs/spark-driver-logs.txt
+
+      - name: Spark executor logs
+        timeout-minutes: 1
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo kubectl logs -n default -l spark-role=executor --all-containers=true --prefix=true | tee ~/logs/spark-executor-logs.txt
+
       - name: Integration hub pebble logs
         timeout-minutes: 3
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
