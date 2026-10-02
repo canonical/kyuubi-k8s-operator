@@ -197,6 +197,11 @@ jobs:
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
         run: sudo kubectl logs -c integration-hub -n testing integration-hub-0  | tee ~/logs/integration-hub-pebble-logs.txt
 
+      - name: Kyuubi pebble logs
+        timeout-minutes: 3
+        if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
+        run: sudo kubectl logs -c kyuubi -n testing kyuubi-k8s-0  | tee ~/logs/kyuubi-pebble-logs.txt
+
       - name: Disk usage
         timeout-minutes: 1
         if: ${{ success() || (failure() && steps.spread.outcome == 'failure') }}
