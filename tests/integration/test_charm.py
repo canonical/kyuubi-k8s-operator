@@ -130,7 +130,7 @@ def test_integration_with_integration_hub(
 ) -> None:
     """Test the integration with integration hub."""
     logger.info("Integrating kyuubi charm with integration-hub charm...")
-    juju.integrate(charm_versions.integration_hub.app, APP_NAME)
+    juju.integrate(charm_versions.integration_hub.app, f"{APP_NAME}:spark-service-account")
 
     logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
     juju.wait(

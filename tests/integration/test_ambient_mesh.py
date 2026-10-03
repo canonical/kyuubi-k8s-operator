@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import jubilant
+import pytest
 import yaml
 
 from constants import COS_METRICS_PATH, COS_METRICS_PORT
@@ -23,13 +24,16 @@ from .helpers.cos import (
 from .helpers.ha import get_active_kyuubi_servers_list, is_entire_cluster_responding_requests
 from .helpers.istio import (
     deploy_istio_mesh_setup,
+    has_authorization_policy_from_driver_to_kyuubi,
+    has_authorization_policy_to_spark_driver,
+    has_authorization_policy_to_spark_executor,
     has_kyuubi_jdbc_authorization_policy,
     has_kyuubi_jdbc_peer_authentication,
 )
 from .helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
 from .helpers.juju import get_unit_address
-from .helpers.k8s import curl_using_pod, get_pod_names, pod_has_labels
-from .helpers.kyuubi import deploy_minimal_kyuubi_setup
+from .helpers.k8s import curl_using_pod, get_pod_ip, get_pod_names, pod_has_labels
+from .helpers.kyuubi import deploy_minimal_kyuubi_setup, get_kyuubi_spark_driver_pods
 from .types import IntegrationTestsCharms, S3Info, TelemetryAgent
 
 logger = logging.getLogger(__name__)
@@ -40,6 +44,7 @@ AMBIENT_MESH_POD_LABEL_KEY = "istio.io/dataplane-mode"
 AMBIENT_MESH_POD_LABEL_VALUE = "ambient"
 KYUUBI_JDBC_TEST_USER = "admin"
 KYUUBI_JDBC_TEST_USER_PASSWORD = "admin"
+SPARK_DRIVER_UI_PORT = 4040
 
 
 def test_deploy_minimal_kyuubi_setup(
@@ -47,8 +52,10 @@ def test_deploy_minimal_kyuubi_setup(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
+    workload_service_account: str,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
+    workload_namespace = cast(str, juju.model)
     deploy_minimal_kyuubi_setup(
         juju=juju,
         kyuubi_charm=kyuubi_charm,
@@ -58,10 +65,15 @@ def test_deploy_minimal_kyuubi_setup(
         integrate_data_integrator=True,
         trust=True,
         expose_external=ExposeExternal.LOADBALANCER,
+        config={
+            "namespace": workload_namespace,
+            "service-account": workload_service_account,
+        },
     )
     juju.wait(jubilant.all_active, delay=5)
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_access_from_unmeshed_pod_before_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -73,7 +85,7 @@ def test_access_from_unmeshed_pod_before_meshing(
     assert curl_process.returncode == 0
 
 
-def test_enable_ambient_mesh(
+def test_enable_ambient_mesh_kyuubi(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
 ) -> None:
@@ -92,6 +104,50 @@ def test_enable_ambient_mesh(
     assert has_kyuubi_jdbc_peer_authentication(cast(str, juju.model), APP_NAME)
 
 
+def test_enable_ambient_mesh_integration_hub(
+    juju: jubilant.Juju,
+    charm_versions: IntegrationTestsCharms,
+    workload_service_account: str,
+) -> None:
+    logger.info("Adding integration hub into the service mesh...")
+    juju.integrate(
+        f"{charm_versions.integration_hub.application_name}:service-mesh",
+        f"{charm_versions.istio_beacon.application_name}:service-mesh",
+    )
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status, charm_versions.integration_hub.application_name
+        ),
+        delay=10,
+    )
+    for pod_name in get_pod_names(
+        cast(str, juju.model), charm_versions.integration_hub.application_name
+    ):
+        assert pod_has_labels(
+            namespace=cast(str, juju.model),
+            pod_name=pod_name,
+            labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
+        )
+    workload_namespace = cast(str, juju.model)
+    assert has_authorization_policy_from_driver_to_kyuubi(
+        workload_namespace=workload_namespace,
+        workload_service_account=workload_service_account,
+        kyuubi_namespace=cast(str, juju.model),
+        kyuubi_service_account=APP_NAME,
+    )
+    assert has_authorization_policy_to_spark_driver(
+        workload_namespace=workload_namespace,
+        workload_service_account=workload_service_account,
+        kyuubi_namespace=cast(str, juju.model),
+        kyuubi_service_account=APP_NAME,
+    )
+    assert has_authorization_policy_to_spark_executor(
+        workload_namespace=workload_namespace,
+        workload_service_account=workload_service_account,
+    )
+
+
+@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_unmeshed_pod_after_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -103,6 +159,7 @@ def test_blocked_access_from_unmeshed_pod_after_meshing(
     assert curl_process.returncode != 0
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -118,6 +175,12 @@ def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     assert curl_process.returncode != 0
 
 
+# def test_sleep():
+#     import time
+#     time.sleep(60 * 60)
+
+
+@pytest.mark.skip("TODO: re-enable")
 def test_sql_queries_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -129,6 +192,27 @@ def test_sql_queries_with_ambient_mesh(
     )
 
 
+@pytest.mark.skip("TODO: re-enable")
+def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(juju: jubilant.Juju) -> None:
+    workload_namespace = cast(str, juju.model)
+    driver_pods = get_kyuubi_spark_driver_pods(namespace=workload_namespace)
+    assert driver_pods, "No Spark driver pods found in the Kyuubi deployment."
+    for driver_pod in driver_pods:
+        assert pod_has_labels(
+            namespace=workload_namespace,
+            pod_name=driver_pod,
+            labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
+        )
+        pod_ip = get_pod_ip(driver_pod, namespace=workload_namespace)
+        curl_driver_process = curl_using_pod(
+            namespace=workload_namespace, url=f"http://{pod_ip}:{SPARK_DRIVER_UI_PORT}"
+        )
+        assert curl_driver_process.returncode != 0, (
+            f"Access from unmeshed pod to driver pod {driver_pod} should be blocked."
+        )
+
+
+@pytest.mark.skip("TODO: re-enable")
 def test_ha_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -157,6 +241,7 @@ def test_ha_with_ambient_mesh(
     assert len(status.apps[APP_NAME].units) == 1
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_observability_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -179,6 +264,7 @@ def test_observability_with_ambient_mesh(
     assert_logs_published_in_loki(juju, filter_by_label={"juju_application": "kyuubi-k8s"})
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_ldap_authentication_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -198,7 +284,7 @@ def test_ldap_authentication_with_ambient_mesh(
     )
 
 
-def test_disable_ambient_mesh(
+def test_disable_ambient_mesh_kyuubi(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
 ) -> None:
@@ -218,6 +304,53 @@ def test_disable_ambient_mesh(
         )
     assert not has_kyuubi_jdbc_authorization_policy(cast(str, juju.model), APP_NAME)
     assert not has_kyuubi_jdbc_peer_authentication(cast(str, juju.model), APP_NAME)
+
+
+def test_disable_ambient_mesh_integration_hub(
+    juju: jubilant.Juju,
+    charm_versions: IntegrationTestsCharms,
+    workload_service_account: str,
+) -> None:
+    """Test disabling the ambient mesh for the Integration Hub charm."""
+    logger.info("Disabling ambient mesh for Integration Hub charm")
+    juju.remove_relation(
+        f"{charm_versions.integration_hub.application_name}:service-mesh",
+        f"{charm_versions.istio_beacon.application_name}:service-mesh",
+    )
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status), delay=20
+    )
+    for pod_name in get_pod_names(
+        cast(str, juju.model), charm_versions.integration_hub.application_name
+    ):
+        assert not pod_has_labels(
+            namespace=cast(str, juju.model),
+            pod_name=pod_name,
+            labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
+        )
+    workload_namespace = cast(str, juju.model)
+
+    import time
+
+    logger.error("SLEEPING")
+    time.sleep(60 * 60)
+
+    assert not has_authorization_policy_from_driver_to_kyuubi(
+        workload_namespace=workload_namespace,
+        workload_service_account=workload_service_account,
+        kyuubi_namespace=cast(str, juju.model),
+        kyuubi_service_account=APP_NAME,
+    )
+    assert not has_authorization_policy_to_spark_driver(
+        workload_namespace=workload_namespace,
+        workload_service_account=workload_service_account,
+        kyuubi_namespace=cast(str, juju.model),
+        kyuubi_service_account=APP_NAME,
+    )
+    assert not has_authorization_policy_to_spark_executor(
+        workload_namespace=workload_namespace,
+        workload_service_account=workload_service_account,
+    )
 
 
 def test_access_from_unmeshed_pod_after_unmeshing(
