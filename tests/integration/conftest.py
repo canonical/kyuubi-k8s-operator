@@ -90,7 +90,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 161,  # 3/edge/pr-242 TODO: update revision
+            "hub": 164,
             "zk": 78,
             "tls": 586,
             "data": 362,
@@ -104,7 +104,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "arm64": {
             "s3": 332,
             "postgres": 775,
-            "hub": 150,
+            "hub": 165,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 585,
             "data": 359,

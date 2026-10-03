@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import subprocess
 from pathlib import Path
 from typing import cast
 
@@ -67,7 +66,7 @@ def test_deploy_minimal_kyuubi_setup(
         trust=True,
         expose_external=ExposeExternal.LOADBALANCER,
         config={
-            "namespace": workload_namespace,
+            "namespace": str(juju.model),
             "service-account": workload_service_account,
         },
     )
@@ -112,18 +111,6 @@ def test_enable_ambient_mesh_integration_hub(
     workload_service_account: str,
 ) -> None:
     logger.info("Adding integration hub into the service mesh...")
-    # TODO: Remove this hack, once https://github.com/canonical/service-mesh/issues/813 is fixed
-    subprocess.run(
-        [
-            "kubectl",
-            "create",
-            "configmap",
-            "-n",
-            cast(str, juju.model),
-            f"juju-service-mesh-{charm_versions.integration_hub.application_name}-labels",
-        ],
-        check=True,
-    )
     juju.integrate(
         f"{charm_versions.integration_hub.application_name}:service-mesh",
         f"{charm_versions.istio_beacon.application_name}:service-mesh",
@@ -143,19 +130,19 @@ def test_enable_ambient_mesh_integration_hub(
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
     assert has_authorization_policy_from_driver_to_kyuubi(
-        workload_namespace=workload_namespace,
+        workload_namespace=str(juju.model),
         workload_service_account=workload_service_account,
         kyuubi_namespace=cast(str, juju.model),
         kyuubi_service_account=APP_NAME,
     )
     assert has_authorization_policy_to_spark_driver(
-        workload_namespace=workload_namespace,
+        workload_namespace=str(juju.model),
         workload_service_account=workload_service_account,
         kyuubi_namespace=cast(str, juju.model),
         kyuubi_service_account=APP_NAME,
     )
     assert has_authorization_policy_to_spark_executor(
-        workload_namespace=workload_namespace,
+        workload_namespace=str(juju.model),
         workload_service_account=workload_service_account,
     )
 
