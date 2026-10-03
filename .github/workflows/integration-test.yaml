@@ -82,7 +82,7 @@ jobs:
                   continue
 
               if task_name != "integration-service-mesh":
-              continue
+                  continue
 
               architecture = "arm64" if runner.endswith("-arm") else "amd64"
               name = f"{task_name} | {architecture} ({runner})"
