@@ -52,10 +52,10 @@ def test_deploy_minimal_kyuubi_setup(
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
     s3_bucket_and_creds: S3Info,
-    workload_namespace: str,
     workload_service_account: str,
 ) -> None:
     """Deploy the minimal setup for Kyuubi and assert all charms are in active and idle state."""
+    workload_namespace = cast(str, juju.model)
     deploy_minimal_kyuubi_setup(
         juju=juju,
         kyuubi_charm=kyuubi_charm,
@@ -66,7 +66,7 @@ def test_deploy_minimal_kyuubi_setup(
         trust=True,
         expose_external=ExposeExternal.LOADBALANCER,
         config={
-            "namespace": str(juju.model),
+            "namespace": workload_namespace,
             "service-account": workload_service_account,
         },
     )
@@ -107,7 +107,6 @@ def test_enable_ambient_mesh_kyuubi(
 def test_enable_ambient_mesh_integration_hub(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
-    workload_namespace: str,
     workload_service_account: str,
 ) -> None:
     logger.info("Adding integration hub into the service mesh...")
@@ -129,20 +128,21 @@ def test_enable_ambient_mesh_integration_hub(
             pod_name=pod_name,
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
+    workload_namespace = cast(str, juju.model)
     assert has_authorization_policy_from_driver_to_kyuubi(
-        workload_namespace=str(juju.model),
+        workload_namespace=workload_namespace,
         workload_service_account=workload_service_account,
         kyuubi_namespace=cast(str, juju.model),
         kyuubi_service_account=APP_NAME,
     )
     assert has_authorization_policy_to_spark_driver(
-        workload_namespace=str(juju.model),
+        workload_namespace=workload_namespace,
         workload_service_account=workload_service_account,
         kyuubi_namespace=cast(str, juju.model),
         kyuubi_service_account=APP_NAME,
     )
     assert has_authorization_policy_to_spark_executor(
-        workload_namespace=str(juju.model),
+        workload_namespace=workload_namespace,
         workload_service_account=workload_service_account,
     )
 
@@ -173,10 +173,9 @@ def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     assert curl_process.returncode != 0
 
 
-def test_sleep():
-    import time
-
-    time.sleep(60 * 60)
+# def test_sleep():
+#     import time
+#     time.sleep(60 * 60)
 
 
 def test_sql_queries_with_ambient_mesh(
@@ -190,9 +189,8 @@ def test_sql_queries_with_ambient_mesh(
     )
 
 
-def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(
-    workload_namespace: str,
-) -> None:
+def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(juju: jubilant.Juju) -> None:
+    workload_namespace = cast(str, juju.model)
     driver_pods = get_kyuubi_spark_driver_pods(namespace=workload_namespace)
     assert driver_pods, "No Spark driver pods found in the Kyuubi deployment."
     for driver_pod in driver_pods:
@@ -304,7 +302,6 @@ def test_disable_ambient_mesh_kyuubi(
 def test_disable_ambient_mesh_integration_hub(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
-    workload_namespace: str,
     workload_service_account: str,
 ) -> None:
     """Test disabling the ambient mesh for the Integration Hub charm."""
@@ -324,7 +321,7 @@ def test_disable_ambient_mesh_integration_hub(
             pod_name=pod_name,
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
-
+    workload_namespace = cast(str, juju.model)
     assert not has_authorization_policy_from_driver_to_kyuubi(
         workload_namespace=workload_namespace,
         workload_service_account=workload_service_account,
