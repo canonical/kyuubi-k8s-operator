@@ -90,7 +90,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 164,
+            "hub": 166,
             "zk": 78,
             "tls": 586,
             "data": 362,
