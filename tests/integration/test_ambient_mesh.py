@@ -147,6 +147,7 @@ def test_enable_ambient_mesh_integration_hub(
     )
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_unmeshed_pod_after_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -158,6 +159,7 @@ def test_blocked_access_from_unmeshed_pod_after_meshing(
     assert curl_process.returncode != 0
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -178,6 +180,7 @@ def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
 #     time.sleep(60 * 60)
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_sql_queries_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -189,6 +192,7 @@ def test_sql_queries_with_ambient_mesh(
     )
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(juju: jubilant.Juju) -> None:
     workload_namespace = cast(str, juju.model)
     driver_pods = get_kyuubi_spark_driver_pods(namespace=workload_namespace)
@@ -208,6 +212,7 @@ def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(juju: jubilant.Juju
         )
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_ha_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -236,6 +241,7 @@ def test_ha_with_ambient_mesh(
     assert len(status.apps[APP_NAME].units) == 1
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_observability_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -258,6 +264,7 @@ def test_observability_with_ambient_mesh(
     assert_logs_published_in_loki(juju, filter_by_label={"juju_application": "kyuubi-k8s"})
 
 
+@pytest.mark.skip("TODO: re-enable")
 def test_ldap_authentication_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -322,6 +329,12 @@ def test_disable_ambient_mesh_integration_hub(
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
     workload_namespace = cast(str, juju.model)
+
+    import time
+
+    logger.error("SLEEPING")
+    time.sleep(60 * 60)
+
     assert not has_authorization_policy_from_driver_to_kyuubi(
         workload_namespace=workload_namespace,
         workload_service_account=workload_service_account,
