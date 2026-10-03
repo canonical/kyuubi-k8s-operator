@@ -311,7 +311,7 @@ def test_disable_ambient_mesh_integration_hub(
         f"{charm_versions.istio_beacon.application_name}:service-mesh",
     )
     juju.wait(
-        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status), delay=5
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_active(status), delay=20
     )
     for pod_name in get_pod_names(
         cast(str, juju.model), charm_versions.integration_hub.application_name
