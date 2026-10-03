@@ -46,7 +46,7 @@ def deploy_istio_mesh_setup(
     juju.integrate(
         f"{APP_NAME}:service-mesh", f"{charm_versions.istio_beacon.application_name}:service-mesh"
     )
-    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=5)
+    juju.wait(lambda status: jubilant.all_active(status, APP_NAME), delay=20)
 
 
 def has_kyuubi_jdbc_authorization_policy(namespace: str, app_name: str) -> bool:
