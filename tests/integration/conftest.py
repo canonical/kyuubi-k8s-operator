@@ -371,12 +371,6 @@ def context():
 
 
 @pytest.fixture(scope="module")
-def workload_namespace() -> str:
-    """Fixture to provide the Kyuubi workload namespace for testing."""
-    return str(uuid.uuid4())
-
-
-@pytest.fixture(scope="module")
 def workload_service_account() -> str:
     """Fixture to provide the Kyuubi workload service account for testing."""
     return str(uuid.uuid4())

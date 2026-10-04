@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import cast
 
 import jubilant
-import pytest
 import yaml
 
 from constants import COS_METRICS_PATH, COS_METRICS_PORT
@@ -73,7 +72,6 @@ def test_deploy_minimal_kyuubi_setup(
     juju.wait(jubilant.all_active, delay=5)
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_access_from_unmeshed_pod_before_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -147,7 +145,6 @@ def test_enable_ambient_mesh_integration_hub(
     )
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_unmeshed_pod_after_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -159,7 +156,6 @@ def test_blocked_access_from_unmeshed_pod_after_meshing(
     assert curl_process.returncode != 0
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     juju: jubilant.Juju,
 ) -> None:
@@ -175,12 +171,6 @@ def test_blocked_access_from_meshed_pod_but_no_policy_after_meshing(
     assert curl_process.returncode != 0
 
 
-# def test_sleep():
-#     import time
-#     time.sleep(60 * 60)
-
-
-@pytest.mark.skip("TODO: re-enable")
 def test_sql_queries_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -192,7 +182,6 @@ def test_sql_queries_with_ambient_mesh(
     )
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(juju: jubilant.Juju) -> None:
     workload_namespace = cast(str, juju.model)
     driver_pods = get_kyuubi_spark_driver_pods(namespace=workload_namespace)
@@ -212,7 +201,6 @@ def test_blocked_access_from_unmeshed_pod_to_kyuubi_workload(juju: jubilant.Juju
         )
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_ha_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -241,7 +229,6 @@ def test_ha_with_ambient_mesh(
     assert len(status.apps[APP_NAME].units) == 1
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_observability_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
@@ -264,7 +251,6 @@ def test_observability_with_ambient_mesh(
     assert_logs_published_in_loki(juju, filter_by_label={"juju_application": "kyuubi-k8s"})
 
 
-@pytest.mark.skip("TODO: re-enable")
 def test_ldap_authentication_with_ambient_mesh(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,

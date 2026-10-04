@@ -89,7 +89,6 @@ jobs:
     secrets: inherit
 
   refresh-tests:
-    if: false
     name: Inplace upgrades
     needs:
       - lint

@@ -81,9 +81,6 @@ jobs:
               if runner == "ubuntu-22.04-arm" and task_name in AMD64_ONLY_TASKS:
                   continue
 
-              if task_name != "integration-service-mesh":
-                  continue
-
               architecture = "arm64" if runner.endswith("-arm") else "amd64"
               name = f"{task_name} | {architecture} ({runner})"
               name_in_artifact = f"{task_name}-{architecture}-{runner}"
@@ -147,9 +144,6 @@ jobs:
         with:
           pattern: ${{ inputs.artifact-prefix }}-*
           merge-multiple: true
-
-      # - name: Setup upterm session
-      #   uses: owenthereal/action-upterm@v2
 
       - name: Run spread job
         timeout-minutes: 110
