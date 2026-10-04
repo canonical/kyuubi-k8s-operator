@@ -330,11 +330,6 @@ def test_disable_ambient_mesh_integration_hub(
         )
     workload_namespace = cast(str, juju.model)
 
-    import time
-
-    logger.error("SLEEPING")
-    time.sleep(60 * 60)
-
     assert not has_authorization_policy_from_driver_to_kyuubi(
         workload_namespace=workload_namespace,
         workload_service_account=workload_service_account,
