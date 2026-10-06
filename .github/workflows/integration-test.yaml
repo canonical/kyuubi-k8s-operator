@@ -80,7 +80,7 @@ jobs:
               architecture = "arm64" if runner.endswith("-arm") else "amd64"
               name = f"{task_name} | {architecture} ({runner})"
               name_in_artifact = f"{task_name}-{architecture}-{runner}"
-              if architecture == "arm64":
+              if architecture == "amd64":
                   jobs.append({
                       "spread_job": job,
                       "name": name,
