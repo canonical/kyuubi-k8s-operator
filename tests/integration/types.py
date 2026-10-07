@@ -29,6 +29,8 @@ class TestCharm(BaseModel):
             is deployed to
         num_units: int, number of units for the deployment
         alias: str (Optional), alias to be used for the charm
+        trust: bool (Optional), whether providing trust permission
+        force: bool (Optional), whether deploy with force flag enabled
     """
 
     name: str
@@ -38,6 +40,7 @@ class TestCharm(BaseModel):
     num_units: int = 1
     alias: str | None = None
     trust: bool | None = False
+    force: bool | None = False
 
     @property
     def application_name(self) -> str:
@@ -56,6 +59,7 @@ class TestCharm(BaseModel):
             "num_units": self.num_units,
             "app": self.application_name,
             "trust": self.trust,
+            "force": self.force,
         }
 
 
