@@ -73,6 +73,8 @@ backends:
     environment:
       CI: "$(HOST: echo $CI)"
       MARK_EXPRESSION: "$(HOST: echo $MARK_EXPRESSION)"
+      PATH: "$(HOST: echo \"$PATH\"):/root/.local/bin:/opt/pipx_bin"
+      PIPX_DEFAULT_PYTHON: "$(HOST: command -v python3)"
     systems:
       - ubuntu-22.04:
           username: runner
