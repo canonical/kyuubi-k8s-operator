@@ -6,6 +6,7 @@ import base64
 import logging
 import os
 import subprocess
+import uuid
 from pathlib import Path
 from platform import machine
 from string import Template
@@ -14,6 +15,7 @@ from typing import Iterable, cast
 import boto3
 import boto3.session
 import jubilant
+import lightkube
 import pytest
 import yaml
 from botocore.client import Config
@@ -89,7 +91,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 149,
+            "hub": 168,
             "zk": 78,
             "tls": 586,
             "data": 362,
@@ -103,7 +105,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "arm64": {
             "s3": 332,
             "postgres": 775,
-            "hub": 150,
+            "hub": 165,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 585,
             "data": 359,
@@ -147,6 +149,9 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
+            resources={
+                "integration-hub-image": "ghcr.io/theoctober19th/spark-integration-hub@sha256:66caf4fcbe8581fbdfe48b4654ff084ec2d5c2bf256f1f9e4a2906b513f20da8"
+            },
         ),
         zookeeper=TestCharm(
             name="zookeeper-k8s",
@@ -364,3 +369,15 @@ def context():
     """A common data store read+writeable by all tests."""
     context = {}
     return context
+
+
+@pytest.fixture(scope="module")
+def workload_service_account() -> str:
+    """Fixture to provide the Kyuubi workload service account for testing."""
+    return str(uuid.uuid4())
+
+
+@pytest.fixture(scope="module")
+def lightkube_client() -> lightkube.Client:
+    """Fixture to provide a Lightkube client for interacting with the Kubernetes cluster."""
+    return lightkube.Client()

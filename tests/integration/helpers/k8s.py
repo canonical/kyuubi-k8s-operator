@@ -12,6 +12,7 @@ from typing import Dict, TypedDict, cast
 import jubilant
 import lightkube
 import yaml
+from lightkube.core.client import LabelSelector
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.core_v1 import Pod, Service
 
@@ -217,3 +218,31 @@ def curl_using_pod(
         capture_output=True,
         text=True,
     )
+
+
+def get_pods_by_label(labels: dict[str, str], namespace: str | None = None) -> list[str]:
+    """Return the names of all pods that carry the given set of labels.
+
+    Args:
+        labels: label key/value pairs a pod must all match.
+        namespace: namespace to search in. If None, searches all namespaces.
+    """
+    client = lightkube.Client()
+    try:
+        pods = client.list(Pod, labels=cast(LabelSelector, labels), namespace=namespace)
+        return [pod.metadata.name for pod in pods if pod.metadata and pod.metadata.name]
+    except ApiError as e:
+        logger.error(f"Error retrieving pods for labels {labels}: {e}")
+        return []
+
+
+def get_pod_ip(pod_name: str, namespace: str) -> str | None:
+    """Return the cluster IP address of a pod, or None if not yet assigned.
+
+    Args:
+        pod_name: name of the pod.
+        namespace: namespace of the pod.
+    """
+    client = lightkube.Client()
+    pod = client.get(Pod, name=pod_name, namespace=namespace)
+    return pod.status.podIP if pod.status else None
