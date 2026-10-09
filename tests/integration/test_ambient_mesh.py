@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import jubilant
+import lightkube
 import yaml
 
 from constants import COS_METRICS_PATH, COS_METRICS_PORT
@@ -22,8 +23,10 @@ from .helpers.cos import (
 )
 from .helpers.ha import get_active_kyuubi_servers_list, is_entire_cluster_responding_requests
 from .helpers.istio import (
+    assert_eventually,
     deploy_istio_mesh_setup,
     has_authorization_policy_from_driver_to_kyuubi,
+    has_authorization_policy_from_kyuubi_to_driver,
     has_authorization_policy_to_spark_driver,
     has_authorization_policy_to_spark_executor,
     has_kyuubi_jdbc_authorization_policy,
@@ -86,6 +89,7 @@ def test_access_from_unmeshed_pod_before_meshing(
 def test_enable_ambient_mesh_kyuubi(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
+    lightkube_client: lightkube.Client,
 ) -> None:
     """Enable ambient mesh for the deployed Kyuubi setup."""
     deploy_istio_mesh_setup(
@@ -98,14 +102,25 @@ def test_enable_ambient_mesh_kyuubi(
             pod_name=pod_name,
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
-    assert has_kyuubi_jdbc_authorization_policy(cast(str, juju.model), APP_NAME)
-    assert has_kyuubi_jdbc_peer_authentication(cast(str, juju.model), APP_NAME)
+    assert_eventually(
+        lambda: has_kyuubi_jdbc_authorization_policy(
+            lightkube_client, cast(str, juju.model), APP_NAME
+        ),
+        message="Kyuubi JDBC authorization policy was not created after enabling the mesh",
+    )
+    assert_eventually(
+        lambda: has_kyuubi_jdbc_peer_authentication(
+            lightkube_client, cast(str, juju.model), APP_NAME
+        ),
+        message="Kyuubi JDBC peer authentication was not created after enabling the mesh",
+    )
 
 
 def test_enable_ambient_mesh_integration_hub(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
     workload_service_account: str,
+    lightkube_client: lightkube.Client,
 ) -> None:
     logger.info("Adding integration hub into the service mesh...")
     juju.integrate(
@@ -127,21 +142,41 @@ def test_enable_ambient_mesh_integration_hub(
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
     workload_namespace = cast(str, juju.model)
-    assert has_authorization_policy_from_driver_to_kyuubi(
-        workload_namespace=workload_namespace,
-        workload_service_account=workload_service_account,
-        kyuubi_namespace=cast(str, juju.model),
-        kyuubi_service_account=APP_NAME,
+    assert_eventually(
+        lambda: has_authorization_policy_from_driver_to_kyuubi(
+            lightkube_client,
+            workload_namespace=workload_namespace,
+            workload_service_account=workload_service_account,
+            kyuubi_namespace=cast(str, juju.model),
+            kyuubi_service_account=APP_NAME,
+        ),
+        message="driver-to-kyuubi authorization policy was not created",
     )
-    assert has_authorization_policy_to_spark_driver(
-        workload_namespace=workload_namespace,
-        workload_service_account=workload_service_account,
-        kyuubi_namespace=cast(str, juju.model),
-        kyuubi_service_account=APP_NAME,
+    assert_eventually(
+        lambda: has_authorization_policy_from_kyuubi_to_driver(
+            lightkube_client,
+            workload_namespace=workload_namespace,
+            workload_service_account=workload_service_account,
+            kyuubi_namespace=cast(str, juju.model),
+            kyuubi_service_account=APP_NAME,
+        ),
+        message="kyuubi-to-driver authorization policy was not created",
     )
-    assert has_authorization_policy_to_spark_executor(
-        workload_namespace=workload_namespace,
-        workload_service_account=workload_service_account,
+    assert_eventually(
+        lambda: has_authorization_policy_to_spark_driver(
+            lightkube_client,
+            workload_namespace=workload_namespace,
+            workload_service_account=workload_service_account,
+        ),
+        message="spark driver authorization policy was not created",
+    )
+    assert_eventually(
+        lambda: has_authorization_policy_to_spark_executor(
+            lightkube_client,
+            workload_namespace=workload_namespace,
+            workload_service_account=workload_service_account,
+        ),
+        message="spark executor authorization policy was not created",
     )
 
 
@@ -273,6 +308,7 @@ def test_ldap_authentication_with_ambient_mesh(
 def test_disable_ambient_mesh_kyuubi(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
+    lightkube_client: lightkube.Client,
 ) -> None:
     """Test disabling the ambient mesh for the Kyuubi charm."""
     logger.info("Disabling ambient mesh for Kyuubi charm")
@@ -288,14 +324,29 @@ def test_disable_ambient_mesh_kyuubi(
             pod_name=pod_name,
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
-    assert not has_kyuubi_jdbc_authorization_policy(cast(str, juju.model), APP_NAME)
-    assert not has_kyuubi_jdbc_peer_authentication(cast(str, juju.model), APP_NAME)
+    assert_eventually(
+        lambda: (
+            not has_kyuubi_jdbc_authorization_policy(
+                lightkube_client, cast(str, juju.model), APP_NAME
+            )
+        ),
+        message="Kyuubi JDBC authorization policy should not exist after disabling the mesh",
+    )
+    assert_eventually(
+        lambda: (
+            not has_kyuubi_jdbc_peer_authentication(
+                lightkube_client, cast(str, juju.model), APP_NAME
+            )
+        ),
+        message="Kyuubi JDBC peer authentication should not exist after disabling the mesh",
+    )
 
 
 def test_disable_ambient_mesh_integration_hub(
     juju: jubilant.Juju,
     charm_versions: IntegrationTestsCharms,
     workload_service_account: str,
+    lightkube_client: lightkube.Client,
 ) -> None:
     """Test disabling the ambient mesh for the Integration Hub charm."""
     logger.info("Disabling ambient mesh for Integration Hub charm")
@@ -316,21 +367,49 @@ def test_disable_ambient_mesh_integration_hub(
         )
     workload_namespace = cast(str, juju.model)
 
-    assert not has_authorization_policy_from_driver_to_kyuubi(
-        workload_namespace=workload_namespace,
-        workload_service_account=workload_service_account,
-        kyuubi_namespace=cast(str, juju.model),
-        kyuubi_service_account=APP_NAME,
+    assert_eventually(
+        lambda: (
+            not has_authorization_policy_from_driver_to_kyuubi(
+                lightkube_client,
+                workload_namespace=workload_namespace,
+                workload_service_account=workload_service_account,
+                kyuubi_namespace=cast(str, juju.model),
+                kyuubi_service_account=APP_NAME,
+            )
+        ),
+        message="driver-to-kyuubi authorization policy should not exist after disabling the mesh",
     )
-    assert not has_authorization_policy_to_spark_driver(
-        workload_namespace=workload_namespace,
-        workload_service_account=workload_service_account,
-        kyuubi_namespace=cast(str, juju.model),
-        kyuubi_service_account=APP_NAME,
+    assert_eventually(
+        lambda: (
+            not has_authorization_policy_from_kyuubi_to_driver(
+                lightkube_client,
+                workload_namespace=workload_namespace,
+                workload_service_account=workload_service_account,
+                kyuubi_namespace=cast(str, juju.model),
+                kyuubi_service_account=APP_NAME,
+            )
+        ),
+        message="kyuubi-to-driver authorization policy should not exist after disabling the mesh",
     )
-    assert not has_authorization_policy_to_spark_executor(
-        workload_namespace=workload_namespace,
-        workload_service_account=workload_service_account,
+    assert_eventually(
+        lambda: (
+            not has_authorization_policy_to_spark_driver(
+                lightkube_client,
+                workload_namespace=workload_namespace,
+                workload_service_account=workload_service_account,
+            )
+        ),
+        message="spark driver authorization policy should not exist after disabling the mesh",
+    )
+    assert_eventually(
+        lambda: (
+            not has_authorization_policy_to_spark_executor(
+                lightkube_client,
+                workload_namespace=workload_namespace,
+                workload_service_account=workload_service_account,
+            )
+        ),
+        message="spark executor authorization policy should not exist after disabling the mesh",
     )
 
 

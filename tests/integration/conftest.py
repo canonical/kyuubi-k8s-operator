@@ -15,6 +15,7 @@ from typing import Iterable, cast
 import boto3
 import boto3.session
 import jubilant
+import lightkube
 import pytest
 import yaml
 from botocore.client import Config
@@ -90,7 +91,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 167,
+            "hub": 168,
             "zk": 78,
             "tls": 586,
             "data": 362,
@@ -149,7 +150,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             alias="integration-hub",
             trust=True,
             resources={
-                "integration-hub-image": "ghcr.io/theoctober19th/spark-integration-hub:45.1"
+                "integration-hub-image": "ghcr.io/theoctober19th/spark-integration-hub@sha256:66caf4fcbe8581fbdfe48b4654ff084ec2d5c2bf256f1f9e4a2906b513f20da8"
             },
         ),
         zookeeper=TestCharm(
@@ -374,3 +375,9 @@ def context():
 def workload_service_account() -> str:
     """Fixture to provide the Kyuubi workload service account for testing."""
     return str(uuid.uuid4())
+
+
+@pytest.fixture(scope="module")
+def lightkube_client() -> lightkube.Client:
+    """Fixture to provide a Lightkube client for interacting with the Kubernetes cluster."""
+    return lightkube.Client()
