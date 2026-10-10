@@ -208,6 +208,58 @@ def test_frontend_tls_enabled_but_not_ready(
     assert state_out.unit_status == Status.WAITING_FOR_TLS.value
 
 
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "all",
+        "private-key",
+        "ca-cert",
+        "certificate",
+        "truststore-password",
+        "keystore-password",
+        None,
+    ],
+)
+def test_upgrade_skips_uninitialized_frontend_tls(missing_field, kyuubi_context, base_state):
+    """Only recreate frontend TLS files once all required data has arrived."""
+    tls_data = {
+        "private-key": "private-key",
+        "ca-cert": "ca-cert",
+        "certificate": "certificate",
+        "truststore-password": "truststore-password",
+        "keystore-password": "keystore-password",
+    }
+    if missing_field == "all":
+        tls_data = {}
+    elif missing_field:
+        tls_data.pop(missing_field)
+
+    peer_relation = PeerRelation(endpoint=PEER_REL, local_unit_data=tls_data)
+    tls_relation = Relation(endpoint=TLS_REL)
+    state_in = dataclasses.replace(base_state, relations=[peer_relation, tls_relation])
+
+    with (
+        patch("events.kyuubi.TLSManager") as mock_tls_manager,
+        patch("managers.kyuubi.KyuubiManager.update") as mock_update,
+        kyuubi_context(kyuubi_context.on.upgrade_charm(), state=state_in) as manager,
+    ):
+        assert manager.charm.context.is_frontend_tls_initialized() == (missing_field is None)
+        state_out = manager.run()
+
+    tls_manager = mock_tls_manager.return_value
+    assert not state_out.deferred
+    if missing_field:
+        assert not tls_manager.mock_calls
+        mock_update.assert_not_called()
+    else:
+        tls_manager.set_private_key.assert_called_once_with()
+        tls_manager.set_kyuubi_server_ca.assert_called_once_with()
+        tls_manager.set_kyuubi_server_certificate.assert_called_once_with()
+        tls_manager.set_kyuubi_server_truststore.assert_called_once_with()
+        tls_manager.set_kyuubi_server_p12_keystore.assert_called_once_with()
+        mock_update.assert_called_once_with(force_restart=True)
+
+
 def test_frontend_tls_certificate_available_gets_deferred_when_workload_not_ready(
     certificate_available_context,
 ):

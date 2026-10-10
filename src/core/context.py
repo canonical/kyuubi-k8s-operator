@@ -218,6 +218,19 @@ class Context(WithLogging):
             )
         return None
 
+    def is_frontend_tls_initialized(self) -> bool:
+        """Return whether all data needed to create frontend TLS files is available."""
+        server = self.unit_server
+        return all(
+            (
+                server.private_key,
+                server.kyuubi_server_ca_cert,
+                server.kyuubi_server_certificate,
+                server.truststore_password,
+                server.keystore_password,
+            )
+        )
+
     @property
     def backend_tls(self) -> TLSInfo | None:
         """The state of the tls configuration info."""
