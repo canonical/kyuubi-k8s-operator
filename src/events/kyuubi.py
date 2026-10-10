@@ -81,7 +81,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             return
 
         # Recreate the frontend TLS files in the container if frontend TLS has been enabled
-        if self.context.frontend_tls:
+        if self.context.frontend_tls and self.context.is_frontend_tls_initialized():
             self.tls_manager.set_private_key()
             self.tls_manager.set_kyuubi_server_ca()
             self.tls_manager.set_kyuubi_server_certificate()
