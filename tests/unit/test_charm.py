@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+from dataclasses import replace
 from unittest.mock import Mock, patch
 
 from ops.testing import Container, Context, Relation, State, TCPPort
@@ -66,9 +67,10 @@ def test_service_unavailable(
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
+    zookeeper_relation: Relation,
 ) -> None:
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation],
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(kyuubi_context.on.config_changed(), state)
@@ -98,9 +100,10 @@ def test_valid_on_service_account(
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
+    zookeeper_relation: Relation,
 ) -> None:
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation],
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(
@@ -143,9 +146,10 @@ def test_object_storage_backend_removed(
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
+    zookeeper_relation: Relation,
 ) -> None:
     initial_state = State(
-        relations=[spark_service_account_relation],
+        relations=[spark_service_account_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(
@@ -179,8 +183,15 @@ def test_zookeeper_relation_joined(
     zookeeper_relation: Relation,
 ):
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
+        relations=[spark_service_account_relation, auth_db_relation],
         containers=[kyuubi_container],
+    )
+    blocked_state = kyuubi_context.run(kyuubi_context.on.pebble_ready(kyuubi_container), state)
+    assert blocked_state.unit_status == Status.MISSING_ZOOKEEPER.value
+
+    state = replace(
+        blocked_state,
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
     )
     out = kyuubi_context.run(kyuubi_context.on.relation_changed(zookeeper_relation), state)
     assert out.unit_status == Status.ACTIVE.value
@@ -242,7 +253,7 @@ def test_zookeeper_relation_broken(
         ),
         state_after_relation_changed,
     )
-    assert state_after_relation_broken.unit_status == Status.ACTIVE.value
+    assert state_after_relation_broken.unit_status == Status.MISSING_ZOOKEEPER.value
 
     kyuubi_configurations = parse_kyuubi_configurations(tmp_path)
 
@@ -337,19 +348,17 @@ def test_invalid_service_account(
     assert out.unit_status == Status.INVALID_SERVICE_ACCOUNT.value
 
 
-@patch("ops.model.Application.planned_units", return_value=3)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
 @patch("config.spark.SparkConfig._get_spark_master", return_value="k8s://https://spark.master")
 @patch("config.spark.SparkConfig._sa_conf", return_value={})
-def test_missing_zookeeper_for_multiple_units_of_kyuubi(
+def test_missing_zookeeper(
     mock_sa_conf,
     mock_get_master,
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
-    mock_planned_units,
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
@@ -390,9 +399,10 @@ def test_spark_property_priorities(
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
+    zookeeper_relation: Relation,
 ):
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation],
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
     out = kyuubi_context.run(
@@ -436,6 +446,7 @@ def test_kyuubi_not_serving_requests(
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
+    zookeeper_relation: Relation,
     mock_workload_running: Mock,
 ) -> None:
     """This test simulates a running pebble service not actively serving requests.
@@ -445,7 +456,7 @@ def test_kyuubi_not_serving_requests(
     # Given
     mock_workload_running.return_value = False
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation],
+        relations=[spark_service_account_relation, auth_db_relation, zookeeper_relation],
         containers=[kyuubi_container],
     )
 

@@ -45,7 +45,6 @@ def deploy_minimal_kyuubi_setup(
     s3_bucket_and_creds: S3Info,
     trust: bool = True,
     num_units=1,
-    integrate_zookeeper=False,
     deploy_from_charmhub=False,
     integrate_data_integrator=True,
     auth_mode: str = "jdbc",
@@ -175,32 +174,31 @@ def deploy_minimal_kyuubi_setup(
     elif auth_mode == "ldap":
         setup_ldap_authentication(juju=juju, charm_versions=charm_versions)
 
-    if integrate_zookeeper:
-        # Deploy Zookeeper and wait
-        juju.deploy(**charm_versions.zookeeper.deploy_dict())
-        logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
-        juju.wait(
-            lambda status: jubilant.all_active(
-                status,
-                charm_versions.zookeeper.app,
-            ),
-        )
+    juju.deploy(**charm_versions.zookeeper.deploy_dict())
+    logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            charm_versions.zookeeper.app,
+        ),
+    )
 
-        # Integrate Kyuubi with Zookeeper and wait
-        logger.info("Integrating kyuubi charm with zookeeper charm...")
-        juju.integrate(charm_versions.zookeeper.app, APP_NAME)
-        logger.info(
-            "Waiting for s3-integrator, integration_hub and zookeeper to be idle and active..."
-        )
-        juju.wait(
-            lambda status: jubilant.all_active(
-                status,
-                charm_versions.s3.app,
-                charm_versions.integration_hub.app,
-                charm_versions.zookeeper.app,
-            ),
-            delay=5,
-        )
+    # Integrate Kyuubi with Zookeeper and wait
+    logger.info("Integrating kyuubi charm with zookeeper charm...")
+    juju.integrate(charm_versions.zookeeper.app, APP_NAME)
+    logger.info(
+        "Waiting for s3-integrator, integration_hub and zookeeper to be idle and active..."
+    )
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            APP_NAME,
+            charm_versions.s3.app,
+            charm_versions.integration_hub.app,
+            charm_versions.zookeeper.app,
+        ),
+        delay=5,
+    )
 
     if integrate_data_integrator:
         juju.deploy(
