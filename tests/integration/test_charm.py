@@ -131,10 +131,16 @@ def test_integration_with_integration_hub(
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     juju.integrate(charm_versions.integration_hub.app, f"{APP_NAME}:spark-service-account")
 
-    logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
+    logger.info("Waiting for integration_hub charm to be idle and active...")
     juju.wait(
         lambda status: jubilant.all_active(status, charm_versions.integration_hub.app), delay=5
     )
+
+    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    status = juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5)
+
+    # Assert that the charm is in blocked state, waiting for authentication relation
+    assert status.apps[APP_NAME].app_status.message == Status.MISSING_AUTH_RELATION.value.message
 
 
 def test_enable_authentication(
@@ -176,7 +182,7 @@ def test_integration_with_zookeeper(
     juju.deploy(**charm_versions.zookeeper.deploy_dict())
 
     logger.info("Waiting for zookeeper app to be active and idle...")
-    juju.wait(lambda status: jubilant.all_active(status, charm_versions.zookeeper.app), delay=5)
+    juju.wait(jubilant.all_active, delay=5)
 
     logger.info("Integrating kyuubi charm with zookeeper charm...")
     juju.integrate(charm_versions.zookeeper.application_name, APP_NAME)

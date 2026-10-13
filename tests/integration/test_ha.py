@@ -31,7 +31,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
-def test_build_and_deploy_cluster_with_no_zookeeper(
+def test_build_and_deploy_cluster(
     juju: jubilant.Juju,
     kyuubi_charm: Path,
     charm_versions: IntegrationTestsCharms,
@@ -49,7 +49,7 @@ def test_build_and_deploy_cluster_with_no_zookeeper(
     juju.wait(jubilant.all_active, delay=10)
 
 
-def test_standalone_kyuubi_works_without_zookeeper(
+def test_standalone_kyuubi(
     juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
 ) -> None:
     jdbc_endpoint, username, password = fetch_connection_info(
@@ -62,31 +62,16 @@ def test_standalone_kyuubi_works_without_zookeeper(
     )
 
 
-def test_scale_up_kyuubi_to_three_units_without_zookeeper(juju: jubilant.Juju) -> None:
+def test_scale_up_kyuubi_to_three_units(
+    juju: jubilant.Juju, test_pod: str, charm_versions: IntegrationTestsCharms
+) -> None:
     """Test scaling up action on Kyuubi."""
     # Scale Kyuubi charm to 3 units
     juju.add_unit(APP_NAME, num_units=2)
-    status = juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=10)
+    logger.info("Waiting for zookeeper-k8s and kyuubi charms to be active and idle...")
+    status = juju.wait(jubilant.all_active, delay=10)
 
     assert len(status.apps[APP_NAME].units) == 3
-    assert status.apps[APP_NAME].app_status.message == Status.MISSING_ZOOKEEPER.value.message
-
-
-def test_zookeeper_relation_with_three_units_of_kyuubi(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
-) -> None:
-    """Test relating Zookeeper with Kyuubi with multiple units."""
-    # Deploy Zookeeper and wait
-    juju.deploy(**charm_versions.zookeeper.deploy_dict())
-    logger.info("Waiting for zookeeper-k8s charm to be active and idle...")
-    juju.wait(lambda status: jubilant.all_active(status, charm_versions.zookeeper.app), delay=5)
-
-    # Integrate Kyuubi and Zookeeper
-    logger.info("Integrating kyuubi charm with zookeeper charm...")
-    juju.integrate(charm_versions.zookeeper.application_name, APP_NAME)
-
-    logger.info("Waiting for zookeeper-k8s and kyuubi charms to be active and idle...")
-    juju.wait(jubilant.all_active, delay=10)
 
     active_servers = get_active_kyuubi_servers_list(
         juju=juju, zookeeper_name=charm_versions.zookeeper.app
@@ -209,14 +194,14 @@ def test_kill_kyuubi_process(
     )
 
 
-def test_scale_down_kyuubi_from_three_to_two_with_zookeeper(
+def test_scale_down_kyuubi_from_three_to_two(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
 ) -> None:
     """Test scaling down action on Kyuubi."""
     # Scale Kyuubi charm to 3 units
     juju.remove_unit(APP_NAME, num_units=1)
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.zookeeper.app),
+        jubilant.all_active,
         delay=10,
     )
 
@@ -243,13 +228,13 @@ def test_scale_down_kyuubi_from_three_to_two_with_zookeeper(
     )
 
 
-def test_scale_down_to_standalone_kyuubi_with_zookeeper(
+def test_scale_down_to_standalone_kyuubi(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
 ) -> None:
     # Scale Kyuubi charm to 1 unit
     juju.remove_unit(APP_NAME, num_units=1)
     status = juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.zookeeper.app),
+        jubilant.all_active,
         delay=10,
     )
 
@@ -276,7 +261,7 @@ def test_scale_down_to_standalone_kyuubi_with_zookeeper(
     )
 
 
-def test_remove_zookeeper_relation_on_single_unit(
+def test_remove_zookeeper_relation(
     juju: jubilant.Juju, charm_versions: IntegrationTestsCharms, test_pod: str
 ) -> None:
     logger.info("Removing relation between zookeeper-k8s and kyuubi-k8s...")
@@ -284,17 +269,8 @@ def test_remove_zookeeper_relation_on_single_unit(
         f"{APP_NAME}:zookeeper", f"{charm_versions.zookeeper.application_name}:zookeeper"
     )
 
-    juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.zookeeper.app),
+    status = juju.wait(
+        lambda status: jubilant.all_agents_idle(status) and jubilant.all_blocked(status, APP_NAME),
         delay=10,
     )
-
-    # Run SQL test against the cluster
-    jdbc_endpoint, username, password = fetch_connection_info(
-        juju, charm_versions.data_integrator.app
-    )
-
-    # Run SQL tests against JDBC endpoint
-    assert run_sql_test_against_jdbc_endpoint(
-        juju, test_pod=test_pod, jdbc_endpoint=jdbc_endpoint, username=username, password=password
-    )
+    assert status.apps[APP_NAME].app_status.message == Status.MISSING_ZOOKEEPER.value.message
