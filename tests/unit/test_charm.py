@@ -264,6 +264,7 @@ def test_zookeeper_relation_broken(
     assert "kyuubi.ha.zookeeper.auth.digest" not in kyuubi_configurations
 
 
+@patch("managers.kyuubi.KyuubiManager.cleanup_stale_spark_engines", return_value=True)
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=True)
 @patch("managers.k8s.K8sManager.is_service_account_valid", return_value=True)
 @patch("managers.integration_hub.IntegrationHubManager.is_s3_configured", return_value=True)
@@ -280,6 +281,7 @@ def test_spark_service_account_broken(
     mock_s3_configured,
     mock_valid_sa,
     mock_valid_ns,
+    mock_cleanup_stale_spark_engines,
     kyuubi_context: Context,
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
@@ -300,6 +302,7 @@ def test_spark_service_account_broken(
     )
 
     assert state_after_relation_broken.unit_status == Status.MISSING_INTEGRATION_HUB.value
+    assert mock_cleanup_stale_spark_engines.called
 
 
 @patch("managers.k8s.K8sManager.is_namespace_valid", return_value=False)
