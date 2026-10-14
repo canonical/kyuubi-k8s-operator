@@ -78,7 +78,9 @@ jobs:
               if task_name == "integration-refresh":
                   continue
 
-              if runner == "ubuntu-22.04-arm" and task_name in AMD64_ONLY_TASKS:
+              # Disable ARM tests (since Zookeeper isn't available for arm64)
+              # TODO: Revert back to running ARM tests once Zookeeper has an arm64 revision
+              if runner == "ubuntu-22.04-arm":
                   continue
 
               architecture = "arm64" if runner.endswith("-arm") else "amd64"
