@@ -141,13 +141,15 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
 
     logger.info("Waiting for all charms to be active and idle...")
     juju.wait(
-        lambda status: jubilant.all_active(
-            status,
-            charm_versions.ldap_db.app,
-            charm_versions.glauth.app,
-            charm_versions.glauth_utils.app,
-            charm_versions.ldap_tls.app,
-            APP_NAME,
+        lambda status: (
+            jubilant.all_active(
+                status,
+                charm_versions.ldap_db.app,
+                charm_versions.glauth.app,
+                charm_versions.glauth_utils.app,
+                charm_versions.ldap_tls.app,
+            )
+            and jubilant.all_agents_idle(status)
         ),
         delay=15,
         timeout=1000,
