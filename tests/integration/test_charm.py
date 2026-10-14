@@ -182,7 +182,7 @@ def test_integration_with_zookeeper(
     juju.deploy(**charm_versions.zookeeper.deploy_dict())
 
     logger.info("Waiting for zookeeper app to be active and idle...")
-    juju.wait(jubilant.all_active, delay=5)
+    juju.wait(lambda status: jubilant.all_active(status, charm_versions.zookeeper.app), delay=5)
 
     logger.info("Integrating kyuubi charm with zookeeper charm...")
     juju.integrate(charm_versions.zookeeper.application_name, APP_NAME)
