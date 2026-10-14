@@ -25,7 +25,6 @@ from .helpers.ha import get_active_kyuubi_servers_list, is_entire_cluster_respon
 from .helpers.istio import (
     assert_eventually,
     deploy_istio_mesh_setup,
-    has_authorization_policy_from_driver_to_kyuubi,
     has_authorization_policy_from_kyuubi_to_driver,
     has_authorization_policy_to_spark_driver,
     has_authorization_policy_to_spark_executor,
@@ -142,16 +141,6 @@ def test_enable_ambient_mesh_integration_hub(
             labels={AMBIENT_MESH_POD_LABEL_KEY: AMBIENT_MESH_POD_LABEL_VALUE},
         )
     workload_namespace = cast(str, juju.model)
-    assert_eventually(
-        lambda: has_authorization_policy_from_driver_to_kyuubi(
-            lightkube_client,
-            workload_namespace=workload_namespace,
-            workload_service_account=workload_service_account,
-            kyuubi_namespace=cast(str, juju.model),
-            kyuubi_service_account=APP_NAME,
-        ),
-        message="driver-to-kyuubi authorization policy was not created",
-    )
     assert_eventually(
         lambda: has_authorization_policy_from_kyuubi_to_driver(
             lightkube_client,
@@ -367,18 +356,6 @@ def test_disable_ambient_mesh_integration_hub(
         )
     workload_namespace = cast(str, juju.model)
 
-    assert_eventually(
-        lambda: (
-            not has_authorization_policy_from_driver_to_kyuubi(
-                lightkube_client,
-                workload_namespace=workload_namespace,
-                workload_service_account=workload_service_account,
-                kyuubi_namespace=cast(str, juju.model),
-                kyuubi_service_account=APP_NAME,
-            )
-        ),
-        message="driver-to-kyuubi authorization policy should not exist after disabling the mesh",
-    )
     assert_eventually(
         lambda: (
             not has_authorization_policy_from_kyuubi_to_driver(

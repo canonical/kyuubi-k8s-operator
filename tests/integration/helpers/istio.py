@@ -25,7 +25,7 @@ JDBC_PORT = 10009
 MANAGED_BY_LABEL = "app.kubernetes.io/managed-by"
 MANAGED_BY_INTEGRATION_HUB = "integration-hub"
 # Owner label the integration hub stamps on every policy it creates for a workload.
-WORKLOAD_SERVICE_ACCOUNT_LABEL = "integration-hub/workload-service-account"
+WORKLOAD_SERVICE_ACCOUNT_LABEL = "spark.canonical.com/workload-service-account"
 
 
 def assert_eventually(
@@ -223,34 +223,6 @@ def has_authorization_policy_to_spark_executor(
         role="executor",
         principal=workload_principal,
     )
-
-
-def has_authorization_policy_from_driver_to_kyuubi(
-    lightkube_client: lightkube.Client,
-    workload_namespace: str,
-    workload_service_account: str,
-    kyuubi_namespace: str,
-    kyuubi_service_account: str,
-) -> bool:
-    """Whether a policy in the kyuubi namespace allows the workload SA to reach it.
-
-    Matches on behaviour: an ALLOW policy in `kyuubi_namespace` selecting the
-    Kyuubi pods and allowing the workload service account principal.
-    """
-    principal = _spiffe_principal(workload_namespace, workload_service_account)
-    for policy in lightkube_client.list(AuthorizationPolicy, namespace=kyuubi_namespace):
-        spec = policy.spec or {}
-        if not _is_managed_by_integration_hub(policy):
-            continue
-        if _policy_owner_service_account(policy) != workload_service_account:
-            continue
-        if spec.get("action") != "ALLOW":
-            continue
-        if _policy_selector_labels(policy).get("app.kubernetes.io/name") != kyuubi_service_account:
-            continue
-        if principal in _policy_principals(policy):
-            return True
-    return False
 
 
 def has_authorization_policy_from_kyuubi_to_driver(

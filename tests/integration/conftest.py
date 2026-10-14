@@ -91,7 +91,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "amd64": {
             "s3": 330,
             "postgres": 774,
-            "hub": 168,
+            "hub": 169,
             "zk": 78,
             "tls": 586,
             "data": 362,
@@ -105,7 +105,7 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
         "arm64": {
             "s3": 332,
             "postgres": 775,
-            "hub": 165,
+            "hub": 170,
             "zk": 0,  # TODO(zk-arm): Update once we have an arm64 revision
             "tls": 585,
             "data": 359,
@@ -149,9 +149,6 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
-            resources={
-                "integration-hub-image": "ghcr.io/theoctober19th/spark-integration-hub@sha256:66caf4fcbe8581fbdfe48b4654ff084ec2d5c2bf256f1f9e4a2906b513f20da8"
-            },
         ),
         zookeeper=TestCharm(
             name="zookeeper-k8s",
