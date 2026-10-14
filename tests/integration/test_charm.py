@@ -162,7 +162,7 @@ def test_enable_authentication(
 
     logger.info("Waiting for postgresql-k8s charm to be idle...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.auth_db.app),
+        lambda status: jubilant.all_active(status, charm_versions.auth_db.app),
         delay=20,
         timeout=1000,
     )
