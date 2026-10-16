@@ -149,9 +149,6 @@ def charm_versions(platform: str) -> IntegrationTestsCharms:
             base="ubuntu@22.04",
             alias="integration-hub",
             trust=True,
-            resources={
-                "integration-hub-image": "ghcr.io/theoctober19th/spark-integration-hub@sha256:66caf4fcbe8581fbdfe48b4654ff084ec2d5c2bf256f1f9e4a2906b513f20da8"
-            },
         ),
         zookeeper=TestCharm(
             name="zookeeper-k8s",
