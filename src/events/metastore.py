@@ -67,5 +67,5 @@ class MetastoreEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _on_metastore_db_relation_removed(self, _) -> None:
         """Handle event when metastore database relation is removed."""
-        self.kyuubi.update(set_metastore_db_none=True)
+        self.kyuubi.update(set_metastore_db_none=True, cleanup_stale_workloads=True)
         self.logger.info("Metastore database relation removed")

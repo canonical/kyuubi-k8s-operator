@@ -186,6 +186,7 @@ def test_frontend_tls_enabled_but_not_ready(
     spark_service_account_relation,
     auth_db_relation,
     kyuubi_peers_relation,
+    zookeeper_relation,
 ) -> None:
     """Ensure that charm unit goes to maintenance state when TLS enabled but files not ready."""
     # Given
@@ -197,6 +198,7 @@ def test_frontend_tls_enabled_but_not_ready(
             tls_relation,
             spark_service_account_relation,
             auth_db_relation,
+            zookeeper_relation,
         ],
         leader=is_leader,
     )
