@@ -14,7 +14,7 @@ boto3 = ">=1.43.83"
 lightkube = "<1.0.0" # lightkube 1.0 is not supported by service mesh lib
 psycopg2 = "^2.9.12"
 tenacity = ">=9.1.4"
-charm-refresh = "^3.1.0.0"
+charm-refresh = "^3.1.1.9"
 httpx = "^0.28.1"
 charmlibs-interfaces-certificate-transfer = "^1.0.0"
 charmlibs-interfaces-service-mesh = "^1.0.2"
