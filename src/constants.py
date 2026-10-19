@@ -56,3 +56,6 @@ TRUSTSTORE_SECRET_NAME_KEY = "truststore_secret_name"
 # the Spark pods. Kept in sync with the integration hub so that Kyuubi (running
 # as non-root `_daemon_`) can replicate the file for client-side operations.
 HUB_TRUSTSTORE_MOUNT_BASE = "/etc/spark8t/conf"
+
+KYUUBI_WORKLOAD_LABEL_KYUUBI_NAMESPACE = "spark.canonical.com/kyuubi-namespace"
+KYUUBI_WORKLOAD_LABEL_KYUUBI_APP_NAME = "spark.canonical.com/kyuubi-app-name"

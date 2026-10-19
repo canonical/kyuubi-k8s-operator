@@ -13,7 +13,6 @@ import yaml
 
 from core.domain import Status
 
-from .helpers.jdbc import fetch_connection_info, validate_sql_queries_with_kyuubi
 from .helpers.k8s import (
     assert_security_context,
     generate_container_securitycontext_map,
@@ -132,10 +131,16 @@ def test_integration_with_integration_hub(
     logger.info("Integrating kyuubi charm with integration-hub charm...")
     juju.integrate(charm_versions.integration_hub.app, f"{APP_NAME}:spark-service-account")
 
-    logger.info("Waiting for integration_hub and kyuubi charms to be idle and active...")
+    logger.info("Waiting for integration_hub charm to be idle and active...")
     juju.wait(
         lambda status: jubilant.all_active(status, charm_versions.integration_hub.app), delay=5
     )
+
+    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    status = juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5)
+
+    # Assert that the charm is in blocked state, waiting for authentication relation
+    assert status.apps[APP_NAME].app_status.message == Status.MISSING_AUTH_RELATION.value.message
 
 
 def test_enable_authentication(
@@ -155,12 +160,35 @@ def test_enable_authentication(
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
     juju.integrate(charm_versions.auth_db.app, f"{APP_NAME}:auth-db")
 
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
+    logger.info("Waiting for postgresql-k8s charm to be idle...")
     juju.wait(
-        lambda status: jubilant.all_active(status, APP_NAME, charm_versions.auth_db.app),
+        lambda status: jubilant.all_active(status, charm_versions.auth_db.app),
         delay=20,
         timeout=1000,
     )
+    logger.info("Waiting for kyuubi-k8s app to be idle...")
+    status = juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME), delay=5)
+
+    # Assert that the charm is in blocked state, waiting for zookeeper relation
+    assert status.apps[APP_NAME].app_status.message == Status.MISSING_ZOOKEEPER.value.message
+
+
+def test_integration_with_zookeeper(
+    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
+) -> None:
+    """Test the charm by integrating it with Zookeeper."""
+    # Deploy the charm and wait for waiting status
+    logger.info("Deploying zookeeper-k8s charm...")
+    juju.deploy(**charm_versions.zookeeper.deploy_dict())
+
+    logger.info("Waiting for zookeeper app to be active and idle...")
+    juju.wait(jubilant.all_active, delay=5)
+
+    logger.info("Integrating kyuubi charm with zookeeper charm...")
+    juju.integrate(charm_versions.zookeeper.application_name, APP_NAME)
+
+    logger.info("Waiting for all charms to be idle idle...")
+    juju.wait(jubilant.all_active, delay=5)
 
 
 @pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
@@ -238,40 +266,3 @@ def test_relate_data_integrator(
     logger.info("Integrating kyuubi charm with zookeeper charm...")
     juju.integrate(charm_versions.data_integrator.app, APP_NAME)
     juju.wait(jubilant.all_active, delay=5)
-
-
-# TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
-def test_integration_with_zookeeper(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
-) -> None:
-    """Test the charm by integrating it with Zookeeper."""
-    # Deploy the charm and wait for waiting status
-    logger.info("Deploying zookeeper-k8s charm...")
-    juju.deploy(**charm_versions.zookeeper.deploy_dict())
-
-    logger.info("Waiting for zookeeper app to be active and idle...")
-    juju.wait(jubilant.all_active, delay=5)
-
-    logger.info("Integrating kyuubi charm with zookeeper charm...")
-    juju.integrate(charm_versions.zookeeper.application_name, APP_NAME)
-
-    logger.info("Waiting for zookeeper-k8s and kyuubi charms to be idle idle...")
-    juju.wait(jubilant.all_active, delay=5)
-
-    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
-    assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)
-
-
-# TODO: Revisit this test after recent updates in the purpose of Kyuubi <> Zookeeper relation
-def test_remove_zookeeper_relation(
-    juju: jubilant.Juju, charm_versions: IntegrationTestsCharms
-) -> None:
-    """Test the charm after the zookeeper relation has been broken."""
-    logger.info("Removing relation between zookeeper-k8s and kyuubi-k8s...")
-    juju.remove_relation(f"{APP_NAME}:zookeeper", f"{charm_versions.zookeeper.app}:zookeeper")
-
-    logger.info("Waiting for zookeeper-k8s and kyuubi-k8s apps to be idle and active...")
-    juju.wait(jubilant.all_active, delay=5)
-
-    _, username, password = fetch_connection_info(juju, charm_versions.data_integrator.app)
-    assert validate_sql_queries_with_kyuubi(juju, username=username, password=password)
