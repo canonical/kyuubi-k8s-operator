@@ -50,11 +50,9 @@ def test_deploy(
     Take care of setting the necessary integrations depending on the current test scenario.
     """
     num_units = 1
-    integrate_zookeeper = False
 
     if with_multi_units:
         num_units = 3
-        integrate_zookeeper = True
 
     deploy_minimal_kyuubi_setup(
         juju=juju,
@@ -63,7 +61,6 @@ def test_deploy(
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
         num_units=num_units,
-        integrate_zookeeper=integrate_zookeeper,
         auth_mode="ldap" if with_ldap else "jdbc",
     )
 
