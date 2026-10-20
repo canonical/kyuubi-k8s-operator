@@ -249,11 +249,10 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         if self.context.metastore_db and not metastore_manager.is_metastore_valid():
             statuses.append(Status.INVALID_METASTORE_SCHEMA.value)
 
-        if self.context._zookeeper_relation and not self.context.zookeeper:
-            statuses.append(Status.WAITING_ZOOKEEPER.value)
-
-        if self.app.planned_units() > 1 and not self.context.zookeeper:
+        if not self.context._zookeeper_relation:
             statuses.append(Status.MISSING_ZOOKEEPER.value)
+        elif not self.context.zookeeper:
+            statuses.append(Status.WAITING_ZOOKEEPER.value)
 
         service_manager = ServiceManager(
             namespace=self.model.name,

@@ -73,7 +73,7 @@ def setup_jdbc_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
     logger.info("Integrating kyuubi-k8s charm with postgresql-k8s charm...")
     juju.integrate(charm_versions.auth_db.application_name, f"{APP_NAME}:auth-db")
 
-    logger.info("Waiting for postgresql-k8s and kyuubi-k8s charms to be idle...")
+    logger.info("Waiting for postgresql-k8s charm to be idle...")
     juju.wait(
         lambda status: jubilant.all_active(
             status,
@@ -141,13 +141,15 @@ def setup_ldap_authentication(juju: jubilant.Juju, charm_versions: IntegrationTe
 
     logger.info("Waiting for all charms to be active and idle...")
     juju.wait(
-        lambda status: jubilant.all_active(
-            status,
-            charm_versions.ldap_db.app,
-            charm_versions.glauth.app,
-            charm_versions.glauth_utils.app,
-            charm_versions.ldap_tls.app,
-            APP_NAME,
+        lambda status: (
+            jubilant.all_active(
+                status,
+                charm_versions.ldap_db.app,
+                charm_versions.glauth.app,
+                charm_versions.glauth_utils.app,
+                charm_versions.ldap_tls.app,
+            )
+            and jubilant.all_agents_idle(status)
         ),
         delay=15,
         timeout=1000,

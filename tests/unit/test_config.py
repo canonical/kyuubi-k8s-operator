@@ -86,12 +86,18 @@ def test_profile_config_option(
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
     kyuubi_peers_relation: PeerRelation,
+    zookeeper_relation: Relation,
     tmp_path,
     profile,
 ) -> None:
     """Test profile config option."""
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
+        relations=[
+            spark_service_account_relation,
+            auth_db_relation,
+            kyuubi_peers_relation,
+            zookeeper_relation,
+        ],
         containers=[kyuubi_container],
         config={"profile": profile},
         leader=True,
@@ -157,6 +163,7 @@ def test_k8s_node_selectors_config_option(
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
     kyuubi_peers_relation: PeerRelation,
+    zookeeper_relation: Relation,
     tmp_path,
     k8s_selectors,
 ) -> None:
@@ -164,7 +171,12 @@ def test_k8s_node_selectors_config_option(
     logger.info(f"{k8s_selectors[0]}")
     logger.info(f"{k8s_selectors[1]}")
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
+        relations=[
+            spark_service_account_relation,
+            auth_db_relation,
+            kyuubi_peers_relation,
+            zookeeper_relation,
+        ],
         containers=[kyuubi_container],
         config={"k8s-node-selectors": k8s_selectors[0]},
         leader=True,

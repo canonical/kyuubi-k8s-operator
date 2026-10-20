@@ -62,7 +62,6 @@ def test_deploy_minimal_kyuubi_setup(
         kyuubi_charm=kyuubi_charm,
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
-        integrate_zookeeper=True,
         integrate_data_integrator=True,
         trust=True,
         expose_external=ExposeExternal.LOADBALANCER,
