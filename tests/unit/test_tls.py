@@ -210,6 +210,255 @@ def test_frontend_tls_enabled_but_not_ready(
     assert state_out.unit_status == Status.WAITING_FOR_TLS.value
 
 
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "all",
+        "private-key",
+        "ca-cert",
+        "certificate",
+        "truststore-password",
+        "keystore-password",
+        None,
+    ],
+)
+def test_upgrade_skips_uninitialized_frontend_tls(missing_field, kyuubi_context, base_state):
+    """Only recreate frontend TLS files once all required data has arrived."""
+    tls_data = {
+        "private-key": "private-key",
+        "ca-cert": "ca-cert",
+        "certificate": "certificate",
+        "truststore-password": "truststore-password",
+        "keystore-password": "keystore-password",
+    }
+    if missing_field == "all":
+        tls_data = {}
+    elif missing_field:
+        tls_data.pop(missing_field)
+
+    peer_relation = PeerRelation(endpoint=PEER_REL, local_unit_data=tls_data)
+    tls_relation = Relation(endpoint=TLS_REL)
+    state_in = dataclasses.replace(base_state, relations=[peer_relation, tls_relation])
+
+    with (
+        patch("events.tls.TLSManager") as mock_tls_manager,
+        patch("managers.kyuubi.KyuubiManager.update") as mock_update,
+        patch("events.provider.KyuubiClientProviderEvents.update_clients_endpoints"),
+        kyuubi_context(kyuubi_context.on.upgrade_charm(), state=state_in) as manager,
+    ):
+        assert manager.charm.context.is_frontend_tls_initialized() == (missing_field is None)
+        mock_tls_manager.return_value.reset_mock()
+        state_out = manager.run()
+
+    tls_manager = mock_tls_manager.return_value
+    assert not state_out.deferred
+    if missing_field:
+        assert not tls_manager.mock_calls
+        mock_update.assert_not_called()
+    else:
+        tls_manager.set_private_key.assert_called_once_with()
+        tls_manager.set_kyuubi_server_ca.assert_called_once_with()
+        tls_manager.set_kyuubi_server_certificate.assert_called_once_with()
+        tls_manager.set_kyuubi_server_truststore.assert_called_once_with()
+        tls_manager.set_kyuubi_server_p12_keystore.assert_called_once_with()
+        mock_update.assert_called_once_with(force_restart=True)
+
+
+@pytest.fixture
+def frontend_tls_data(certificate_available_context):
+    """Provide complete frontend TLS peer data matching the assigned certificate."""
+    fixture = certificate_available_context
+    return {
+        "private-key": fixture.requirer_private_key.raw,
+        "certificate": fixture.client_certificate.raw,
+        "ca-cert": fixture.provider_ca_certificate.raw,
+        "keystore-password": "keystore-password",
+        "truststore-password": "truststore-password",
+    }
+
+
+@pytest.fixture
+def initialized_frontend_tls_state(certificate_available_context, frontend_tls_data):
+    """Provide a TLS relation and initialized unit peer data."""
+    fixture = certificate_available_context
+    peer = dataclasses.replace(fixture.peer_relation, local_unit_data=frontend_tls_data)
+    return dataclasses.replace(fixture.state_in, relations=[peer, fixture.tls_relation])
+
+
+@pytest.mark.parametrize("hook", ["upgrade_charm", "pebble_ready"])
+def test_frontend_tls_reconciliation_hook(
+    certificate_available_context, initialized_frontend_tls_state, hook
+):
+    """Upgrade and Pebble-ready request frontend TLS reconciliation."""
+    context = certificate_available_context.context
+    state = initialized_frontend_tls_state
+    event = (
+        context.on.pebble_ready(next(iter(state.containers)))
+        if hook == "pebble_ready"
+        else context.on.upgrade_charm()
+    )
+    with (
+        context(event, state=state) as manager,
+        patch.object(manager.charm.tls_events, "reconcile_frontend_tls") as reconcile,
+        patch("managers.kyuubi.KyuubiManager.update"),
+    ):
+        state_out = manager.run()
+
+    assert not state_out.deferred
+    reconcile.assert_called_once_with()
+
+
+@pytest.mark.parametrize("initialized", [False, True])
+@pytest.mark.parametrize("stores_ready", [False, True])
+def test_update_status_reconciles_frontend_tls_only_when_needed(
+    certificate_available_context, initialized_frontend_tls_state, initialized, stores_ready
+):
+    """Update-status only reconciles incomplete TLS data or missing stores."""
+    fixture = certificate_available_context
+    state = initialized_frontend_tls_state
+    if not initialized:
+        state = dataclasses.replace(state, relations=[fixture.peer_relation, fixture.tls_relation])
+
+    context = fixture.context
+    with (
+        context(context.on.update_status(), state=state) as manager,
+        patch.object(manager.charm.tls_events, "reconcile_frontend_tls") as reconcile,
+        patch.object(manager.charm.workload, "frontend_tls_ready", return_value=stores_ready),
+        patch("managers.kyuubi.KyuubiManager.update"),
+    ):
+        state_out = manager.run()
+
+    assert not state_out.deferred
+    if initialized and stores_ready:
+        reconcile.assert_not_called()
+    else:
+        reconcile.assert_called_once_with()
+
+
+@pytest.mark.parametrize("peer_state", ["uninitialized", "current", "ca-changed"])
+def test_upgrade_recovers_frontend_tls_without_certificate_event(
+    certificate_available_context, frontend_tls_data, peer_state, tmp_path
+):
+    """Upgrade restores assigned TLS data and missing files without a certificate event."""
+    fixture = certificate_available_context
+    context = fixture.context
+    peer_data = dict(frontend_tls_data)
+    if peer_state == "uninitialized":
+        peer_data = {}
+    elif peer_state == "ca-changed":
+        peer_data["ca-cert"] = "old-ca"
+    peer = dataclasses.replace(fixture.peer_relation, local_unit_data=peer_data)
+    state = dataclasses.replace(fixture.state_in, relations=[peer, fixture.tls_relation])
+
+    with (
+        context(context.on.upgrade_charm(), state=state) as manager,
+        patch.object(
+            manager.charm.tls_events.certificates,
+            "get_assigned_certificate",
+            return_value=(fixture.client_provider_certificate, fixture.requirer_private_key),
+        ),
+        patch("managers.tls.TLSManager.set_kyuubi_server_truststore") as truststore,
+        patch("managers.tls.TLSManager.set_kyuubi_server_p12_keystore") as keystore,
+        patch("managers.kyuubi.KyuubiManager.update") as update,
+        patch.object(manager.charm.provider_events, "update_clients_endpoints") as endpoints,
+    ):
+        state_out = manager.run()
+        charm = manager.charm
+        files = {
+            charm.workload.paths.server_key: frontend_tls_data["private-key"],
+            charm.workload.paths.kyuubi_server_ca: frontend_tls_data["ca-cert"],
+            charm.workload.paths.kyuubi_server_certificate: frontend_tls_data["certificate"],
+        }
+
+    assert not state_out.deferred
+    peer_secrets = [
+        secret
+        for secret in state_out.secrets
+        if secret.label == f"{PEER_REL}.{METADATA['name']}.unit"
+    ]
+    assert len(peer_secrets) == 1
+    stored_data = peer_secrets[0].latest_content
+    assert stored_data is not None
+    for field in ("private-key", "certificate", "ca-cert"):
+        assert stored_data[field] == frontend_tls_data[field]
+    for field in ("keystore-password", "truststore-password"):
+        assert stored_data[field]
+        if peer_state != "uninitialized":
+            assert stored_data[field] == frontend_tls_data[field]
+    for path, content in files.items():
+        assert validate_file_contents(tmp_path, path, content)
+    truststore.assert_called_once_with()
+    keystore.assert_called_once_with()
+    update.assert_called_once_with(force_restart=True)
+    endpoints.assert_called_once_with()
+
+
+def test_upgrade_does_not_apply_revoked_frontend_certificate(
+    certificate_available_context, initialized_frontend_tls_state
+):
+    """A revoked assigned certificate must not be restored, even with cached peer data."""
+    fixture = certificate_available_context
+    context = fixture.context
+    revoked = dataclasses.replace(fixture.client_provider_certificate, revoked=True)
+    with (
+        context(context.on.upgrade_charm(), state=initialized_frontend_tls_state) as manager,
+        patch.object(
+            manager.charm.tls_events.certificates,
+            "get_assigned_certificate",
+            return_value=(revoked, fixture.requirer_private_key),
+        ),
+        patch.object(manager.charm.tls_events, "tls_manager") as tls_manager,
+        patch("managers.kyuubi.KyuubiManager.update") as update,
+        patch.object(manager.charm.provider_events, "update_clients_endpoints") as endpoints,
+    ):
+        state_out = manager.run()
+
+    assert not state_out.deferred
+    assert not tls_manager.mock_calls
+    update.assert_not_called()
+    endpoints.assert_not_called()
+    peer = fixture.peer_relation
+    assert state_out.get_relation(peer.id).local_unit_data == (
+        initialized_frontend_tls_state.get_relation(peer.id).local_unit_data
+    )
+
+
+def test_frontend_certificate_available_after_upgrade_recovery(certificate_available_context):
+    """A certificate callback still applies TLS after upgrade initialized it."""
+    fixture = certificate_available_context
+    context = fixture.context
+    with (
+        context(context.on.upgrade_charm(), state=fixture.state_in) as manager,
+        patch.object(
+            manager.charm.tls_events.certificates,
+            "get_assigned_certificate",
+            return_value=(fixture.client_provider_certificate, fixture.requirer_private_key),
+        ),
+        patch.object(manager.charm.tls_events, "tls_manager") as tls_manager,
+        patch("managers.kyuubi.KyuubiManager.update") as update,
+        patch.object(manager.charm.provider_events, "update_clients_endpoints") as endpoints,
+    ):
+        manager.run()
+        assert manager.charm.context.is_frontend_tls_initialized()
+        tls_manager.reset_mock()
+        update.reset_mock()
+        endpoints.reset_mock()
+
+        event = MagicMock(spec=CertificateAvailableEvent)
+        event.certificate = fixture.client_certificate
+        event.ca = fixture.provider_ca_certificate
+        manager.charm.tls_events._on_kyuubi_server_certificate_available(event)
+
+        event.defer.assert_not_called()
+        tls_manager.set_private_key.assert_called_once_with()
+        tls_manager.set_kyuubi_server_ca.assert_called_once_with()
+        tls_manager.set_kyuubi_server_certificate.assert_called_once_with()
+        tls_manager.set_kyuubi_server_truststore.assert_called_once_with()
+        tls_manager.set_kyuubi_server_p12_keystore.assert_called_once_with()
+        update.assert_called_once_with(force_restart=True)
+        endpoints.assert_called_once_with()
+
+
 def test_frontend_tls_certificate_available_gets_deferred_when_workload_not_ready(
     certificate_available_context,
 ):

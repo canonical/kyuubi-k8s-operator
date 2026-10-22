@@ -81,13 +81,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
             return
 
         # Recreate the frontend TLS files in the container if frontend TLS has been enabled
-        if self.context.frontend_tls:
-            self.tls_manager.set_private_key()
-            self.tls_manager.set_kyuubi_server_ca()
-            self.tls_manager.set_kyuubi_server_certificate()
-            self.tls_manager.set_kyuubi_server_truststore()
-            self.tls_manager.set_kyuubi_server_p12_keystore()
-            self.kyuubi.update(force_restart=True)
+        self.charm.tls_events.reconcile_frontend_tls()
 
         # Recreate the backend TLS files in the container if backend TLS has been enabled
         if self.context.backend_tls:
@@ -176,6 +170,11 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
     @defer_when_not_ready
     def _update_event(self, _):
         """Handle the update event hook."""
+        if self.context.frontend_tls and (
+            not self.context.is_frontend_tls_initialized()
+            or not self.workload.frontend_tls_ready()
+        ):
+            self.charm.tls_events.reconcile_frontend_tls()
         self.kyuubi.update()
 
     @defer_when_not_ready
@@ -183,6 +182,7 @@ class KyuubiEvents(BaseEventHandler, WithLogging):
         """Define and start a workload using the Pebble API."""
         self.logger.info("Kyuubi pebble service is ready.")
         self.charm.unit.set_ports(JDBC_PORT)
+        self.charm.tls_events.reconcile_frontend_tls()
         self.kyuubi.update()
 
     def _on_peer_relation_joined(self, _: ops.RelationJoinedEvent):
