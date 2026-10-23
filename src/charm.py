@@ -54,12 +54,6 @@ logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-# Error raised by charm-refresh when the original versions are missing from the app databag
-ORIGINAL_VERSIONS_MISSING_ERROR = (
-    "Refresh failed. Automatic recovery not possible. Original versions in app databag are "
-    "missing or invalid"
-)
-
 
 class KyuubiCharm(TypedCharmBase[CharmConfig]):
     """Charm the service."""
@@ -125,19 +119,6 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
             )
         except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
             self.refresh = None
-        except ValueError as e:
-            # WORKAROUND: the service-mesh library patches the StatefulSet pod template, which
-            # creates a new controller revision that charm-refresh treats as an in-progress
-            # `juju refresh`. If this happens before the leader has saved the original versions
-            # in the app databag (e.g. during initial bundle deployment), charm-refresh raises.
-            # Treat it like `PeerRelationNotReady` (workload not started, retried on a later
-            # event) until this is fixed upstream.
-            if not str(e).startswith(ORIGINAL_VERSIONS_MISSING_ERROR):
-                raise
-            logger.warning(
-                f"WORKAROUND: refresh not ready, original versions missing from app databag: {e}"
-            )
-            self.refresh = None
 
         if (
             self.refresh is not None
@@ -151,6 +132,20 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
 
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.collect_app_status, self._on_collect_app_status)
+
+    def refresh_ready_for_service_mesh(self) -> bool:
+        """WORKAROUND: Whether service mesh labels can be applied to statefulset without breaking charm-refresh.
+
+        Changing the statefulset template creates a new controller revision, which charm-refresh treats as
+        `juju refresh`. That is only safe once charm-refresh has saved the original versions.
+        """
+        if self.refresh is None or self.refresh.in_progress:
+            return False
+        relation = self.model.get_relation("refresh-v-three")
+        return (
+            relation is not None
+            and "original_workload_container_version" in relation.data[self.app]
+        )
 
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent) -> None:
         """Set the status of the unit.
