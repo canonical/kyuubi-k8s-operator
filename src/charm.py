@@ -54,6 +54,12 @@ logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+# Error raised by charm-refresh when the original versions are missing from the app databag
+ORIGINAL_VERSIONS_MISSING_ERROR = (
+    "Refresh failed. Automatic recovery not possible. Original versions in app databag are "
+    "missing or invalid"
+)
+
 
 class KyuubiCharm(TypedCharmBase[CharmConfig]):
     """Charm the service."""
@@ -118,6 +124,19 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
                 )
             )
         except (charm_refresh.UnitTearingDown, charm_refresh.PeerRelationNotReady):
+            self.refresh = None
+        except ValueError as e:
+            # WORKAROUND: the service-mesh library patches the StatefulSet pod template, which
+            # creates a new controller revision that charm-refresh treats as an in-progress
+            # `juju refresh`. If this happens before the leader has saved the original versions
+            # in the app databag (e.g. during initial bundle deployment), charm-refresh raises.
+            # Treat it like `PeerRelationNotReady` (workload not started, retried on a later
+            # event) until this is fixed upstream.
+            if not str(e).startswith(ORIGINAL_VERSIONS_MISSING_ERROR):
+                raise
+            logger.warning(
+                f"WORKAROUND: refresh not ready, original versions missing from app databag: {e}"
+            )
             self.refresh = None
 
         if (

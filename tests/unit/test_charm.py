@@ -468,3 +468,27 @@ def test_kyuubi_not_serving_requests(
 
     # Then
     assert out.unit_status == Status.NOT_SERVING_REQUESTS.value
+
+
+def test_refresh_missing_original_versions_is_tolerated(kyuubi_context: Context) -> None:
+    """WORKAROUND: charm-refresh failing on missing original versions must not crash the charm."""
+    from charm import ORIGINAL_VERSIONS_MISSING_ERROR
+
+    state = State(containers=[Container(name=KYUUBI_CONTAINER_NAME, can_connect=False)])
+    with patch(
+        "charm_refresh.Kubernetes", Mock(side_effect=ValueError(ORIGINAL_VERSIONS_MISSING_ERROR))
+    ):
+        with kyuubi_context(kyuubi_context.on.install(), state) as manager:
+            assert manager.charm.refresh is None
+            manager.run()
+
+
+def test_refresh_other_value_error_is_raised(kyuubi_context: Context) -> None:
+    state = State(containers=[Container(name=KYUUBI_CONTAINER_NAME, can_connect=False)])
+    with patch("charm_refresh.Kubernetes", Mock(side_effect=ValueError("something else"))):
+        try:
+            kyuubi_context.run(kyuubi_context.on.install(), state)
+        except Exception as e:
+            assert "something else" in str(e)
+        else:
+            raise AssertionError("ValueError was swallowed")
