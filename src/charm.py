@@ -133,6 +133,20 @@ class KyuubiCharm(TypedCharmBase[CharmConfig]):
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.collect_app_status, self._on_collect_app_status)
 
+    def refresh_ready_for_service_mesh(self) -> bool:
+        """WORKAROUND: Whether service mesh labels can be applied to statefulset without breaking charm-refresh.
+
+        Changing the statefulset template creates a new controller revision, which charm-refresh treats as
+        `juju refresh`. That is only safe once charm-refresh has saved the original versions.
+        """
+        if self.refresh is None or self.refresh.in_progress:
+            return False
+        relation = self.model.get_relation("refresh-v-three")
+        return (
+            relation is not None
+            and "original_workload_container_version" in relation.data[self.app]
+        )
+
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent) -> None:
         """Set the status of the unit.
 
