@@ -43,6 +43,23 @@ if TYPE_CHECKING:
     from charm import KyuubiCharm
 
 
+class KyuubiServiceMeshConsumer(ServiceMeshConsumer, WithLogging):
+    """WORKAROUND: don't patch the StatefulSet template until charm-refresh saved original versions."""
+
+    def __init__(self, charm: KyuubiCharm, **kwargs):
+        super().__init__(charm, **kwargs)
+        self._kyuubi = charm
+
+    def _update_labels(self, event) -> None:
+        if self.labels() and not self._kyuubi.refresh_ready_for_service_mesh():
+            self.logger.info(
+                "WORKAROUND: deferring service mesh labels until charm-refresh is ready"
+            )
+            event.defer()
+            return
+        super()._update_labels(event)
+
+
 class ServiceMeshEvents(BaseEventHandler, WithLogging):
     """Class implementing Ambient Service Mesh event hooks."""
 
@@ -53,7 +70,7 @@ class ServiceMeshEvents(BaseEventHandler, WithLogging):
         self.context = context
         self.workload = workload
 
-        self.service_mesh = ServiceMeshConsumer(
+        self.service_mesh = KyuubiServiceMeshConsumer(
             self.charm,
             mesh_relation_name=SERVICE_MESH_RELATION_NAME,
             policies=[UnitPolicy(relation=METRICS_RELATION_NAME, ports=[COS_METRICS_PORT])],
