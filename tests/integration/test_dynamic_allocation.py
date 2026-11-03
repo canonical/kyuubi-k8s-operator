@@ -47,6 +47,7 @@ def test_deploy_kyuubi_setup(
             charm_versions.s3.application_name,
             charm_versions.auth_db.application_name,
             charm_versions.data_integrator.application_name,
+            charm_versions.zookeeper.application_name,
         ),
         delay=15,
     )

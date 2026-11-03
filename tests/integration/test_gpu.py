@@ -37,7 +37,6 @@ def test_deploy_kyuubi_setup(
         charm_versions=charm_versions,
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
-        integrate_zookeeper=True,
         integrate_data_integrator=True,
     )
     # Wait for everything to settle down

@@ -40,6 +40,7 @@ class TestCharm(BaseModel):
     num_units: int = 1
     alias: str | None = None
     trust: bool | None = False
+    resources: dict[str, str] | None = None
 
     @property
     def application_name(self) -> str:
@@ -58,6 +59,7 @@ class TestCharm(BaseModel):
             "num_units": self.num_units,
             "app": self.application_name,
             "trust": self.trust,
+            "resources": self.resources,
         }
 
 

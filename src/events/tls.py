@@ -87,29 +87,48 @@ class TLSEvents(BaseEventHandler, WithLogging):
 
     def _on_kyuubi_server_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Handler for `certificates_available` event after provider updates signed certs."""
-        # avoid setting tls files and restarting
-        if not self.workload.ready():
+        if not self.reconcile_frontend_tls(event.certificate.raw, event.ca.raw):
             event.defer()
             return
 
-        _, private_key = self.certificates.get_assigned_certificate(
+    def reconcile_frontend_tls(
+        self, certificate: str | None = None, ca: str | None = None
+    ) -> bool:
+        """Restore frontend TLS from assigned certificates or previously stored data."""
+        if (
+            not self.context.frontend_tls
+            or not self.context.cluster.relation
+            or not self.workload.ready()
+        ):
+            return False
+
+        assigned_certificate, private_key = self.certificates.get_assigned_certificate(
             self.certificates.certificate_requests[0]
         )
-        if private_key and private_key.raw != self.context.unit_server.private_key:
-            self.context.unit_server.update({"private-key": private_key.raw})
+        server = self.context.unit_server
+        if assigned_certificate and assigned_certificate.revoked:
+            return False
+        if certificate is None and ca is None and assigned_certificate:
+            certificate = assigned_certificate.certificate.raw
+            ca = assigned_certificate.ca.raw
+        if certificate and ca:
+            private_key = private_key or self.certificates.private_key
+            if not private_key:
+                return False
+            server.update(
+                {
+                    "private-key": private_key.raw,
+                    "certificate": certificate,
+                    "ca-cert": ca,
+                    "keystore-password": server.keystore_password
+                    or self.workload.generate_password(),
+                    "truststore-password": server.truststore_password
+                    or self.workload.generate_password(),
+                }
+            )
 
-        # generate unit key/truststore password if not already created
-        self.context.unit_server.update(
-            {
-                "keystore-password": self.context.unit_server.keystore_password
-                or self.workload.generate_password(),  # type: ignore
-                "truststore-password": self.context.unit_server.truststore_password
-                or self.workload.generate_password(),  # type: ignore
-            }
-        )
-        self.context.unit_server.update(
-            {"certificate": event.certificate.raw, "ca-cert": event.ca.raw}
-        )
+        if not self.context.is_frontend_tls_initialized():
+            return False
 
         self.tls_manager.set_private_key()
         self.tls_manager.set_kyuubi_server_ca()
@@ -119,6 +138,7 @@ class TLSEvents(BaseEventHandler, WithLogging):
         self.kyuubi.update(force_restart=True)
 
         self.charm.provider_events.update_clients_endpoints()
+        return True
 
     @defer_when_not_ready
     def _on_kyuubi_server_certificates_broken(self, event: RelationBrokenEvent) -> None:

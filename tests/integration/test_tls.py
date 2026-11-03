@@ -77,7 +77,6 @@ def test_build_and_deploy(
         s3_bucket_and_creds=s3_bucket_and_creds,
         trust=True,
         num_units=1,
-        integrate_zookeeper=False,
     )
 
     # Wait for everything to settle down

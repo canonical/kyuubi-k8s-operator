@@ -55,9 +55,7 @@ class Status(Enum):
     INVALID_NAMESPACE = BlockedStatus("Invalid config option: namespace")
     INVALID_SERVICE_ACCOUNT = BlockedStatus("Invalid config option: service-account")
     WAITING_ZOOKEEPER = MaintenanceStatus("Waiting for zookeeper credentials")
-    MISSING_ZOOKEEPER = BlockedStatus(
-        "Missing Zookeeper integration (which is required when there are more than one units of Kyuubi)"
-    )
+    MISSING_ZOOKEEPER = BlockedStatus("Missing Zookeeper integration")
     WAITING_FOR_SERVICE = MaintenanceStatus("Waiting for Kyuubi service to be available...")
     WAITING_FOR_TLS = MaintenanceStatus("Waiting for TLS to be enabled...")
     INVALID_METASTORE_SCHEMA = BlockedStatus("Invalid metastore schema in metastore database")

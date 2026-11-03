@@ -8,11 +8,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lightkube import ApiError, Client
+from lightkube.resources.core_v1 import Pod
+
 from config.env import KyuubiEnvironConfig
 from config.hive import HiveConfig
 from config.kyuubi import KyuubiConfig
 from config.spark import SparkConfig
-from constants import HUB_TRUSTSTORE_MOUNT_BASE, TRUSTSTORE_SECRET_PREFIX
+from constants import (
+    HUB_TRUSTSTORE_MOUNT_BASE,
+    KYUUBI_WORKLOAD_LABEL_KYUUBI_APP_NAME,
+    KYUUBI_WORKLOAD_LABEL_KYUUBI_NAMESPACE,
+    TRUSTSTORE_SECRET_PREFIX,
+)
 from core.context import Context
 from core.workload.kyuubi import KyuubiWorkload
 from managers.k8s import K8sManager
@@ -95,6 +103,7 @@ class KyuubiManager(WithLogging):
         set_backend_tls_none: bool = False,
         set_ldap_none: bool = False,
         force_restart: bool = False,
+        cleanup_stale_workloads: bool = False,
     ) -> None:
         """Update Kyuubi service and restart it."""
         metastore_db_info = None if set_metastore_db_none else self.context.metastore_db
@@ -115,6 +124,9 @@ class KyuubiManager(WithLogging):
         else:
             gpu_capacity = 0
 
+        if cleanup_stale_workloads:
+            self.cleanup_stale_spark_engines()
+
         # Restart workload only if some configuration has changed.
         should_restart = any(
             [
@@ -124,6 +136,8 @@ class KyuubiManager(WithLogging):
                         service_account_info=service_account_info,
                         metastore_db_info=metastore_db_info,
                         gpu_capacity=gpu_capacity,
+                        kyuubi_namespace=self.charm.model.name,
+                        kyuubi_app_name=self.charm.app.name,
                     ).contents,
                     self.workload.paths.spark_properties,
                 ),
@@ -200,3 +214,32 @@ class KyuubiManager(WithLogging):
 
         self.logger.info("Restarting kyuubi workload...")
         self.workload.restart()
+
+    def cleanup_stale_spark_engines(self):
+        """Cleanup stale Spark engines in the workload namespace."""
+        client = Client()
+        engine_labels = {
+            KYUUBI_WORKLOAD_LABEL_KYUUBI_NAMESPACE: self.charm.model.name,
+            KYUUBI_WORKLOAD_LABEL_KYUUBI_APP_NAME: self.charm.app.name,
+            "spark-role": "driver",
+        }
+        try:
+            pods = client.list(Pod, namespace=self.charm.config.namespace, labels=engine_labels)
+
+            for pod in pods:
+                if pod.metadata and pod.metadata.name:
+                    self.logger.info(
+                        f"Terminating stale Kyuubi engine: {pod.metadata.name} in {self.charm.config.namespace}..."
+                    )
+                    client.delete(Pod, pod.metadata.name, namespace=self.charm.config.namespace)
+                else:
+                    self.logger.warning(
+                        "Encountered a pod without metadata or name; skipping termination."
+                    )
+        except ApiError as e:
+            if e.status.code == 403:
+                self.logger.error(
+                    f"RBAC Error: Charm lacks permission to delete pods in namespace '{self.charm.config.namespace}'. Run 'juju trust'."
+                )
+            else:
+                self.logger.warning(f"Kubernetes API error during engine cleanup: {e}")

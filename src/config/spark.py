@@ -7,7 +7,13 @@
 
 from lightkube import Client
 
-from constants import GPU_JOB_OCI_IMAGE, JOB_OCI_IMAGE, SPARK_DEFAULT_CATALOG_NAME
+from constants import (
+    GPU_JOB_OCI_IMAGE,
+    JOB_OCI_IMAGE,
+    KYUUBI_WORKLOAD_LABEL_KYUUBI_APP_NAME,
+    KYUUBI_WORKLOAD_LABEL_KYUUBI_NAMESPACE,
+    SPARK_DEFAULT_CATALOG_NAME,
+)
 from core.config import CharmConfig
 from core.domain import DatabaseConnectionInfo, SparkServiceAccountInfo
 from core.workload.kyuubi import SPARK_CONF_PATH
@@ -23,11 +29,15 @@ class SparkConfig(WithLogging):
         service_account_info: SparkServiceAccountInfo | None,
         metastore_db_info: DatabaseConnectionInfo | None,
         gpu_capacity: int,
+        kyuubi_namespace: str,
+        kyuubi_app_name: str,
     ):
         self.charm_config = charm_config
         self.service_account_info = service_account_info
         self.metastore_db_info = metastore_db_info
         self.gpu_capacity = gpu_capacity
+        self.kyuubi_namespace = kyuubi_namespace
+        self.kyuubi_app_name = kyuubi_app_name
 
     def _get_spark_master(self) -> str:
         cluster_address = Client().config.cluster.server
@@ -39,6 +49,8 @@ class SparkConfig(WithLogging):
             "spark.master": self._get_spark_master(),
             "spark.kubernetes.container.image": JOB_OCI_IMAGE,
             "spark.submit.deployMode": "cluster",
+            f"spark.kubernetes.driver.label.{KYUUBI_WORKLOAD_LABEL_KYUUBI_NAMESPACE}": self.kyuubi_namespace,
+            f"spark.kubernetes.driver.label.{KYUUBI_WORKLOAD_LABEL_KYUUBI_APP_NAME}": self.kyuubi_app_name,
         }
 
         if self.charm_config.enable_dynamic_allocation and not self.charm_config.gpu_enable:

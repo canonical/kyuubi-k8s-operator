@@ -138,11 +138,17 @@ def test_system_users_config_secret_valid(
     spark_service_account_relation: Relation,
     auth_db_relation: Relation,
     kyuubi_peers_relation: PeerRelation,
+    zookeeper_relation: Relation,
 ) -> None:
     """Test when the admin password supplied via system-users config option is valid."""
     system_users_secret = Secret(tracked_content={"admin": "password"})
     state = State(
-        relations=[spark_service_account_relation, auth_db_relation, kyuubi_peers_relation],
+        relations=[
+            spark_service_account_relation,
+            auth_db_relation,
+            kyuubi_peers_relation,
+            zookeeper_relation,
+        ],
         containers=[kyuubi_container],
         config={"system-users": system_users_secret.id},
         secrets=[system_users_secret],
@@ -195,12 +201,18 @@ def test_ldap_ready_configures_ldap_authentication(
     kyuubi_container: Container,
     spark_service_account_relation: Relation,
     kyuubi_peers_relation: PeerRelation,
+    zookeeper_relation: Relation,
 ) -> None:
     """Adding an LDAP relation should enable LDAP authentication in Kyuubi."""
     ldap_secret = build_ldap_secret()
     ldap_relation = build_ldap_relation(ldap_secret.id)
     state = State(
-        relations=[spark_service_account_relation, ldap_relation, kyuubi_peers_relation],
+        relations=[
+            spark_service_account_relation,
+            ldap_relation,
+            kyuubi_peers_relation,
+            zookeeper_relation,
+        ],
         containers=[kyuubi_container],
         secrets=[ldap_secret],
         leader=True,
