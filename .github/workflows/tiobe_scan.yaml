@@ -48,7 +48,7 @@ jobs:
           mv coverage.xml cover/coverage.xml
 
       - name: Run TICS analysis with github-action
-        uses: tiobe/tics-github-action@06afa6781ba53ab58efbe766d41d84febad1f683 # v4
+        uses: tiobe/tics-github-action@ef5606b61f5cf77831ea000680ed1dfad34ceff3 # v4
         with:
           mode: qserver
           project: kyuubi-k8s-operator
