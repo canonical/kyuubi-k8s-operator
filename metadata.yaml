@@ -41,7 +41,7 @@ resources:
     type: oci-image
     description: OCI image for kyuubi
     # oci-tag=3.4-22.04_edge
-    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:b8112e5cf3452bc8d29387867683752b8728f095bf68b7b758781b15cb687383 # 3.4-22.04 24-06-2026
+    upstream-source: ghcr.io/canonical/charmed-spark-kyuubi@sha256:5753a286e1c51029e7f28cea1cd8151c03b2d2501e3c87b1c00945077d109c62 # 3.4-22.04 24-06-2026
 
 peers:
   kyuubi-peers:
